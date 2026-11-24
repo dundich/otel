@@ -5,7 +5,7 @@ using Dashboard.Client;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddDemoObservability("app2", "OtelDemo.App2");
-builder.Services.AddDashboardPanel<App2DemoPanel>();
+builder.Services.AddDashboardPanels(typeof(Program).Assembly);
 
 var app1BaseUrl = builder.Configuration["App1:BaseUrl"] ?? "http://localhost:8081";
 builder.Services.AddHttpClient("app1", client =>
@@ -25,25 +25,13 @@ builder.Services.AddHostedService(sp => sp.GetRequiredService<CounterService>())
 
 var app = builder.Build();
 
-app.UseDefaultFiles();
-app.UseStaticFiles();
-
 app.MapGet("/healthz", () => Results.Ok(new { status = "healthy", service = "app2" }));
 
-// app2's own panels: GET /dashboard/panels, POST /dashboard/panels/{id}/actions/{action}
+// Dashboard.Client endpoints are registered even though app2 has no panels itself.
 app.MapDashboardPanels();
 
-app.MapGet("/api/config", (IConfiguration configuration) => Results.Ok(new
-{
-    app1BaseUrl,
-    dashboardPublicUrl = configuration["Dashboard:PublicUrl"] ?? "http://localhost:18888"
-}));
-
-// Aggregated view for the dashboard UI: panels owned by app2 + panels of other apps.
 app.MapGet("/api/panels", async (
-    DashboardPanelRegistry registry,
     DashboardSourceRegistry sourceRegistry,
-    IConfiguration configuration,
     ILogger<Program> logger,
     CancellationToken cancellationToken) =>
 {
@@ -62,15 +50,6 @@ app.MapGet("/api/panels", async (
             errors.Add($"{source.Name}: {ex.Message}");
         }
     }
-
-    var selfPanels = await registry.GetPanelsAsync(cancellationToken);
-    sources.Add(new DashboardSourcePanels(
-        "app2",
-        configuration["Dashboard:SelfPublicUrl"] ?? "http://localhost:8082",
-        "http://app2:8080",
-        "app2",
-        await DashboardSourceRegistry.ResolveAsync("app2", cancellationToken),
-        selfPanels));
 
     return Results.Ok(new { sources, errors });
 });
@@ -109,19 +88,6 @@ app.MapGet("/api/state", (CounterService counter) => Results.Ok(new
     lastSentAt = counter.LastSentAt,
     recentSends = counter.RecentSends
 }));
-
-app.MapGet("/api/inbox", async (IHttpClientFactory httpClientFactory, CancellationToken cancellationToken) =>
-{
-    var client = httpClientFactory.CreateClient("app1");
-    try
-    {
-        return Results.Ok(await client.GetFromJsonAsync<JsonElement>("/api/messages", cancellationToken));
-    }
-    catch (Exception ex)
-    {
-        return Results.Problem($"app1 is not reachable: {ex.Message}");
-    }
-});
 
 app.MapPost("/api/send", async (
     SendRequest? request,

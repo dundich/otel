@@ -1447,3 +1447,8 @@ aspire-tag-overflow > [data-tag-overflow-more]:not([data-count]) {
 aspire-tag-overflow > [data-tag-overflow-more]::before {
     content: attr(data-count);
 }
+
+/* Demo UI: hide dashboard service banners and help button without a reverse proxy. */
+#dashboard-help-button { display: none !important; }
+.dashboard-message-bar.intent-info,
+.dashboard-message-bar.intent-warning { display: none !important; }
