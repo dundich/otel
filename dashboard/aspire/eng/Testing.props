@@ -1,0 +1,34 @@
+<Project>
+  <PropertyGroup>
+    <IncludeTestUtilities>true</IncludeTestUtilities>
+
+    <!-- Default timeout values for split tests -->
+    <TestSessionTimeout Condition="'$(TestSessionTimeout)' == ''">20m</TestSessionTimeout>
+    <TestHangTimeout Condition="'$(TestHangTimeout)' == ''">10m</TestHangTimeout>
+    <UncollectedTestsSessionTimeout Condition="'$(UncollectedTestsSessionTimeout)' == ''">15m</UncollectedTestsSessionTimeout>
+    <UncollectedTestsHangTimeout Condition="'$(UncollectedTestsHangTimeout)' == ''">10m</UncollectedTestsHangTimeout>
+
+    <!-- Detect if we're running in the context of a GitHub pull request -->
+    <IsGithubPullRequest Condition="'$(GITHUB_EVENT_NAME)' == 'pull_request'">true</IsGithubPullRequest>
+
+    <!-- See https://docs.github.com/actions/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables#default-environment-variables -->
+    <IsGitHubActionsRunner Condition="'$(GITHUB_ACTIONS)' == 'true'">true</IsGitHubActionsRunner>
+
+    <!-- By default tests run on Windows and Linux in GitHub Actions; macOS defaults are set in Testing.targets -->
+    <RunOnGithubActionsWindows>true</RunOnGithubActionsWindows>
+    <RunOnGithubActionsLinux>true</RunOnGithubActionsLinux>
+    <RunOnAzdoCIWindows>true</RunOnAzdoCIWindows>
+    <RunOnAzdoCILinux>true</RunOnAzdoCILinux>
+    <RunOnAzdoHelixWindows>true</RunOnAzdoHelixWindows>
+    <RunOnAzdoHelixLinux>true</RunOnAzdoHelixLinux>
+
+    <_QuarantinedTestRunAdditionalArgs>--filter-trait "quarantined=true"</_QuarantinedTestRunAdditionalArgs>
+    <_NonQuarantinedTestRunAdditionalArgs Condition="'$(SkipDefaultTestFilters)' != 'true'">--filter-not-trait "quarantined=true"</_NonQuarantinedTestRunAdditionalArgs>
+    <_OuterloopTestRunAdditionalArgs>--filter-trait "outerloop=true"</_OuterloopTestRunAdditionalArgs>
+    <_NonOuterloopTestRunAdditionalArgs Condition="'$(SkipDefaultTestFilters)' != 'true'">--filter-not-trait "outerloop=true"</_NonOuterloopTestRunAdditionalArgs>
+
+    <_ShortName Condition="'$(TestShortName)' != ''">$(TestShortName)</_ShortName>
+    <_ShortName Condition="'$(_ShortName)' == ''">$([System.IO.Path]::GetFileNameWithoutExtension('$(MSBuildProjectName)').Replace('Aspire.', '').Replace('.Tests', ''))</_ShortName>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,669 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+using System.Runtime.CompilerServices;
+using Aspire.Hosting.ApplicationModel;
+using Aspire.Hosting.Pipelines;
+using Aspire.Hosting.Utils;
+using Microsoft.Extensions.DependencyInjection;
+using Azure.Provisioning;
+using Azure.Provisioning.Expressions;
+using Azure.Provisioning.Primitives;
+using Azure.Provisioning.Resources;
+using Microsoft.Extensions.Logging;
+
+namespace Aspire.Hosting.Azure;
+
+/// <summary>
+/// Represents a context for publishing Azure bicep templates for a distributed application.
+/// </summary>
+/// <remarks>
+/// This context facilitates the generation of bicep templates using the provided application model,
+/// publisher options, and execution context. It handles resource configuration and ensures
+/// that the bicep template is created in the specified output path.
+/// </remarks>
+public sealed class AzurePublishingContext(
+    string outputPath,
+    AzureProvisioningOptions provisioningOptions,
+    IServiceProvider serviceProvider,
+    ILogger logger,
+    IReportingStep reportingStep)
+{
+    private ILogger Logger => logger;
+
+    private IReportingStep ReportingStep => reportingStep;
+
+    private IServiceProvider ServiceProvider => serviceProvider;
+
+    /// <summary>
+    /// Gets the main.bicep infrastructure for the distributed application.
+    /// </summary>
+    public Infrastructure MainInfrastructure { get; } = new()
+    {
+        TargetScope = DeploymentScope.Subscription
+    };
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the root main.bicep file is excluded from the published output.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Callers of this class might not need main.bicep. A publisher that deploys each resource module
+    /// directly from its own deployment manifest never consumes the root template. Although Azure.Provisioning
+    /// can emit that template, a later Bicep compilation can fail for models the individual modules handle
+    /// correctly. For example, the generated root always passes <c>location</c> to each module, but a
+    /// tenant-scoped module does not declare a <c>location</c> parameter, resulting in <c>BCP037</c>.
+    /// </para>
+    /// <para>
+    /// When set to <see langword="true"/>, <see cref="WriteModelAsync"/> still writes every per-resource
+    /// Bicep module and populates <see cref="ParameterLookup"/> and <see cref="OutputLookup"/> against
+    /// <see cref="MainInfrastructure"/>. <see cref="MainInfrastructure"/> remains available in memory, but
+    /// it is never built, compiled, or written to disk. The default is <see langword="false"/>.
+    /// </para>
+    /// </remarks>
+    public bool ExcludeMainBicepFile { get; set; }
+
+    /// <summary>
+    /// Gets a dictionary that maps parameter resources to provisioning parameters.
+    /// </summary>
+    /// <remarks>
+    /// The value is the <see cref="ProvisioningParameter"/> of the <see cref="MainInfrastructure"/>
+    /// that was created to be filled with the value of the Aspire <see cref="ParameterResource"/>.
+    /// </remarks>
+    public Dictionary<ParameterResource, ProvisioningParameter> ParameterLookup { get; } = [];
+
+    /// <summary>
+    /// Gets a dictionary that maps output references to provisioning outputs.
+    /// </summary>
+    /// <remarks>
+    /// The value is the <see cref="ProvisioningOutput"/> of the <see cref="MainInfrastructure"/>
+    /// that was created with the value of the output referenced by the Aspire <see cref="BicepOutputReference"/>.
+    /// </remarks>
+    public Dictionary<BicepOutputReference, ProvisioningOutput> OutputLookup { get; } = [];
+
+    /// <summary>
+    /// Gets a dictionary that provides direct lookup of output references based on bicep identifier.
+    /// </summary>
+    /// <remarks>
+    /// This reverse lookup map allows efficient retrieval of <see cref="BicepOutputReference"/>
+    /// instances using their corresponding bicep identifier strings.
+    /// </remarks>
+    internal Dictionary<string, BicepOutputReference> ReverseOutputLookup { get; } = [];
+
+    /// <summary>
+    /// Writes the specified distributed application model to the output path using Bicep templates.
+    /// </summary>
+    /// <param name="model">The distributed application model to write to the output path.</param>
+    /// <param name="environment">The Azure environment resource.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>A task that represents the async operation.</returns>
+    public async Task WriteModelAsync(DistributedApplicationModel model, AzureEnvironmentResource environment, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+        ArgumentNullException.ThrowIfNull(outputPath);
+
+        if (model.Resources.Count == 0)
+        {
+            Logger.LogInformation("No resources found in the model");
+            return;
+        }
+
+        var writeTask = await ReportingStep.CreateTaskAsync("Writing Azure Bicep templates", cancellationToken).ConfigureAwait(false);
+
+        await using (writeTask.ConfigureAwait(false))
+        {
+            try
+            {
+                await WriteAzureArtifactsOutputAsync(ReportingStep, model, environment, cancellationToken).ConfigureAwait(false);
+
+                await SaveToDiskAsync(outputPath).ConfigureAwait(false);
+
+                await writeTask.SucceedAsync($"Azure Bicep templates written successfully to {outputPath}.", cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                await writeTask.FailAsync($"Failed to write Azure Bicep templates: {ex.Message}", cancellationToken).ConfigureAwait(false);
+
+                Logger.LogError(ex, "Failed to write Azure Bicep templates to {OutputPath}", outputPath);
+                throw;
+            }
+        }
+    }
+
+    private async Task WriteAzureArtifactsOutputAsync(IReportingStep step, DistributedApplicationModel model, AzureEnvironmentResource environment, CancellationToken cancellationToken)
+    {
+        var outputDirectory = new DirectoryInfo(outputPath);
+        if (!outputDirectory.Exists)
+        {
+            outputDirectory.Create();
+        }
+
+        var fileSystemService = ServiceProvider.GetRequiredService<IFileSystemService>();
+        var tempDirectory = fileSystemService.TempDirectory.CreateTempSubdirectory("aspire-bicep").Path;
+
+        var bicepResourcesToPublish = model.Resources.OfType<AzureBicepResource>()
+            .Where(r => !r.IsExcludedFromPublish())
+            .ToList();
+
+        await MapParameterAsync(environment.ResourceGroupName, cancellationToken).ConfigureAwait(false);
+        await MapParameterAsync(environment.Location, cancellationToken).ConfigureAwait(false);
+        await MapParameterAsync(environment.PrincipalId, cancellationToken).ConfigureAwait(false);
+
+        var resourceGroupParam = ParameterLookup[environment.ResourceGroupName];
+        MainInfrastructure.Add(resourceGroupParam);
+
+        var locationParam = ParameterLookup[environment.Location];
+        MainInfrastructure.Add(locationParam);
+
+        var principalId = ParameterLookup[environment.PrincipalId];
+        MainInfrastructure.Add(principalId);
+
+        ProvisioningParameter? deploymentPrincipalType = null;
+        if (bicepResourcesToPublish.Any(resource =>
+            resource.Parameters.TryGetValue(AzureBicepResource.KnownParameters.UserPrincipalId, out var userPrincipalId) &&
+            userPrincipalId is null &&
+            resource.Parameters.TryGetValue(AzureBicepResource.KnownParameters.PrincipalType, out var principalType) &&
+            principalType is null))
+        {
+            deploymentPrincipalType = new ProvisioningParameter(AzureBicepResource.KnownParameters.PrincipalType, typeof(string));
+            MainInfrastructure.Add(deploymentPrincipalType);
+        }
+
+        var rg = new ResourceGroup("rg")
+        {
+            Name = resourceGroupParam,
+            Location = locationParam,
+        };
+
+        var moduleMap = new Dictionary<AzureBicepResource, DependencyAwareModuleImport>();
+
+        foreach (var resource in bicepResourcesToPublish)
+        {
+            var file = resource.GetBicepTemplateFile(tempDirectory);
+
+            var moduleDirectory = outputDirectory.CreateSubdirectory(resource.Name);
+
+            var modulePath = Path.Combine(moduleDirectory.FullName, $"{resource.Name}.bicep");
+
+            File.Copy(file.Path, modulePath, true);
+
+            var identifier = Infrastructure.NormalizeBicepIdentifier(resource.Name);
+
+            var module = new DependencyAwareModuleImport(identifier, $"{resource.Name}/{resource.Name}.bicep")
+            {
+                // ARM deployment names are limited to 64 characters, independently of logical resource names.
+                // https://learn.microsoft.com/azure/azure-resource-manager/management/resource-name-rules#microsoftresources
+                Name = ResourceNameHelpers.TruncateWithHash(resource.Name, 64)
+            };
+
+            moduleMap[resource] = module;
+        }
+
+        foreach (var resource in bicepResourcesToPublish)
+        {
+            // Map parameters from existing resources
+            if (resource.TryGetLastAnnotation<ExistingAzureResourceAnnotation>(out var existingAnnotation))
+            {
+                await VisitAsync(existingAnnotation.ResourceGroup, MapParameterAsync, cancellationToken).ConfigureAwait(false);
+                await VisitAsync(existingAnnotation.Subscription, MapParameterAsync, cancellationToken).ConfigureAwait(false);
+                await VisitAsync(existingAnnotation.Name, MapParameterAsync, cancellationToken).ConfigureAwait(false);
+            }
+
+            if (resource.Scope is { } scope)
+            {
+                if (scope.HasResourceGroup)
+                {
+                    await VisitAsync(scope.ResourceGroup, MapParameterAsync, cancellationToken).ConfigureAwait(false);
+                }
+                await VisitAsync(scope.Subscription, MapParameterAsync, cancellationToken).ConfigureAwait(false);
+            }
+
+            // Map parameters for the resource itself
+            foreach (var parameter in resource.Parameters)
+            {
+                await VisitAsync(parameter.Value, MapParameterAsync, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        ProvisioningParameter? tenantResourceSuffix = null;
+        if (bicepResourcesToPublish.Any(resource =>
+            resource.Parameters.TryGetValue(AzureBicepResource.KnownParameters.TenantResourceSuffix, out var suffix) && suffix is null))
+        {
+            tenantResourceSuffix = ParameterLookup.Values.FirstOrDefault(parameter =>
+                parameter.BicepIdentifier == AzureBicepResource.KnownParameters.TenantResourceSuffix);
+            if (tenantResourceSuffix is null)
+            {
+                tenantResourceSuffix = new ProvisioningParameter(AzureBicepResource.KnownParameters.TenantResourceSuffix, typeof(string))
+                {
+                    Value = string.Empty
+                };
+                MainInfrastructure.Add(tenantResourceSuffix);
+            }
+        }
+
+        static BicepValue<string> GetOutputs(ModuleImport module, string outputName) =>
+            new MemberExpression(new MemberExpression(new IdentifierExpression(module.BicepIdentifier), "outputs"), outputName);
+
+        var deploymentTargets = model.Resources
+            .Select(resource => resource.GetDeploymentTargetAnnotation()?.DeploymentTarget)
+            .OfType<AzureBicepResource>()
+            .ToHashSet();
+        var deploymentTargetOutputs = new Dictionary<BicepOutputReference, ProvisioningParameter>();
+
+        BicepValue<string> GetOutputValue(BicepOutputReference output)
+        {
+            if (moduleMap.TryGetValue(output.Resource, out var module))
+            {
+                return GetOutputs(module, output.Name);
+            }
+
+            if (!deploymentTargets.Contains(output.Resource))
+            {
+                throw new InvalidOperationException(
+                    $"Output '{output.Name}' references Azure resource '{output.Resource.Name}', which is not included in the published model.");
+            }
+
+            // Compute targets are published separately from main.bicep because their images are supplied by the
+            // deployment tool. Infrastructure such as Front Door can depend on their outputs. Expose those as
+            // explicit inputs instead of referencing a module that main.bicep does not deploy.
+            if (!deploymentTargetOutputs.TryGetValue(output, out var parameter))
+            {
+                parameter = new ProvisioningParameter(
+                    Infrastructure.NormalizeBicepIdentifier($"{output.Resource.Name}_{output.Name}_input"), typeof(string));
+                deploymentTargetOutputs.Add(output, parameter);
+                MainInfrastructure.Add(parameter);
+            }
+
+            return parameter;
+        }
+
+        FormattableString EvalExpr(ReferenceExpression expr)
+        {
+            var args = new object[expr.ValueProviders.Count];
+
+            for (var i = 0; i < expr.ValueProviders.Count; i++)
+            {
+                args[i] = Eval(expr.ValueProviders[i]);
+            }
+
+            return FormattableStringFactory.Create(expr.Format, args);
+        }
+
+        object EvalConditionalExpr(ReferenceExpression expr)
+        {
+            var conditionVal = Eval(expr.Condition!);
+
+            // If the condition resolves to a static string, evaluate at publish time
+            if (conditionVal is string staticCondition)
+            {
+                var branch = string.Equals(staticCondition, expr.MatchValue, StringComparison.OrdinalIgnoreCase)
+                    ? expr.WhenTrue!
+                    : expr.WhenFalse!;
+                return Eval(branch);
+            }
+
+            // Condition is a Bicep parameter/output — emit a ternary expression
+            var whenTrueVal = ResolveValue(Eval(expr.WhenTrue!));
+            var whenFalseVal = ResolveValue(Eval(expr.WhenFalse!));
+
+            var conditional = new ConditionalExpression(
+                new BinaryExpression(ResolveValue(conditionVal).Compile(), BinaryBicepOperator.Equal, new StringLiteralExpression(expr.MatchValue!)),
+                whenTrueVal.Compile(),
+                whenFalseVal.Compile());
+
+            return new BicepValue<string>(conditional);
+        }
+
+        object Eval(object? value) => value switch
+        {
+            BicepOutputReference b => GetOutputValue(b),
+            ParameterResource p => ParameterLookup[p],
+            ConnectionStringReference r => Eval(r.ConnectionStringExpression),
+            IResourceWithConnectionString cs => Eval(cs.ConnectionStringExpression),
+            ReferenceExpression { IsConditional: true } re => EvalConditionalExpr(re),
+            ReferenceExpression re => EvalExpr(re),
+#pragma warning disable ASPIREAZURE005 // IBicepOutputReferenceProvider is experimental.
+            IBicepOutputReferenceProvider p when p.GetOutputReference() is { } b => Eval(b),
+#pragma warning restore ASPIREAZURE005
+            string s => s,
+            _ => ""
+        };
+
+        static BicepValue<string> ResolveValue(object val)
+        {
+            return val switch
+            {
+                BicepValue<string> s => s,
+                string s => s,
+                ProvisioningParameter p => p,
+                FormattableString fs => BicepFunction.Interpolate(fs),
+                _ => throw new NotSupportedException("Unsupported value type " + val.GetType())
+            };
+        }
+
+        BicepValue<string> GetScopeExpression(AzureBicepResource resource)
+        {
+            if (resource.Scope is null)
+            {
+                return new IdentifierExpression(rg.BicepIdentifier);
+            }
+
+            var scope = resource.Scope;
+
+            if (scope.IsTenantScope)
+            {
+                return new FunctionCallExpression(new IdentifierExpression("tenant"));
+            }
+
+            if (scope.HasResourceGroup && scope.Subscription is not null)
+            {
+                return new FunctionCallExpression(
+                    new IdentifierExpression("resourceGroup"),
+                    ResolveValue(Eval(scope.Subscription)).Compile(),
+                    ResolveValue(Eval(scope.ResourceGroup)).Compile());
+            }
+
+            if (scope.HasResourceGroup)
+            {
+                return new FunctionCallExpression(new IdentifierExpression("resourceGroup"), ResolveValue(Eval(scope.ResourceGroup)).Compile());
+            }
+
+            if (scope.Subscription is not null)
+            {
+                return new FunctionCallExpression(new IdentifierExpression("subscription"), ResolveValue(Eval(scope.Subscription)).Compile());
+            }
+
+            throw new InvalidOperationException("The Azure Bicep resource scope must specify a resource group, subscription, or tenant scope.");
+        }
+
+        var computeEnvironments = new List<IAzureComputeEnvironmentResource>();
+
+        var computeEnvironmentTask = await step.CreateTaskAsync(
+            "Analyzing model for compute environments.",
+            cancellationToken: cancellationToken
+            ).ConfigureAwait(false);
+
+        foreach (var resource in bicepResourcesToPublish)
+        {
+            if (resource is IAzureComputeEnvironmentResource computeEnvironment)
+            {
+                computeEnvironments.Add(computeEnvironment);
+            }
+
+            var task = await step.CreateTaskAsync(
+                $"Processing Azure resource {resource.Name}",
+                cancellationToken: cancellationToken
+            )
+            .ConfigureAwait(false);
+
+            var module = moduleMap[resource];
+            module.Scope = GetScopeExpression(resource);
+            if (resource.HasLocationParameter)
+            {
+                module.Parameters.Add("location", locationParam);
+            }
+
+            // Role grants have no outputs consumed by their dependents. Preserve these explicit
+            // prerequisites when deploying main.bicep, not just in Aspire's per-resource pipeline.
+            foreach (var prerequisite in resource.References.OfType<AzureRoleAssignmentResource>()
+                .OrderBy(prerequisite => prerequisite.Name, StringComparer.Ordinal))
+            {
+                module.Dependencies.Add(moduleMap[prerequisite]);
+            }
+
+            foreach (var parameter in resource.Parameters)
+            {
+                if (parameter.Key == AzureBicepResource.KnownParameters.TenantResourceSuffix && parameter.Value is null)
+                {
+                    module.Parameters.Add(parameter.Key, tenantResourceSuffix!);
+                    continue;
+                }
+
+                if (parameter.Key == AzureBicepResource.KnownParameters.UserPrincipalId && parameter.Value is null)
+                {
+                    module.Parameters.Add(parameter.Key, principalId);
+                    continue;
+                }
+                if (parameter.Key == AzureBicepResource.KnownParameters.PrincipalId && parameter.Value is null)
+                {
+                    module.Parameters.Add(parameter.Key, principalId);
+                    continue;
+                }
+                if (parameter.Key == AzureBicepResource.KnownParameters.PrincipalType &&
+                    parameter.Value is null &&
+                    resource.Parameters.TryGetValue(AzureBicepResource.KnownParameters.UserPrincipalId, out var userPrincipalId) &&
+                    userPrincipalId is null)
+                {
+                    module.Parameters.Add(parameter.Key, deploymentPrincipalType!);
+                    continue;
+                }
+
+                var value = ResolveValue(Eval(parameter.Value));
+
+                module.Parameters.Add(parameter.Key, value);
+            }
+
+            await task.SucceedAsync(
+                $"Wrote bicep module for resource {resource.Name} to {module.Path}",
+                cancellationToken: cancellationToken
+            ).ConfigureAwait(false);
+        }
+
+        var (message, state) = computeEnvironments.Count switch
+        {
+            0 => ("No azure compute environments found in the model.", CompletionState.CompletedWithWarning),
+            _ => ($"Found {computeEnvironments.Count} compute environment(s) in the model.", CompletionState.Completed)
+        };
+
+        // Report the completion of the compute environment task.
+        await computeEnvironmentTask.CompleteAsync(message, state, cancellationToken).ConfigureAwait(false);
+
+        var outputs = new Dictionary<string, BicepOutputReference>();
+
+        void CaptureBicepOutputs(object value)
+        {
+            if (value is BicepOutputReference bo)
+            {
+                outputs[bo.ValueExpression] = bo;
+            }
+        }
+
+        void CaptureBicepOutputsFromParameters(IResourceWithParameters resource)
+        {
+            foreach (var parameter in resource.Parameters)
+            {
+                Visit(parameter.Value, CaptureBicepOutputs);
+            }
+        }
+
+        // Capture any bicep outputs referenced from resources outside of the MainInfrastructure.
+        // These include DeploymentTarget resources and any other resources that have parameters that reference bicep outputs.
+        foreach (var resource in model.Resources)
+        {
+            if (resource.GetDeploymentTargetAnnotation() is { } annotation && annotation.DeploymentTarget is AzureBicepResource br)
+            {
+                // Materialize Dockerfile factory if present
+                if (resource.TryGetLastAnnotation<DockerfileBuildAnnotation>(out var dockerfileBuildAnnotation) &&
+                    dockerfileBuildAnnotation.DockerfileFactory is not null)
+                {
+                    var context = new DockerfileFactoryContext
+                    {
+                        Services = ServiceProvider,
+                        Resource = resource,
+                        CancellationToken = cancellationToken
+                    };
+
+                    // Copy to a resource-specific path in the output folder for publishing
+                    var resourceDockerfilePath = Path.Combine(outputPath, $"{resource.Name}.Dockerfile");
+                    await dockerfileBuildAnnotation.EmitDockerfileArtifactsAsync(context, resourceDockerfilePath).ConfigureAwait(false);
+                }
+
+                var task = await step.CreateTaskAsync(
+                    $"Processing deployment target {resource.Name}",
+                    cancellationToken: default
+                )
+                .ConfigureAwait(false);
+
+                var moduleDirectory = outputDirectory.CreateSubdirectory(resource.Name);
+
+                var modulePath = Path.Combine(moduleDirectory.FullName, $"{resource.Name}.bicep");
+
+                var file = br.GetBicepTemplateFile(tempDirectory);
+
+                File.Copy(file.Path, modulePath, true);
+
+                CaptureBicepOutputsFromParameters(br);
+
+                await task.SucceedAsync(
+                    $"Wrote bicep module for deployment target {resource.Name} to {modulePath}",
+                    cancellationToken: default
+                ).ConfigureAwait(false);
+            }
+            else if (resource is IResourceWithParameters rwp && !bicepResourcesToPublish.Contains(resource))
+            {
+                CaptureBicepOutputsFromParameters(rwp);
+            }
+        }
+
+        foreach (var (_, pp) in ParameterLookup)
+        {
+            MainInfrastructure.Add(pp);
+        }
+
+        MainInfrastructure.Add(rg);
+
+        foreach (var (_, module) in moduleMap)
+        {
+            MainInfrastructure.Add(module);
+        }
+
+        foreach (var (_, output) in outputs)
+        {
+            var identifier = Infrastructure.NormalizeBicepIdentifier($"{output.Resource.Name}_{output.Name}");
+
+            var bicepOutput = new ProvisioningOutput(identifier, typeof(string))
+            {
+                Value = GetOutputValue(output)
+            };
+
+            OutputLookup[output] = bicepOutput;
+            ReverseOutputLookup[bicepOutput.BicepIdentifier] = output;
+            MainInfrastructure.Add(bicepOutput);
+        }
+    }
+
+    private async Task MapParameterAsync(object candidate, CancellationToken cancellationToken = default)
+    {
+        if (candidate is ParameterResource p && !ParameterLookup.ContainsKey(p))
+        {
+            var pid = Infrastructure.NormalizeBicepIdentifier(p.Name);
+
+            var pp = new ProvisioningParameter(pid, typeof(string))
+            {
+                IsSecure = p.Secret
+            };
+
+            if (!p.Secret && p.Default is not null)
+            {
+                var value = await p.GetValueAsync(cancellationToken).ConfigureAwait(false);
+                if (value is not null)
+                {
+                    pp.Value = value;
+                }
+            }
+
+            ParameterLookup[p] = pp;
+        }
+    }
+
+    private static void Visit(object? value, Action<object> visitor) =>
+        Visit(value, visitor, []);
+
+    private static void Visit(object? value, Action<object> visitor, HashSet<object> visited)
+    {
+        if (value is null || !visited.Add(value))
+        {
+            return;
+        }
+
+        visitor(value);
+
+        if (value is IValueWithReferences vwr)
+        {
+            foreach (var reference in vwr.References)
+            {
+                Visit(reference, visitor, visited);
+            }
+        }
+    }
+
+    private static Task VisitAsync(object? value, Func<object, CancellationToken, Task> visitor, CancellationToken cancellationToken = default) =>
+        VisitAsync(value, visitor, [], cancellationToken);
+
+    private static async Task VisitAsync(object? value, Func<object, CancellationToken, Task> visitor, HashSet<object> visited, CancellationToken cancellationToken = default)
+    {
+        if (value is null || !visited.Add(value))
+        {
+            return;
+        }
+
+        await visitor(value, cancellationToken).ConfigureAwait(false);
+
+        if (value is IValueWithReferences vwr)
+        {
+            foreach (var reference in vwr.References)
+            {
+                await VisitAsync(reference, visitor, visited, cancellationToken).ConfigureAwait(false);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Saves the compiled Bicep template to disk.
+    /// </summary>
+    /// <param name="outputDirectoryPath">The path to the output directory where the Bicep template will be saved.</param>
+    /// <returns>A task that represents the asynchronous save operation.</returns>
+    private async Task SaveToDiskAsync(string outputDirectoryPath)
+    {
+        if (ExcludeMainBicepFile)
+        {
+            // The root is not even built, rather than compiled and then discarded, because a model that
+            // only the individual modules support (such as a tenant-scoped module without a location parameter)
+            // makes compiling the root throw.
+            logger.LogDebug("Excluding {BicepName}.bicep from the output because {PropertyName} is set.", MainInfrastructure.BicepName, nameof(ExcludeMainBicepFile));
+            return;
+        }
+
+        var plan = MainInfrastructure.Build(provisioningOptions.ProvisioningBuildOptions);
+        var compiledBicep = plan.Compile().First();
+
+        logger.LogDebug("Writing Bicep module {BicepName}.bicep to {TargetPath}", MainInfrastructure.BicepName, outputDirectoryPath);
+
+        var bicepPath = Path.Combine(outputDirectoryPath, $"{MainInfrastructure.BicepName}.bicep");
+        await File.WriteAllTextAsync(bicepPath, compiledBicep.Value).ConfigureAwait(false);
+    }
+
+    // Azure.Provisioning's ModuleImport does not expose or emit dependsOn. Extend its compiled
+    // body so parameter, scope, and name generation remain owned by the provisioning SDK.
+    private sealed class DependencyAwareModuleImport(string identifier, string path) : ModuleImport(identifier, path)
+    {
+        public List<ModuleImport> Dependencies { get; } = [];
+
+        protected override IEnumerable<BicepStatement> Compile()
+        {
+            if (Dependencies.Count == 0)
+            {
+                return base.Compile();
+            }
+
+            var module = (ModuleStatement)base.Compile().Single();
+            var body = (ObjectExpression)module.Body;
+            return
+            [
+                new ModuleStatement(module.Name, module.Type, new ObjectExpression(
+                    [.. body.Properties, new PropertyExpression("dependsOn", new ArrayExpression(
+                        [.. Dependencies.Select(dependency => new IdentifierExpression(dependency.BicepIdentifier))]))]))
+            ];
+        }
+    }
+}

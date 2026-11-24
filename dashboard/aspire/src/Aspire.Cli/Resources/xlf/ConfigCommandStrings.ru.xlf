@@ -1,0 +1,232 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="ru" original="../ConfigCommandStrings.resx">
+    <body>
+      <trans-unit id="AvailableFeaturesHeader">
+        <source>Available features</source>
+        <target state="translated">Доступные функции</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConfigurationArrayIndexInvalid">
+        <source>Configuration key '{0}' requires a non-negative integer array index.</source>
+        <target state="new">Configuration key '{0}' requires a non-negative integer array index.</target>
+        <note>{0} is the configuration key.</note>
+      </trans-unit>
+      <trans-unit id="ConfigurationArrayIndexOutOfRange">
+        <source>Array index {0} in configuration key '{1}' is out of range. Edit an existing element or append at index {2}.</source>
+        <target state="new">Array index {0} in configuration key '{1}' is out of range. Edit an existing element or append at index {2}.</target>
+        <note>{0} is the requested index, {1} is the configuration key, and {2} is the array length.</note>
+      </trans-unit>
+      <trans-unit id="ConfigurationArrayRequired">
+        <source>Configuration key '{0}' requires an array, but the existing value is not an array.</source>
+        <target state="new">Configuration key '{0}' requires an array, but the existing value is not an array.</target>
+        <note>{0} is the configuration key.</note>
+      </trans-unit>
+      <trans-unit id="ConfigurationKeyDeletedGlobally">
+        <source>Configuration '{0}' deleted globally.</source>
+        <target state="translated">Конфигурация "{0}" удалена глобально.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConfigurationKeyDeletedLocally">
+        <source>Configuration '{0}' deleted locally.</source>
+        <target state="translated">Конфигурация "{0}" удалена локально.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConfigurationKeyInvalid">
+        <source>Configuration key '{0}' is invalid. Use dots for nested properties and brackets containing a non-negative integer for array indices.</source>
+        <target state="new">Configuration key '{0}' is invalid. Use dots for nested properties and brackets containing a non-negative integer for array indices.</target>
+        <note>{0} is the configuration key.</note>
+      </trans-unit>
+      <trans-unit id="ConfigurationKeySetGlobally">
+        <source>Configuration '{0}' set to '{1}' globally.</source>
+        <target state="translated">Конфигурация "{0}" установлена в значение "{1}" глобально.</target>
+        <note>{0} is the key, {1} is the value</note>
+      </trans-unit>
+      <trans-unit id="ConfigurationKeySetLocally">
+        <source>Configuration '{0}' set to '{1}' locally.</source>
+        <target state="translated">Конфигурация "{0}" установлена в значение "{1}" локально.</target>
+        <note>{0} is the key, {1} is the value</note>
+      </trans-unit>
+      <trans-unit id="DeleteCommand_Description">
+        <source>Delete a configuration value</source>
+        <target state="translated">Удалить значение конфигурации</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DeleteCommand_GlobalArgumentDescription">
+        <source>Delete the configuration value from the global $HOME/.aspire/settings.json instead of the local settings file</source>
+        <target state="translated">Удалить значение конфигурации из глобального файла $HOME/.aspire/settings.json вместо локального файла параметров</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DeleteCommand_KeyArgumentDescription">
+        <source>The configuration key to delete. Use dots for nested properties and [index] for array elements.</source>
+        <target state="needs-review-translation">Ключ конфигурации, который следует удалить</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DeleteCommand_PromptForGlobal">
+        <source>Delete the configuration value from the global $HOME/.aspire/settings.json instead of the local settings file?</source>
+        <target state="translated">Удалить значение конфигурации из глобального файла $HOME/.aspire/settings.json вместо локального файла настроек?</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DeleteCommand_PromptForKey">
+        <source>Which config value do you want to delete?</source>
+        <target state="translated">Какое значение конфигурации нужно удалить?</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="Description">
+        <source>Manage CLI configuration including feature flags</source>
+        <target state="translated">Управление конфигурацией CLI, включая флаги функций</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ExtensionActionPrompt">
+        <source>What do you want to do?</source>
+        <target state="translated">Выберите действие</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GetCommand_Description">
+        <source>Get a configuration value</source>
+        <target state="translated">Получить значение конфигурации</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GetCommand_KeyArgumentDescription">
+        <source>The configuration key to retrieve. Use dots for nested properties and [index] for array elements.</source>
+        <target state="needs-review-translation">Ключ конфигурации, который следует получить</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GetCommand_PromptForKey">
+        <source>Which configuration key do you want to retrieve?</source>
+        <target state="translated">Какой ключ конфигурации нужно получить?</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GlobalConfigurationHeader">
+        <source>Global configuration</source>
+        <target state="translated">Глобальная конфигурация</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="HeaderKey">
+        <source>Key</source>
+        <target state="translated">Ключ</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="HeaderValue">
+        <source>Value</source>
+        <target state="translated">Значение</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InfoCommand_AvailableFeatures">
+        <source>Available features</source>
+        <target state="translated">Доступные функции</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InfoCommand_Description">
+        <source>Display configuration file paths and available features</source>
+        <target state="translated">Отобразить пути к файлам конфигурации и доступные функции</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InfoCommand_GlobalSettingsPath">
+        <source>Global settings path</source>
+        <target state="translated">Путь к глобальным параметрам</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InfoCommand_JsonOptionDescription">
+        <source>Output information in JSON format</source>
+        <target state="translated">Вывод информации в формате JSON</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InfoCommand_LocalSettingsPath">
+        <source>Local settings path</source>
+        <target state="translated">Путь к локальным параметрам</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InfoCommand_SettingsProperties">
+        <source>Settings file properties</source>
+        <target state="translated">Свойства файла параметров</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ListCommand_AllFeaturesHint">
+        <source>Run 'aspire config list --all' to see all available feature flags.</source>
+        <target state="translated">Выполните команду aspire config list --all, чтобы увидеть все доступные флаги функций.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ListCommand_AllOptionDescription">
+        <source>Show all available features that can be configured</source>
+        <target state="translated">Показать все доступные функции, которые можно настроить</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ListCommand_Description">
+        <source>List all configuration values</source>
+        <target state="translated">Перечислить все значения конфигурации</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="LocalConfigurationHeader">
+        <source>Local configuration</source>
+        <target state="translated">Локальная конфигурация</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="NoConfigurationValuesFound">
+        <source>No configuration values found.</source>
+        <target state="translated">Значения конфигурации не найдены.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="NoGlobalConfigurationFound">
+        <source>No global configuration found.</source>
+        <target state="translated">Глобальная конфигурация не найдена.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="NoLocalConfigurationFound">
+        <source>No local configuration found.</source>
+        <target state="translated">Локальная конфигурация не найдена.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SetCommand_Description">
+        <source>Set a configuration value</source>
+        <target state="translated">Задать значение конфигурации</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SetCommand_GlobalArgumentDescription">
+        <source>Set the configuration value globally in $HOME/.aspire/settings.json instead of the local settings file</source>
+        <target state="translated">Задать значение конфигурации глобально в файле $HOME/.aspire/settings.json вместо локального файла параметров</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SetCommand_KeyArgumentDescription">
+        <source>The configuration key to set. Use dots for nested properties and [index] to create or edit array elements.</source>
+        <target state="needs-review-translation">Ключ конфигурации, для которого следует задать значение</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SetCommand_PromptForGlobal">
+        <source>Where do you want to set the configuration value?</source>
+        <target state="translated">Где нужно настроить значение конфигурации?</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SetCommand_PromptForGlobal_GlobalOption">
+        <source>Globally ($HOME/.aspire/settings.json)</source>
+        <target state="translated">Глобально ($HOME/.aspire/settings.json)</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SetCommand_PromptForGlobal_LocalOption">
+        <source>Locally</source>
+        <target state="translated">Локально</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SetCommand_PromptForKey">
+        <source>Which configuration key do you want to set?</source>
+        <target state="translated">Какой ключ конфигурации нужно задать?</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SetCommand_PromptForValue">
+        <source>What value do you want to set?</source>
+        <target state="translated">Какое значение нужно настроить?</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SetCommand_ValueArgumentDescription">
+        <source>The configuration value to set</source>
+        <target state="translated">Значение конфигурации, которое следует задать</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SetFeatureHint">
+        <source>Use 'aspire config set features.&lt;name&gt; true|false' to enable or disable a feature.</source>
+        <target state="translated">Используйте команду "aspire config set features.&lt;name&gt; true|false", чтобы включить или отключить функцию.</target>
+        <note />
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

@@ -1,0 +1,52 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="tr" original="../DoCommandStrings.resx">
+    <body>
+      <trans-unit id="Description">
+        <source>Execute a specific pipeline step and its dependencies</source>
+        <target state="translated">Belirli bir işlem hattı adımını ve bağımlılıklarını yürütün</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GeneratingArtifacts">
+        <source>Executing pipeline...</source>
+        <target state="translated">İşlem hattı yürütülüyor...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ListStepsRequiresStep">
+        <source>The 'step' argument is required when using --list-steps. Example: 'aspire do deploy --list-steps'. Common starting steps are 'build', 'publish' and 'deploy'. See https://aspire.dev/reference/cli/commands/aspire-do/ for the full list of pipeline steps.</source>
+        <target state="translated">--list-steps kullanılırken 'step' bağımsız değişkeni gereklidir. Örnek: 'aspire do deploy --list-steps'. Yaygın başlangıç adımları 'build', 'publish' ve 'deploy' komutlarıdır. İşlem hattı adımlarının tamamını görmek için https://aspire.dev/reference/cli/commands/aspire-do/ adresini ziyaret edin.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="OperationCanceled">
+        <source>The operation was canceled.</source>
+        <target state="translated">İşlem iptal edildi.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="OperationCompletedPrefix">
+        <source>OPERATION COMPLETED</source>
+        <target state="translated">İŞLEM TAMAMLANDI</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="OperationFailedPrefix">
+        <source>OPERATION FAILED</source>
+        <target state="translated">İŞLEM BAŞARISIZ OLDU</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="OutputPathArgumentDescription">
+        <source>The optional output path for artifacts</source>
+        <target state="translated">Yapıtlar için isteğe bağlı çıktı yolu</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="StepArgumentDescription">
+        <source>The name of the step to execute</source>
+        <target state="translated">Yürütülecek adımın adı</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="StepArgumentRequired">
+        <source>The 'step' argument is required.</source>
+        <target state="translated">'step' bağımsız değişkeni gereklidir.</target>
+        <note />
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

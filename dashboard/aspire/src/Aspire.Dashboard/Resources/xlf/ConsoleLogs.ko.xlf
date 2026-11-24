@@ -1,0 +1,132 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="ko" original="../ConsoleLogs.resx">
+    <body>
+      <trans-unit id="ConsoleLogsErrorWatchingLogs">
+        <source>Error watching logs</source>
+        <target state="translated">로그를 보는 동안 오류 발생</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsFinishedWatchingLogs">
+        <source>Finished watching logs</source>
+        <target state="translated">로그 보기 완료</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsHeader">
+        <source>Console logs</source>
+        <target state="translated">콘솔 로그</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsLoadingResources">
+        <source>Loading resources ...</source>
+        <target state="translated">리소스를 로드하는 중...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsLogsNotYetAvailable">
+        <source>Logs not yet available</source>
+        <target state="translated">로그를 아직 사용할 수 없음</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsNoLogsFound">
+        <source>No logs found</source>
+        <target state="translated">로그를 찾을 수 없음</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsNoLogsMatchFilter">
+        <source>No logs match the filter</source>
+        <target state="translated">필터와 일치하는 로그가 없음</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsNoResourceSelected">
+        <source>No resource selected</source>
+        <target state="translated">리소스를 선택하지 않음</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsNoWrapLogs">
+        <source>Don't wrap log lines</source>
+        <target state="translated">로그 줄 래핑 안 함</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsNotCapturedForRun">
+        <source>Console logs weren't captured for this run. Console logs are only captured if this page is visited while the AppHost is running.</source>
+        <target state="translated">이 실행에 대한 콘솔 로그가 캡처되지 않았습니다. 콘솔 로그는 AppHost가 실행되는 동안 이 페이지를 방문한 경우에만 캡처됩니다.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsPageTitle">
+        <source>{0} console logs</source>
+        <target state="translated">{0} 콘솔 로그</target>
+        <note>{0} is an application name</note>
+      </trans-unit>
+      <trans-unit id="ConsoleLogsPauseActive">
+        <source>&lt;Log capture paused at {0}, {1} log(s) filtered out&gt;</source>
+        <target state="translated">&lt;로그 캡처가 {0}에 일시 중지되었습니다. {1} 로그에서 필터링되었습니다&gt;</target>
+        <note>{0} is a date, {1} is a number</note>
+      </trans-unit>
+      <trans-unit id="ConsoleLogsPauseDetails">
+        <source>&lt;Log capture paused between {0} and {1}, {2} log(s) filtered out&gt;</source>
+        <target state="translated">&lt;로그 캡처가 {0} 및 {1}간에 일시 중지되었습니다. {2} 로그가 필터링되었습니다&gt;</target>
+        <note>{0} is a date, {1} is a date, {2} is a number.</note>
+      </trans-unit>
+      <trans-unit id="ConsoleLogsSelectResourceToolbar">
+        <source>Select resource</source>
+        <target state="translated">리소스 선택</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsSettings">
+        <source>Settings</source>
+        <target state="translated">설정</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsTextFilter">
+        <source>Console logs filter</source>
+        <target state="translated">콘솔 로그 필터</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsTimestampHide">
+        <source>Hide timestamps</source>
+        <target state="translated">타임스탬프 숨기기</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsTimestampShow">
+        <source>Show timestamps</source>
+        <target state="translated">타임스탬프 표시</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsTimestampShowUtc">
+        <source>UTC timestamps</source>
+        <target state="translated">UTC 타임스탬프</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsUnknownState">
+        <source>Unknown state</source>
+        <target state="translated">알 수 없는 상태</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsWatchingLogs">
+        <source>Watching logs...</source>
+        <target state="translated">로그를 보는 중...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsWrapLogs">
+        <source>Wrap log lines</source>
+        <target state="translated">로그 줄 래핑</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DownloadLogs">
+        <source>Download logs</source>
+        <target state="translated">로그 다운로드</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="LogStatusLabel">
+        <source>Service log status</source>
+        <target state="translated">서비스 로그 상태</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="PauseInProgressText">
+        <source>Console logs capture paused at {0}</source>
+        <target state="translated">{0}에 콘솔 로그 캡처가 일시 중지됨</target>
+        <note>{0} is a time</note>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

@@ -1,0 +1,4 @@
+2026-11-25 10:00:00.000 [Information] app1 started
+2026-11-25 10:00:01.000 [Information] MESSAGE RECEIVED count=1 source=app2
+2026-11-25 10:00:02.000 [Warning] example warning for file browser
+2026-11-25 10:00:03.000 [Error] example error for file browser

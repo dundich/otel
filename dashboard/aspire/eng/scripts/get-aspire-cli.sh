@@ -1,0 +1,1465 @@
+#!/usr/bin/env bash
+
+# get-aspire-cli.sh - Download and unpack the Aspire CLI for the current platform
+# Usage: ./get-aspire-cli.sh [OPTIONS]
+#        curl -sSL <url>/get-aspire-cli.sh | bash -s -- [OPTIONS]
+
+set -euo pipefail
+
+# Global constants
+readonly USER_AGENT="get-aspire-cli.sh/1.0"
+readonly ARCHIVE_DOWNLOAD_TIMEOUT_SEC=600
+readonly CHECKSUM_DOWNLOAD_TIMEOUT_SEC=120
+readonly RED='\033[0;31m'
+readonly GREEN='\033[0;32m'
+readonly YELLOW='\033[1;33m'
+readonly RESET='\033[0m'
+
+# Variables (defaults set after parsing arguments)
+INSTALL_PATH=""
+VERSION=""
+QUALITY=""
+OS=""
+ARCH=""
+INSTALLED_CLI_PATH=""
+INSTALLED_CLI_OS=""
+INSTALLED_CLI_ARCH=""
+SHOW_HELP=false
+VERBOSE=false
+KEEP_ARCHIVE=false
+DRY_RUN=false
+INSTALL_EXTENSION=false
+USE_INSIDERS=false
+SKIP_PATH=false
+SKIP_COMPLETIONS=false
+DEFAULT_QUALITY="release"
+EXTENSION_ARTIFACT_NAME="aspire-vscode.vsix.zip"
+
+# Function to show help
+show_help() {
+    cat << 'EOF'
+Aspire CLI Download Script
+
+DESCRIPTION:
+    Downloads and installs the Aspire CLI for the current platform from the specified version and quality.
+    Automatically updates the current session's PATH environment variable and supports GitHub Actions.
+
+    Running with `-Quality release` download the latest release version of the Aspire CLI for your platform and architecture.
+    Running with `-Quality staging` will download the latest staging version, or the release version if no staging is available.
+    Running with `-Quality dev` will download the latest dev build from `main`.
+
+    The default quality is `${DEFAULT_QUALITY}`.
+
+    Pass a specific version to get CLI for that version.
+
+USAGE:
+    ./get-aspire-cli.sh [OPTIONS]
+
+    -i, --install-path PATH     Directory to install the CLI (default: $HOME/.aspire/bin)
+    -q, --quality QUALITY       Quality to download (default: ${DEFAULT_QUALITY}). Supported values: dev, staging, release
+    --version VERSION           Version of the Aspire CLI to download (default: unset)
+    --os OS                     Operating system (default: auto-detect)
+    --arch ARCH                 Architecture (default: auto-detect)
+    --install-extension         Install VS Code extension along with the CLI
+    --use-insiders              Install extension to VS Code Insiders instead of VS Code (requires --install-extension)
+    --skip-path                 Do not add the install path to PATH environment variable (useful for portable installs)
+    --skip-completions          Do not generate or register shell completions
+    -k, --keep-archive          Keep downloaded archive files and temporary directory after installation
+    --dry-run                   Show what would be done without actually performing any actions
+    -v, --verbose               Enable verbose output
+    -h, --help                  Show this help message
+
+COMPLETIONS:
+    Installs completions for bash, zsh, or fish (selected by SHELL) in your home directory.
+    --skip-path generates an activation artifact without editing profiles.
+    Elevated installs leave profiles untouched; activate from an unelevated shell.
+    Restart your shell or run the printed source command to activate; aspire must be on PATH.
+    To remove, delete the generated file and the marked Aspire CLI completions profile entry.
+    Missing generated files are safe. Unsupported shells/older CLIs get manual instructions.
+
+EXAMPLES:
+    ./get-aspire-cli.sh
+    ./get-aspire-cli.sh --install-path "~/bin"
+    ./get-aspire-cli.sh --quality "staging"
+    ./get-aspire-cli.sh --version "9.5.0-preview.1.25366.3"
+    ./get-aspire-cli.sh --os "linux" --arch "x64"
+    ./get-aspire-cli.sh --install-extension
+    ./get-aspire-cli.sh --install-extension --use-insiders
+    ./get-aspire-cli.sh --keep-archive
+    ./get-aspire-cli.sh --dry-run
+    ./get-aspire-cli.sh --help
+
+    # Piped execution (like wget <url> | bash or curl <url> | bash):
+    curl -sSL https://aka.ms/aspire/get/install.sh | bash
+    curl -sSL https://aka.ms/aspire/get/install.sh | bash -s -- --install-path "~/bin"
+
+EOF
+}
+
+# Function to parse command line arguments
+parse_args() {
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -i|--install-path)
+                if [[ $# -lt 2 || -z "$2" ]]; then
+                    say_error "Option '$1' requires a non-empty value"
+                    say_info "Use --help for usage information."
+                    exit 1
+                fi
+                INSTALL_PATH="$2"
+                shift 2
+                ;;
+            --version)
+                if [[ $# -lt 2 || -z "$2" ]]; then
+                    say_error "Option '$1' requires a non-empty value"
+                    say_info "Use --help for usage information."
+                    exit 1
+                fi
+                VERSION="$2"
+                shift 2
+                ;;
+            -q|--quality)
+                if [[ $# -lt 2 || -z "$2" ]]; then
+                    say_error "Option '$1' requires a non-empty value"
+                    say_info "Use --help for usage information."
+                    exit 1
+                fi
+                QUALITY="$2"
+                shift 2
+                ;;
+            --os)
+                if [[ $# -lt 2 || -z "$2" ]]; then
+                    say_error "Option '$1' requires a non-empty value"
+                    say_info "Use --help for usage information."
+                    exit 1
+                fi
+                OS="$2"
+                shift 2
+                ;;
+            --arch)
+                if [[ $# -lt 2 || -z "$2" ]]; then
+                    say_error "Option '$1' requires a non-empty value"
+                    say_info "Use --help for usage information."
+                    exit 1
+                fi
+                ARCH="$2"
+                shift 2
+                ;;
+            --install-extension)
+                INSTALL_EXTENSION=true
+                shift
+                ;;
+            --use-insiders)
+                USE_INSIDERS=true
+                shift
+                ;;
+            --skip-path)
+                SKIP_PATH=true
+                shift
+                ;;
+            --skip-completions)
+                SKIP_COMPLETIONS=true
+                shift
+                ;;
+            -k|--keep-archive)
+                KEEP_ARCHIVE=true
+                shift
+                ;;
+            --dry-run)
+                DRY_RUN=true
+                shift
+                ;;
+            -v|--verbose)
+                VERBOSE=true
+                shift
+                ;;
+            -h|--help)
+                SHOW_HELP=true
+                shift
+                ;;
+            *)
+                say_error "Unknown option '$1'"
+                say_info "Use --help for usage information."
+                exit 1
+                ;;
+        esac
+    done
+}
+
+# Function for verbose logging
+say_verbose() {
+    if [[ "$VERBOSE" == true ]]; then
+        echo -e "${YELLOW}$1${RESET}" >&2
+    fi
+}
+
+say_error() {
+    echo -e "${RED}Error: $1${RESET}\n" >&2
+}
+
+say_warn() {
+    echo -e "${YELLOW}Warning: $1${RESET}\n" >&2
+}
+
+say_info() {
+    echo -e "$1" >&2
+}
+
+detect_os() {
+    local uname_s
+    uname_s=$(uname -s)
+
+    case "$uname_s" in
+        Darwin*)
+            printf "osx"
+            ;;
+        Linux*)
+            # Check if it's musl-based (Alpine, etc.)
+            if command -v ldd >/dev/null 2>&1 && ldd --version 2>&1 | grep -q musl; then
+                printf "linux-musl"
+            else
+                printf "linux"
+            fi
+            ;;
+        CYGWIN*|MINGW*|MSYS*)
+            printf "win"
+            ;;
+        *)
+            printf "unsupported"
+            return 1
+            ;;
+    esac
+}
+
+# Function to validate and normalize architecture
+get_cli_architecture_from_architecture() {
+    local architecture="$1"
+
+    if [[ "$architecture" == "<auto>" ]]; then
+        architecture=$(detect_architecture)
+    fi
+
+    case "$(echo "$architecture" | tr '[:upper:]' '[:lower:]')" in
+        amd64|x64)
+            printf "x64"
+            ;;
+        arm64)
+            printf "arm64"
+            ;;
+        *)
+            say_error "Architecture $architecture not supported. If you think this is a bug, report it at https://github.com/microsoft/aspire/issues"
+            return 1
+            ;;
+    esac
+}
+
+detect_architecture() {
+    local uname_m
+    uname_m=$(uname -m)
+
+    case "$uname_m" in
+        x86_64|amd64)
+            printf "x64"
+            ;;
+        aarch64|arm64)
+            printf "arm64"
+            ;;
+        *)
+            say_error "Architecture $uname_m not supported. If you think this is a bug, report it at https://github.com/microsoft/aspire/issues"
+            return 1
+            ;;
+    esac
+}
+
+# Common function for HTTP requests with centralized configuration
+secure_curl() {
+    local url="$1"
+    local output_file="$2"
+    local timeout="${3:-300}"
+    local user_agent="${4:-$USER_AGENT}"
+    local max_retries="${5:-5}"
+    local method="${6:-GET}"
+
+    local curl_args=(
+        --fail
+        --show-error
+        --location
+        --tlsv1.2
+        --tls-max 1.3
+        --max-time "$timeout"
+        --user-agent "$user_agent"
+        --max-redirs 10
+        --retry "$max_retries"
+        --retry-delay 1
+        --retry-max-time 60
+        --request "$method"
+    )
+
+    # Add extra args based on method
+    if [[ "$method" == "HEAD" ]]; then
+        curl_args+=(--silent --head)
+    else
+        curl_args+=(--progress-bar)
+    fi
+
+    # Add output file only for GET requests
+    if [[ "$method" == "GET" ]]; then
+        curl_args+=(--output "$output_file")
+    fi
+
+    say_verbose "curl ${curl_args[*]} $url"
+    curl "${curl_args[@]}" "$url"
+}
+
+# Build a compact display string for download messages without exposing the full URL.
+get_download_descriptor() {
+    local url="$1"
+    local source="${2:-}"
+    local url_without_query="${url%%[\?#]*}"
+    local file_name="${url_without_query##*/}"
+
+    if [[ -n "$file_name" && -n "$source" ]]; then
+        printf "%s from %s" "$file_name" "$source"
+    else
+        printf "%s" "$file_name"
+    fi
+}
+
+# Validate content type via HEAD request
+validate_content_type() {
+    local url="$1"
+
+    say_verbose "Validating content type for $url"
+
+    # Get headers via HEAD request
+    local headers
+    if headers=$(secure_curl "$url" /dev/null 60 "$USER_AGENT" 3 "HEAD" 2>&1); then
+        # curl --location --head returns a header block for each redirect, for example:
+        #   HTTP/2 302
+        #   content-type: text/html; charset=utf-8
+        #
+        #   HTTP/2 200
+        #   content-type: application/octet-stream
+        # GitHub documents release asset downloads as either 200 OK or 302 Found.
+        # The 302 is an HTML redirect page, but the final 200 response is the
+        # archive/checksum, so validate only that block.
+        # See: https://docs.github.com/rest/releases/assets#get-a-release-asset
+        local final_headers
+        final_headers=$(printf "%s\n" "$headers" | awk '
+            /^HTTP(\/| )[0-9]/ {
+                block = $0 "\n"
+                next
+            }
+            {
+                block = block $0 "\n"
+            }
+            END {
+                printf "%s", block
+            }')
+
+        # Check if response suggests HTML content (error page)
+        if echo "$final_headers" | grep -qi "content-type:.*text/html"; then
+            say_error "Server returned HTML content instead of expected file. Make sure the URL is correct: $url"
+            return 1
+        fi
+    else
+        # If HEAD request fails, continue anyway as some servers don't support it
+        say_verbose "HEAD request failed, proceeding with download."
+    fi
+
+    return 0
+}
+
+# General-purpose file download wrapper
+download_file() {
+    local url="$1"
+    local output_path="$2"
+    local timeout="${3:-300}"
+    local max_retries="${4:-5}"
+    local validate_content_type="${5:-true}"
+    local use_temp_file="${6:-true}"
+    local descriptor_source="${7:-}"
+    local download_descriptor
+
+    download_descriptor=$(get_download_descriptor "$url" "$descriptor_source")
+
+    if [[ "$DRY_RUN" == true ]]; then
+        say_info "[DRY RUN] Would download $download_descriptor"
+        return 0
+    fi
+
+    local target_file="$output_path"
+    if [[ "$use_temp_file" == true ]]; then
+        target_file="${output_path}.tmp"
+    fi
+
+    # Validate content type via HEAD request if requested
+    if [[ "$validate_content_type" == true ]]; then
+        if ! validate_content_type "$url"; then
+            return 1
+        fi
+    fi
+
+    say_verbose "Downloading $url to $target_file"
+    say_info "Downloading $download_descriptor"
+
+    # Download the file
+    if secure_curl "$url" "$target_file" "$timeout" "$USER_AGENT" "$max_retries"; then
+        # Move temp file to final location if using temp file
+        if [[ "$use_temp_file" == true ]]; then
+            mv "$target_file" "$output_path"
+        fi
+
+        say_verbose "Successfully downloaded file to: $output_path"
+        return 0
+    else
+        say_error "Failed to download $url"
+        return 1
+    fi
+}
+
+# Validate the checksum of the downloaded file
+validate_checksum() {
+    local archive_file="$1"
+    local checksum_file="$2"
+
+    if [[ "$DRY_RUN" == true ]]; then
+        say_info "[DRY RUN] Would validate checksum of $archive_file using $checksum_file"
+        return 0
+    fi
+
+    # Determine the checksum command to use
+    local checksum_cmd=""
+    if command -v sha512sum >/dev/null 2>&1; then
+        checksum_cmd="sha512sum"
+    elif command -v shasum >/dev/null 2>&1; then
+        checksum_cmd="shasum -a 512"
+    else
+        say_error "Neither sha512sum nor shasum is available. Please install one of them to validate checksums."
+        return 1
+    fi
+
+    # Read the expected checksum from the file
+    local expected_checksum
+    expected_checksum=$(tr -d '\n\r' < "$checksum_file" | tr '[:upper:]' '[:lower:]')
+
+    # Calculate the actual checksum
+    local actual_checksum
+    actual_checksum=$(${checksum_cmd} "$archive_file" | cut -d' ' -f1)
+
+    # Compare checksums
+    if [[ "$expected_checksum" == "$actual_checksum" ]]; then
+        return 0
+    else
+        # Limit expected checksum display to 128 characters for output
+        local expected_checksum_display
+        if [[ ${#expected_checksum} -gt 128 ]]; then
+            expected_checksum_display="${expected_checksum:0:128}"
+        else
+            expected_checksum_display="$expected_checksum"
+        fi
+
+        say_error "Checksum validation failed for $archive_file with checksum from $checksum_file !"
+        say_info "Expected: $expected_checksum_display"
+        say_info "Actual:   $actual_checksum"
+        return 1
+    fi
+}
+
+# Function to install/unpack archive files
+install_archive() {
+    local archive_file="$1"
+    local destination_path="$2"
+    local os="$3"
+
+    if [[ "$DRY_RUN" == true ]]; then
+        say_info "[DRY RUN] Would install archive $archive_file to $destination_path"
+        return 0
+    fi
+
+    say_verbose "Installing archive to: $destination_path"
+
+    # Create install directory if it doesn't exist
+    if [[ ! -d "$destination_path" ]]; then
+        say_verbose "Creating install directory: $destination_path"
+        mkdir -p "$destination_path"
+    fi
+
+    if [[ "$os" == "win" ]]; then
+        # Use unzip for ZIP files
+        if ! command -v unzip >/dev/null 2>&1; then
+            say_error "unzip command not found. Please install unzip to extract ZIP files."
+            return 1
+        fi
+
+        if ! unzip -o "$archive_file" -d "$destination_path"; then
+            say_error "Failed to extract ZIP archive: $archive_file"
+            return 1
+        fi
+    else
+        # Use tar for tar.gz files on Unix systems
+        if ! command -v tar >/dev/null 2>&1; then
+            say_error "tar command not found. Please install tar to extract tar.gz files."
+            return 1
+        fi
+
+        if ! tar -xzf "$archive_file" -C "$destination_path"; then
+            say_error "Failed to extract tar.gz archive: $archive_file"
+            return 1
+        fi
+    fi
+
+    say_verbose "Successfully installed archive"
+}
+
+# Function to map quality to channel name
+# Parameters:
+#   $1 - quality: The quality string (release, staging, dev)
+# Returns: The corresponding channel name (stable, staging, daily)
+map_quality_to_channel() {
+    local quality="$1"
+    
+    case "$quality" in
+        release)
+            printf "stable"
+            ;;
+        staging)
+            printf "staging"
+            ;;
+        dev)
+            printf "daily"
+            ;;
+        *)
+            # Unknown quality, return as-is
+            printf "%s" "$quality"
+            ;;
+    esac
+}
+
+# Writes install-route provenance and, when the archive came from a quality route,
+# the channel that must take precedence over the binary's build-time stamp.
+write_install_sidecar() {
+    local install_path="$1"
+    local quality="${2:-}"
+    local sidecar_path="$install_path/.aspire-install.json"
+    local temporary_path
+
+    mkdir -p "$install_path"
+    temporary_path=$(mktemp "$sidecar_path.tmp.XXXXXXXX")
+
+    if [[ -n "$quality" ]]; then
+        local channel
+        channel=$(map_quality_to_channel "$quality")
+        if ! printf '{"source":"script","channel":"%s"}\n' "$channel" > "$temporary_path"; then
+            rm -f "$temporary_path"
+            return 1
+        fi
+    else
+        if ! printf '{"source":"script"}\n' > "$temporary_path"; then
+            rm -f "$temporary_path"
+            return 1
+        fi
+    fi
+
+    if ! mv -f "$temporary_path" "$sidecar_path"; then
+        rm -f "$temporary_path"
+        return 1
+    fi
+}
+
+# Function to add PATH to shell configuration file
+# Parameters:
+#   $1 - config_file: Path to the shell configuration file
+#   $2 - bin_path: The binary path to add to PATH
+#   $3 - command: The command to add to the configuration file
+add_to_path()
+{
+    local config_file="$1"
+    local bin_path="$2"
+    local command="$3"
+
+    if [[ "$DRY_RUN" == true ]]; then
+        say_info "[DRY RUN] Would check if $bin_path is already in \$PATH"
+        say_info "[DRY RUN] Would add '$command' to $config_file if not already present"
+        return 0
+    fi
+
+    if [[ ":$PATH:" == *":$bin_path:"* ]]; then
+        say_info "Path $bin_path already exists in \$PATH, skipping addition"
+    elif [[ -f "$config_file" ]] && grep -Fxq "$command" "$config_file"; then
+        say_info "Command already exists in $config_file, skipping addition"
+    elif [[ -w $config_file ]]; then
+        echo -e "\n# Added by get-aspire-cli.sh" >> "$config_file"
+        echo "$command" >> "$config_file"
+        say_info "Successfully added aspire to \$PATH in $config_file"
+    else
+        say_info "Manually add the following to $config_file (or similar):"
+        say_info "  $command"
+    fi
+}
+
+# Shell single-quoted literals: /home/it's $here becomes '/home/it'\''s $here'.
+# Fish uses backslash escaping inside single quotes instead of POSIX quote concatenation.
+quote_shell_literal() {
+    local value="$1" shell_name="$2" character i
+    # Emit literal characters rather than using replacement expansion: Bash 3.2 and newer
+    # releases interpret backslashes in parameter-substitution replacements differently.
+    printf "'"
+    for ((i = 0; i < ${#value}; i++)); do
+        character="${value:i:1}"
+        case "$character" in
+            "'")
+                if [[ "$shell_name" == fish ]]; then
+                    printf '%s' "\\'"
+                else
+                    printf '%s' "'\\''"
+                fi
+                ;;
+            \\)
+                if [[ "$shell_name" == fish ]]; then
+                    printf '%s' '\\'
+                else
+                    printf '%s' "$character"
+                fi
+                ;;
+            *) printf '%s' "$character" ;;
+        esac
+    done
+    printf "'"
+}
+
+# Never follow a file symlink or a directory symlink outside the selected boundary.
+is_completion_path_within_root() {
+    local path="$1" root="$2" parent
+    [[ -n "$root" ]] || return 1
+    while [[ "$root" != / && "$root" == */ ]]; do root="${root%/}"; done
+    [[ "$path" == "${root%/}/"* && "$path" != *"/../"* && "$path" != *"/./"* && ! -L "$path" && ! -d "$path" ]] || return 1
+    parent=$(dirname "$path")
+    while [[ ! -d "$parent" ]]; do
+        [[ ! -L "$parent" ]] || return 1
+        parent=$(dirname "$parent")
+    done
+    # Dry runs can select a CLI directory that does not exist yet. Its existing
+    # ancestor is safe to resolve; the lexical check above still confines the destination.
+    while [[ ! -d "$root" ]]; do
+        [[ ! -L "$root" ]] || return 1
+        root=$(dirname "$root")
+    done
+    # The explicitly selected root may be an intentional alias. Its physical target
+    # is the boundary; descendant links must not redirect outside that target.
+    root=$(cd "$root" && pwd -P) || return 1
+    parent=$(cd "$parent" && pwd -P) || return 1
+    [[ "$parent" == "$root" || "$parent" == "${root%/}/"* ]]
+}
+
+# Profiles stay home-confined even when the CLI is installed elsewhere.
+# ZDOTDIR and XDG_CONFIG_HOME can point to shared/system locations.
+is_user_completion_path() {
+    [[ -d "$HOME" ]] || return 1
+    is_completion_path_within_root "$1" "$HOME"
+}
+
+is_elevated_install() {
+    [[ "$EUID" == 0 || -n "${SUDO_USER:-}" || -n "${SUDO_UID:-}" ]]
+}
+
+install_completions() {
+    if [[ "${SKIP_COMPLETIONS:-false}" == true ]]; then
+        say_info "Skipping shell completions due to --skip-completions."
+        return 0
+    fi
+    # Completion setup is best effort: an older or cross-target CLI must not fail installation.
+    local persist="$2"
+    if [[ "${SKIP_PATH:-false}" == true ]]; then
+        persist=false
+    fi
+    if ! install_completions_core "$1" "$persist"; then
+        say_warn "Shell completions were not installed; the CLI installation is unaffected."
+        say_info "With a supported CLI, run 'aspire completions script <shell>' (bash, zsh, fish, pwsh) and save/source its successful output manually."
+    fi
+}
+
+install_completions_core() {
+    local cli="$1" persist="$2" shell_name="${SHELL:-}"
+    shell_name="${shell_name##*/}"
+    local completion_root="$HOME" completion_dir="$HOME/.aspire/completions" profile="" registration
+    case "$shell_name" in
+        bash) profile="$HOME/.bashrc" ;;
+        zsh) profile="${ZDOTDIR:-$HOME}/.zshrc" ;;
+        fish) profile="${XDG_CONFIG_HOME:-$HOME/.config}/fish/conf.d/aspire-completions.fish" ;;
+        *) say_warn "Cannot detect a supported completion shell from SHELL=${SHELL:-unset}."; return 1 ;;
+    esac
+    if [[ "$persist" != true ]]; then
+        # Session-only artifacts belong to the explicitly selected CLI directory, not HOME.
+        completion_root="$(dirname "$cli")"
+        completion_dir="${completion_root%/}/completions"
+    fi
+    local completion_file="$completion_dir/aspire.$shell_name" quoted_file
+    quoted_file=$(quote_shell_literal "$completion_file" "$shell_name")
+    if [[ "$shell_name" == fish ]]; then
+        registration="if test -f $quoted_file; source $quoted_file; end # Aspire CLI completions"
+    else
+        registration="if [ -f $quoted_file ]; then . $quoted_file; fi # Aspire CLI completions"
+    fi
+    local profiles=("$profile") new_login_profile=""
+    if [[ "$shell_name" == bash ]]; then
+        # Interactive non-login bash reads .bashrc; login bash (e.g. macOS Terminal)
+        # reads only the first existing login profile. Do not assume it sources .bashrc.
+        local login_profile="$HOME/.bash_profile"
+        if [[ ! -f "$login_profile" ]]; then
+            if [[ -f "$HOME/.bash_login" ]]; then
+                login_profile="$HOME/.bash_login"
+            elif [[ -f "$HOME/.profile" ]]; then
+                login_profile="$HOME/.profile"
+            else
+                new_login_profile="$login_profile"
+            fi
+        fi
+        profiles+=("$login_profile")
+        # .profile can also be read by non-bash shells.
+        registration="if [ -n \"\${BASH_VERSION:-}\" ] && [ -f $quoted_file ]; then . $quoted_file; fi # Aspire CLI completions"
+    fi
+    if [[ "$persist" == true ]]; then
+        is_user_completion_path "$completion_file" || return 1
+    else
+        is_completion_path_within_root "$completion_file" "$completion_root" || return 1
+    fi
+    if [[ "$DRY_RUN" == true ]]; then
+        say_info "[DRY RUN] Would generate shell completions: $cli completions script $shell_name -> $completion_file"
+        if [[ "$persist" == true ]]; then
+            for profile in "${profiles[@]}"; do
+                say_info "[DRY RUN] Would register shell completions in: $profile (only inside your home)"
+            done
+        fi
+        return 0
+    fi
+    mkdir -p "$completion_dir" || return 1
+    # Stage stdout separately from stderr and promote only successful, nonempty output.
+    # A private adjacent directory avoids clobbering a working script with old-CLI errors.
+    local staging="$completion_dir/.aspire-completions-$$-$RANDOM"
+    (umask 077; mkdir "$staging") || return 1
+    if ! "$cli" completions script "$shell_name" > "$staging/script" 2> "$staging/error" || [[ ! -s "$staging/script" ]]; then
+        rm -rf "$staging"
+        return 1
+    fi
+    if ! mv -f "$staging/script" "$completion_file"; then
+        rm -rf "$staging"
+        return 1
+    fi
+    rm -rf "$staging"
+    say_info "Shell completions generated: $completion_file"
+    say_info "Activate after putting aspire on PATH: $registration"
+    say_info "To remove completions, delete $completion_file and its marked Aspire CLI completions profile entry."
+    if [[ "$persist" != true ]]; then
+        say_info "Profile registration skipped: activate completions manually for this session."
+        return 0
+    fi
+    if is_elevated_install; then
+        say_warn "Elevated install: leaving shell profiles untouched. Activate completions from an unelevated shell."
+        return 0
+    fi
+    for profile in "${profiles[@]}"; do
+        is_user_completion_path "$profile" || return 1
+    done
+    # Validate the whole target set before appending to either Bash startup file.
+    for profile in "${profiles[@]}"; do
+        mkdir -p "$(dirname "$profile")" || return 1
+        if [[ "$profile" == "$new_login_profile" && ! -f "$profile" ]]; then
+            # The PATH installer writes .bashrc. A new login profile must source it,
+            # otherwise login shells would have completions but no aspire on PATH.
+            printf '%s\n' 'if [ -f "$HOME/.bashrc" ]; then . "$HOME/.bashrc"; fi # Added by get-aspire-cli.sh' >> "$profile" || return 1
+        fi
+        # Accept existing LF or CRLF lines without rewriting the user's file.
+        if [[ ! -f "$profile" ]] || ! grep -Fxq -e "$registration" -e "$registration"$'\r' -- "$profile"; then
+            printf '\n%s\n' "$registration" >> "$profile" || return 1
+        fi
+        say_info "Shell completions registered in $profile. Restart your shell or use the activation command above."
+    done
+}
+
+# Function to add PATH to shell profile
+add_to_shell_profile() {
+    local bin_path="$1"
+    local bin_path_unexpanded="$2"
+    local xdg_config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
+
+    if is_elevated_install; then
+        say_warn "Elevated install: leaving shell profiles untouched. Configure PATH from an unelevated shell."
+        return 0
+    fi
+
+    # Detect the current shell
+    local shell_name
+
+    # Try to get shell from SHELL environment variable
+    if [[ -n "${SHELL:-}" ]]; then
+        shell_name=$(basename "$SHELL")
+    else
+        # Fallback to detecting from process
+        shell_name=$(ps -p $$ -o comm= 2>/dev/null || echo "sh")
+    fi
+
+    # Normalize shell name
+    case "$shell_name" in
+        bash|zsh|fish)
+            ;;
+        sh|dash|ash)
+            shell_name="sh"
+            ;;
+        *)
+            # Default to bash for unknown shells
+            shell_name="bash"
+            ;;
+    esac
+
+    say_verbose "Detected shell: $shell_name"
+
+    local config_files=()
+    case "$shell_name" in
+        bash)
+            config_files=("$HOME/.bashrc" "$HOME/.bash_profile" "$HOME/.profile" "$xdg_config_home/bash/.bashrc" "$xdg_config_home/bash/.bash_profile")
+            ;;
+        zsh)
+            config_files=("${ZDOTDIR:-$HOME}/.zshrc")
+            ;;
+        fish)
+            config_files=("$xdg_config_home/fish/config.fish")
+            ;;
+        sh)
+            config_files=("$HOME/.profile")
+            ;;
+        *)
+            # Default to bash files for unknown shells
+            config_files=("$HOME/.bashrc" "$HOME/.bash_profile" "$HOME/.profile")
+            ;;
+    esac
+
+    # Get the appropriate shell config file
+    local config_file=""
+
+    # Check for existing config files
+    for file in "${config_files[@]}"; do
+        if [[ -f "$file" ]]; then
+            config_file="$file"
+            break
+        fi
+    done
+
+    # If no config file exists, create the default one for the detected shell
+    if [[ -z "${config_file:-}" ]]; then
+        say_verbose "No config file found for $shell_name. Will create default config file. Checked: $config_files"
+
+        # Determine the default config file to create based on shell
+        case "$shell_name" in
+            bash)
+                config_file="$HOME/.bashrc"
+                ;;
+            zsh)
+                config_file="${ZDOTDIR:-$HOME}/.zshrc"
+                ;;
+            fish)
+                config_file="$xdg_config_home/fish/config.fish"
+                ;;
+            sh)
+                config_file="$HOME/.profile"
+                ;;
+            *)
+                # For unknown shells, default to bash config
+                config_file="$HOME/.bashrc"
+                ;;
+        esac
+
+        say_verbose "Attempting to create config file: $config_file"
+
+        if ! is_user_completion_path "$config_file"; then
+            say_warn "Leaving profile outside your home or redirected by a symlink untouched: $config_file"
+            return 0
+        fi
+
+        if [[ "$DRY_RUN" == true ]]; then
+            say_info "[DRY RUN] Would create config file: $config_file"
+            return 0
+        else
+            # Create parent directory if needed (for fish config)
+            config_dir=$(dirname "$config_file")
+            if [[ ! -d "$config_dir" ]]; then
+                if mkdir -p "$config_dir" 2>/dev/null; then
+                    say_verbose "Created directory: $config_dir"
+                else
+                    say_error "Failed to create directory: $config_dir"
+                    show_manual_path_instructions "$shell_name" "$bin_path_unexpanded" ""
+                    return 1
+                fi
+            fi
+
+            # Create the config file
+            if touch "$config_file" 2>/dev/null; then
+                say_info "Created new shell config file: $config_file"
+            else
+                say_error "Failed to create config file: $config_file"
+                show_manual_path_instructions "$shell_name" "$bin_path_unexpanded" "$config_file"
+                return 1
+            fi
+        fi
+    fi
+
+    if ! is_user_completion_path "$config_file"; then
+        say_warn "Leaving profile outside your home or redirected by a symlink untouched: $config_file"
+        return 0
+    fi
+
+    # Keep the default relocatable HOME expression, but quote arbitrary custom paths literally.
+    local path_expression
+    if [[ "$bin_path_unexpanded" == '$HOME/.aspire/bin' ]]; then
+        path_expression='export PATH="$HOME/.aspire/bin:$PATH"'
+    else
+        path_expression="export PATH=$(quote_shell_literal "$bin_path" "$shell_name"):\$PATH"
+    fi
+    case "$shell_name" in
+        bash|zsh|sh)
+            add_to_path "$config_file" "$bin_path" "$path_expression"
+            ;;
+        fish)
+            add_to_path "$config_file" "$bin_path" "fish_add_path $(quote_shell_literal "$bin_path" fish)"
+            ;;
+        *)
+            say_error "Unsupported shell type $shell_name. Please add the path $bin_path_unexpanded manually to \$PATH in your profile."
+            return 1
+            ;;
+    esac
+
+    printf "\nTo use the Aspire CLI in new terminal sessions, restart your terminal or run:\n"
+    say_info "  source $(quote_shell_literal "$config_file" "$shell_name")"
+
+    return 0
+}
+
+# Helper function to show manual PATH configuration instructions
+show_manual_path_instructions() {
+    local shell_name="$1"
+    local bin_path_unexpanded="$2"
+    local config_file="$3"
+
+    say_info "Please manually create the file $config_file and add the following line:"
+    case "$shell_name" in
+        fish)
+            say_info "  fish_add_path $bin_path_unexpanded"
+            ;;
+        *)
+            say_info "  export PATH=\"$bin_path_unexpanded:\$PATH\""
+            ;;
+    esac
+}
+
+# Function to check VS Code CLI dependency
+test_vscode_cli() {
+    local vscode_cmd
+    local vscode_name
+
+    if [[ "$USE_INSIDERS" == true ]]; then
+        vscode_cmd="code-insiders"
+        vscode_name="VS Code Insiders"
+    else
+        vscode_cmd="code"
+        vscode_name="VS Code"
+    fi
+
+    if ! command -v "$vscode_cmd" >/dev/null 2>&1; then
+        say_warn "$vscode_name CLI ($vscode_cmd) not found in PATH"
+        return 1
+    fi
+
+    say_verbose "$vscode_name CLI ($vscode_cmd) found"
+    return 0
+}
+
+# Function to construct the URL for VS Code extension download
+construct_aspire_extension_url() {
+    local version="$1"
+    local quality="$2"
+    local base_url
+    local extension="vsix.zip"
+
+    if [[ -z "$version" ]]; then
+        # When version is not set use aka.ms URLs based on quality
+        case "$quality" in
+            dev)
+                base_url="https://aka.ms/dotnet/9/aspire/daily"
+                ;;
+            staging)
+                base_url="https://aka.ms/dotnet/9/aspire/rc/daily"
+                ;;
+            release)
+                base_url="https://aka.ms/dotnet/9/aspire/ga/daily"
+                ;;
+            *)
+                say_error "Unsupported quality '$quality'. Supported values are: dev, staging, release."
+                return 1
+                ;;
+        esac
+
+        printf "${base_url}/aspire-vscode.${extension}"
+    else
+        # When version is set, use ci.dot.net URL
+        base_url="https://ci.dot.net/public/aspire/"
+        printf "${base_url}${version}/aspire-vscode-${version}.${extension}"
+    fi
+}
+
+is_stable_version() {
+    local version="$1"
+
+    [[ "$version" =~ ^[vV]?[0-9]+\.[0-9]+\.[0-9]+$ ]]
+}
+
+normalize_stable_version() {
+    local version="$1"
+
+    printf "%s" "${version#[vV]}"
+}
+
+get_latest_stable_version() {
+    local release_url="https://github.com/microsoft/aspire/releases/latest"
+    local headers
+
+    # Resolution failures here are always non-fatal (the caller falls back to the existing
+    # aka.ms stable-channel URL), so suppress curl's own error output and only surface a
+    # verbose-level message instead of a user-visible "Error:" line.
+    if ! headers=$(secure_curl "$release_url" /dev/null 15 "$USER_AGENT" 1 "HEAD" 2>/dev/null); then
+        say_verbose "GitHub latest release redirect could not be resolved."
+        return 1
+    fi
+
+    local tag_name
+    tag_name=$(printf "%s\n" "$headers" | awk 'tolower($1) == "location:" { url = $2 } END { sub(/\r$/, "", url); print url }')
+    tag_name="${tag_name##*/}"
+
+    if [[ -z "$tag_name" ]] || ! is_stable_version "$tag_name"; then
+        say_verbose "GitHub latest release redirect did not contain a stable Aspire version."
+        return 1
+    fi
+
+    normalize_stable_version "$tag_name"
+}
+
+# Function to construct the base URL for the Aspire CLI download
+construct_aspire_cli_url() {
+    local version="$1"
+    local quality="$2"
+    local rid="$3"
+    local extension="$4"
+    local checksum="${5:-false}"
+    local base_url
+    local filename
+
+    # Add .sha512 to extension if checksum is true
+    if [[ "$checksum" == "true" ]]; then
+        extension="${extension}.sha512"
+    fi
+
+    if [[ -z "$version" ]]; then
+        # When version is not set use aka.ms URLs based on quality
+        case "$quality" in
+            dev)
+                base_url="https://aka.ms/dotnet/9/aspire/daily"
+                ;;
+            staging)
+                base_url="https://aka.ms/dotnet/9/aspire/rc/daily"
+                ;;
+            release)
+                base_url="https://aka.ms/dotnet/9/aspire/ga/daily"
+                ;;
+            *)
+                say_error "Unsupported quality '$quality'. Supported values are: dev, staging, release."
+                return 1
+                ;;
+        esac
+
+        printf "${base_url}/aspire-cli-${rid}.${extension}"
+    else
+        if is_stable_version "$version"; then
+            local normalized_version
+            normalized_version=$(normalize_stable_version "$version")
+            base_url="https://github.com/microsoft/aspire/releases/download/v${normalized_version}"
+            printf "${base_url}/aspire-cli-${rid}-${normalized_version}.${extension}"
+            return 0
+        fi
+
+        if [[ "$checksum" == "true" ]]; then
+            # For checksum URLs, use the public-checksums URL
+            base_url="https://ci.dot.net/public-checksums/aspire"
+        else
+            base_url="https://ci.dot.net/public/aspire"
+        fi
+
+        printf "${base_url}/${version}/aspire-cli-${rid}-${version}.${extension}"
+    fi
+}
+
+# Function to download VS Code extension
+download_aspire_extension() {
+    local temp_dir="$1"
+    local version="$2"
+    local quality="$3"
+    local url extension_archive
+    local download_source=""
+
+    say_info "Downloading Aspire VS Code extension"
+
+    if ! url=$(construct_aspire_extension_url "$version" "$quality"); then
+        return 1
+    fi
+
+    extension_archive="${temp_dir}/${EXTENSION_ARTIFACT_NAME}"
+    if [[ -z "$version" && -n "$quality" ]]; then
+        download_source="the $(map_quality_to_channel "$quality") channel"
+    fi
+
+    if ! download_file "$url" "$extension_archive" "$ARCHIVE_DOWNLOAD_TIMEOUT_SEC" 5 true true "$download_source"; then
+        return 1
+    fi
+
+    say_verbose "Successfully downloaded extension archive"
+    echo "$extension_archive"
+}
+
+# Function to install VS Code extension
+install_aspire_extension() {
+    local extension_archive="$1"
+    local vscode_cmd vscode_name extract_dir vsix_file
+
+    if [[ "$USE_INSIDERS" == true ]]; then
+        vscode_cmd="code-insiders"
+        vscode_name="VS Code Insiders"
+    else
+        vscode_cmd="code"
+        vscode_name="VS Code"
+    fi
+
+    say_info "Installing Aspire extension to $vscode_name"
+
+    # Extract the zip to get the VSIX file
+    extract_dir=$(mktemp -d -t aspire-extension-XXXXXXXX)
+
+    # Extract archive
+    if [[ "$DRY_RUN" != true ]]; then
+        if command -v unzip >/dev/null 2>&1; then
+            if ! unzip -q "$extension_archive" -d "$extract_dir"; then
+                say_error "Failed to extract extension archive"
+                rm -rf "$extract_dir"
+                return 1
+            fi
+        else
+            say_error "unzip command not found"
+            rm -rf "$extract_dir"
+            return 1
+        fi
+
+        say_verbose "Extracted extension archive"
+    fi
+
+    # Find the VSIX file
+    vsix_file=$(find "$extract_dir" -name "*.vsix" | head -n 1)
+
+    if [[ -z "$vsix_file" ]]; then
+        say_error "No VSIX file found in extension archive"
+        rm -rf "$extract_dir"
+        return 1
+    fi
+
+    say_verbose "Found VSIX file: $(basename "$vsix_file")"
+
+    # Install the extension
+    if [[ "$DRY_RUN" == true ]]; then
+        say_info "[DRY RUN] Would run: $vscode_cmd --install-extension $vsix_file --force"
+    else
+        say_verbose "Running: $vscode_cmd --install-extension $vsix_file --force"
+        if ! "$vscode_cmd" --install-extension "$vsix_file" --force; then
+            say_error "Extension installation failed"
+            rm -rf "$extract_dir"
+            return 1
+        fi
+
+        say_info "${GREEN}Successfully installed Aspire extension to $vscode_name${RESET}"
+    fi
+
+    # Clean up extraction directory
+    rm -rf "$extract_dir"
+    return 0
+}
+
+# Function to download and install archive
+download_and_install_archive() {
+    local temp_dir="$1"
+    local os arch runtimeIdentifier url filename checksum_url checksum_filename extension
+    local cli_exe cli_path
+    local download_source=""
+    local effective_version="$VERSION"
+
+    # Detect OS and architecture if not provided
+    if [[ -z "$OS" ]]; then
+        if ! os=$(detect_os); then
+            say_error "Unsupported operating system. Current platform: $(uname -s)"
+            return 1
+        fi
+    else
+        os="$OS"
+    fi
+
+    if [[ -z "$ARCH" ]]; then
+        if ! arch=$(get_cli_architecture_from_architecture "<auto>"); then
+            return 1
+        fi
+    else
+        if ! arch=$(get_cli_architecture_from_architecture "$ARCH"); then
+            return 1
+        fi
+    fi
+
+    # Construct the runtime identifier
+    runtimeIdentifier="${os}-${arch}"
+
+    # Determine file extension based on OS
+    if [[ "$os" == "win" ]]; then
+        extension="zip"
+    else
+        extension="tar.gz"
+    fi
+
+    if [[ -z "$effective_version" && "$QUALITY" == "release" && "$DRY_RUN" != true ]]; then
+        if ! effective_version=$(get_latest_stable_version); then
+            say_warn "Failed to resolve the latest stable Aspire release. Falling back to the stable channel URL."
+            effective_version=""
+        fi
+    fi
+
+    # Construct the URLs using the new function
+    if ! url=$(construct_aspire_cli_url "$effective_version" "$QUALITY" "$runtimeIdentifier" "$extension"); then
+        return 1
+    fi
+    if ! checksum_url=$(construct_aspire_cli_url "$effective_version" "$QUALITY" "$runtimeIdentifier" "$extension" "true"); then
+        return 1
+    fi
+
+    filename="${temp_dir}/aspire-cli-${runtimeIdentifier}.${extension}"
+    checksum_filename="${temp_dir}/aspire-cli-${runtimeIdentifier}.${extension}.sha512"
+    if [[ -z "$VERSION" && -n "$QUALITY" ]]; then
+        download_source="the $(map_quality_to_channel "$QUALITY") channel"
+    fi
+
+    # Download the Aspire CLI archive
+    if ! download_file "$url" "$filename" "$ARCHIVE_DOWNLOAD_TIMEOUT_SEC" 5 true true "$download_source"; then
+        return 1
+    fi
+
+    # Download and test the checksum
+    if ! download_file "$checksum_url" "$checksum_filename" "$CHECKSUM_DOWNLOAD_TIMEOUT_SEC" 5 true true "$download_source"; then
+        return 1
+    fi
+
+    if ! validate_checksum "$filename" "$checksum_filename"; then
+        return 1
+    fi
+
+    if [[ "$DRY_RUN" != true ]]; then
+        say_verbose "Successfully downloaded and validated: $filename"
+    fi
+
+    # Install the archive
+    if ! install_archive "$filename" "$INSTALL_PATH" "$os"; then
+        return 1
+    fi
+
+    if [[ "$os" == "win" ]]; then
+        cli_exe="aspire.exe"
+    else
+        cli_exe="aspire"
+    fi
+    cli_path="${INSTALL_PATH}/${cli_exe}"
+    INSTALLED_CLI_PATH="$cli_path"
+    INSTALLED_CLI_OS="$os"
+    INSTALLED_CLI_ARCH="$arch"
+
+    say_info "Aspire CLI successfully installed to: ${GREEN}$cli_path${RESET}"
+
+    # Download and install VS Code extension if requested
+    if [[ "$INSTALL_EXTENSION" == true ]]; then
+        printf "\n"
+        say_info "Installing VS Code extension"
+
+        if test_vscode_cli; then
+            if extension_archive=$(download_aspire_extension "$temp_dir" "$VERSION" "$QUALITY"); then
+                if ! install_aspire_extension "$extension_archive"; then
+                    say_warn "Failed to install VS Code extension"
+                    say_warn "The CLI was installed successfully, but the extension installation failed"
+                fi
+            else
+                say_warn "Failed to download VS Code extension"
+                say_warn "The CLI was installed successfully, but the extension download failed"
+            fi
+        else
+            say_warn "Cannot install extension: VS Code CLI not found in PATH"
+            say_info "Please ensure VS Code is installed and available in PATH"
+        fi
+    fi
+}
+
+setup_cli_bundle() {
+    local host_os host_arch
+
+    if ! host_os=$(detect_os) || ! host_arch=$(get_cli_architecture_from_architecture "<auto>"); then
+        say_warn "Skipping Aspire CLI bundle setup because the current platform could not be detected."
+        return 0
+    fi
+
+    # Cross-target archive downloads are supported, but the downloaded executable cannot
+    # safely be run to extract its embedded bundle on a different host platform.
+    if [[ "$INSTALLED_CLI_OS" != "$host_os" || "$INSTALLED_CLI_ARCH" != "$host_arch" ]]; then
+        say_info "Skipping Aspire CLI bundle setup for ${INSTALLED_CLI_OS}-${INSTALLED_CLI_ARCH} on ${host_os}-${host_arch}."
+        return 0
+    fi
+
+    if [[ "$DRY_RUN" == true ]]; then
+        say_info "[DRY RUN] Would run: $INSTALLED_CLI_PATH setup"
+        return 0
+    fi
+
+    say_verbose "Running: $INSTALLED_CLI_PATH setup"
+    if ! "$INSTALLED_CLI_PATH" setup; then
+        say_error "Aspire CLI bundle setup failed"
+        return 1
+    fi
+}
+
+# Main entry point — wraps everything after function definitions.
+# Guarded so that `source get-aspire-cli.sh` loads functions without
+# executing the main flow (enables Tier-1 unit tests).
+main() {
+    # Parse command line arguments
+    parse_args "$@"
+
+    if [[ "$SHOW_HELP" == true ]]; then
+        show_help
+        exit 0
+    fi
+
+    # Validate that both --version and --quality are not provided together
+    if [[ -n "$VERSION" && -n "$QUALITY" ]]; then
+        say_error "Cannot specify both --version and --quality. Use --version for a specific version or --quality for a quality level."
+        say_info "Use --help for usage information."
+        exit 1
+    fi
+
+    # Initialize default values after parsing arguments
+    if [[ -z "$QUALITY" ]]; then
+        # Default quality if not provided
+        QUALITY="${DEFAULT_QUALITY}"
+    fi
+
+    # Validate extension installation is only allowed with dev quality
+    if [[ "$INSTALL_EXTENSION" == true && "$QUALITY" != "dev" ]]; then
+        say_error "Extension installation is only supported with --quality dev. Current quality: $QUALITY"
+        say_info "Use --help for usage information."
+        exit 1
+    fi
+
+    # Set default install path if not provided
+    if [[ -z "$INSTALL_PATH" ]]; then
+        INSTALL_PATH="$HOME/.aspire/bin"
+        INSTALL_PATH_UNEXPANDED="\$HOME/.aspire/bin"
+    else
+        INSTALL_PATH_UNEXPANDED="$INSTALL_PATH"
+    fi
+
+    # Create a temporary directory for downloads
+    if [[ "$DRY_RUN" == true ]]; then
+        temp_dir="/tmp/aspire-cli-dry-run"
+    else
+        temp_dir=$(mktemp -d -t aspire-cli-download-XXXXXXXX)
+        say_verbose "Creating temporary directory: $temp_dir"
+    fi
+
+    # Cleanup function for temporary directory
+    cleanup() {
+        # shellcheck disable=SC2317  # Function is called via trap
+        if [[ "$DRY_RUN" == true ]]; then
+            # No cleanup needed in dry-run mode
+            return 0
+        fi
+
+        if [[ -n "${temp_dir:-}" ]] && [[ -d "$temp_dir" ]]; then
+            if [[ "$KEEP_ARCHIVE" != true ]]; then
+                say_verbose "Cleaning up temporary files..."
+                rm -rf "$temp_dir" || say_warn "Failed to clean up temporary directory: $temp_dir"
+            else
+                printf "Archive files kept in: %s\n" "$temp_dir"
+            fi
+        fi
+    }
+
+    # Set trap for cleanup on exit
+    trap cleanup EXIT
+
+    # Download and install the archive
+    if ! download_and_install_archive "$temp_dir"; then
+        exit 1
+    fi
+
+    # Write the script-route install-source sidecar next to the binary.
+    # Under --dry-run, print the target path and skip the write.
+    # Authorship contract: docs/specs/install-routes.md.
+    local sidecar_path
+    sidecar_path="$INSTALL_PATH/.aspire-install.json"
+    if [[ "$DRY_RUN" == true ]]; then
+        printf 'DRYRUN: would write route sidecar to: %s\n' "$sidecar_path"
+    else
+        # An explicit version can come from any channel, so retain the archive's
+        # baked identity when there was no quality route to author the channel.
+        local sidecar_quality=""
+        if [[ -z "$VERSION" ]]; then
+            sidecar_quality="$QUALITY"
+        fi
+        write_install_sidecar "$INSTALL_PATH" "$sidecar_quality"
+    fi
+
+    if ! setup_cli_bundle; then
+        exit 1
+    fi
+
+    # Skip PATH configuration if --skip-path is set
+    if [[ "$SKIP_PATH" != true ]]; then
+        # Handle GitHub Actions environment
+        if [[ -n "${GITHUB_ACTIONS:-}" ]] && [[ "${GITHUB_ACTIONS}" == "true" ]]; then
+            if [[ -n "${GITHUB_PATH:-}" ]]; then
+                if [[ "$DRY_RUN" == true ]]; then
+                    say_info "[DRY RUN] Would add $INSTALL_PATH to \$GITHUB_PATH"
+                else
+                    echo "$INSTALL_PATH" >> "$GITHUB_PATH"
+                    say_verbose "Added $INSTALL_PATH to \$GITHUB_PATH"
+                fi
+            fi
+        fi
+
+        # Add to shell profile for persistent PATH
+        add_to_shell_profile "$INSTALL_PATH" "$INSTALL_PATH_UNEXPANDED"
+
+        # Add to current session PATH, if the path is not already in PATH
+        if [[ ":$PATH:" != *":$INSTALL_PATH:"* ]]; then
+            if [[ "$DRY_RUN" == true ]]; then
+                say_info "[DRY RUN] Would add $INSTALL_PATH to PATH"
+            else
+                export PATH="$INSTALL_PATH:$PATH"
+            fi
+        fi
+    else
+        say_info "Skipping PATH configuration due to --skip-path flag"
+    fi
+
+    install_completions "$INSTALLED_CLI_PATH" true
+}
+
+# Only run main when executed directly (not when sourced for unit tests).
+# Use ${BASH_SOURCE[0]:-$0} so the guard works under `curl | bash -s` where BASH_SOURCE is unset.
+if [[ "${BASH_SOURCE[0]:-$0}" == "${0}" ]]; then
+    main "$@"
+fi

@@ -1,0 +1,204 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+using System.Diagnostics;
+using System.IO.Compression;
+using System.Text.Json;
+using Aspire.Dashboard.Configuration;
+using Aspire.Dashboard.Otlp.Model;
+using Aspire.Dashboard.Otlp.Model.Serialization;
+using Aspire.Dashboard.Otlp.Storage;
+using Aspire.Otlp.Serialization;
+using Microsoft.Extensions.Options;
+
+namespace Aspire.Dashboard.Model;
+
+/// <summary>
+/// Service for importing telemetry data from files.
+/// </summary>
+public sealed class TelemetryImportService
+{
+    private readonly ITelemetryRepositoryWriter _telemetryRepositoryWriter;
+    private readonly IOptionsMonitor<DashboardOptions> _options;
+    private readonly ILogger<TelemetryImportService> _logger;
+    private readonly ActivitySource _activitySource;
+
+    /// <summary>
+    /// Gets a value indicating whether import is enabled.
+    /// </summary>
+    public bool IsImportEnabled => _options.CurrentValue.UI.DisableImport != true;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="TelemetryImportService"/> class.
+    /// </summary>
+    /// <param name="telemetryRepositoryWriter">The telemetry repository writer.</param>
+    /// <param name="options">The dashboard options.</param>
+    /// <param name="logger">The logger.</param>
+    /// <param name="activitySource">The dashboard activity source.</param>
+    public TelemetryImportService(
+        ITelemetryRepositoryWriter telemetryRepositoryWriter,
+        IOptionsMonitor<DashboardOptions> options,
+        ILogger<TelemetryImportService> logger,
+        DashboardActivitySource activitySource)
+    {
+        _telemetryRepositoryWriter = telemetryRepositoryWriter;
+        _options = options;
+        _logger = logger;
+        _activitySource = activitySource.ActivitySource;
+    }
+
+    /// <summary>
+    /// Imports telemetry data from a file stream.
+    /// </summary>
+    /// <param name="fileName">The name of the file being imported.</param>
+    /// <param name="stream">The file stream.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A task representing the async operation.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when import is disabled.</exception>
+    public async Task ImportAsync(string fileName, Stream stream, CancellationToken cancellationToken)
+    {
+        using var activity = _activitySource.StartActivity("Import telemetry data", ActivityKind.Internal);
+
+        if (!IsImportEnabled)
+        {
+            throw new InvalidOperationException("Import is disabled.");
+        }
+
+        await ImportCoreAsync(fileName, stream, allowZipFile: true, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task ImportCoreAsync(string fileName, Stream stream, bool allowZipFile, CancellationToken cancellationToken)
+    {
+        var extension = Path.GetExtension(fileName).ToLowerInvariant();
+
+        switch (extension)
+        {
+            case ".zip":
+                if (!allowZipFile)
+                {
+                    // Allowing zip file is a flag to not extract zip files inside zip files. Avoid unexpected recursion.
+                    goto default;
+                }
+
+                // Copy input stream to MemoryStream because ZipArchive requires synchronous reads and seeking.
+                var memoryStream = new MemoryStream();
+                await stream.CopyToAsync(memoryStream, cancellationToken).ConfigureAwait(false);
+                memoryStream.Position = 0;
+
+                await ImportZipAsync(memoryStream, cancellationToken).ConfigureAwait(false);
+                break;
+            case ".json":
+                await ImportJsonAsync(fileName, stream, cancellationToken).ConfigureAwait(false);
+                break;
+            case ".txt":
+                // Text files are console logs - currently ignored as per requirements
+                _logger.LogDebug("Ignoring text file {FileName} - console log import not supported", fileName);
+                break;
+            default:
+                _logger.LogDebug("Unsupported file type: {Extension}", extension);
+                break;
+        }
+    }
+
+    private async Task ImportZipAsync(Stream stream, CancellationToken cancellationToken)
+    {
+        using var archive = new ZipArchive(stream, ZipArchiveMode.Read, leaveOpen: true);
+
+        foreach (var entry in archive.Entries)
+        {
+            using var entryStream = entry.Open();
+            await ImportCoreAsync(entry.Name, entryStream, allowZipFile: false, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private async Task ImportJsonAsync(string fileName, Stream stream, CancellationToken cancellationToken)
+    {
+        // Read the JSON content
+        using var reader = new StreamReader(stream);
+        var jsonContent = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+
+        if (string.IsNullOrWhiteSpace(jsonContent))
+        {
+            _logger.LogWarning("Empty JSON file: {FileName}", fileName);
+            return;
+        }
+
+        OtlpTelemetryDataJson? telemetryData;
+        try
+        {
+            telemetryData = JsonSerializer.Deserialize(jsonContent, OtlpJsonSerializerContext.DefaultContext.OtlpTelemetryDataJson);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "Failed to deserialize JSON file: {FileName}", fileName);
+            return;
+        }
+
+        if (telemetryData is null)
+        {
+            _logger.LogWarning("Could not deserialize telemetry data from file: {FileName}", fileName);
+            return;
+        }
+
+        var imported = false;
+
+        if (telemetryData.ResourceLogs is { Length: > 0 })
+        {
+            await ImportLogsAsync(telemetryData.ResourceLogs).ConfigureAwait(false);
+            _logger.LogDebug("Imported logs from {FileName}", fileName);
+            imported = true;
+        }
+
+        if (telemetryData.ResourceSpans is { Length: > 0 })
+        {
+            await ImportTracesAsync(telemetryData.ResourceSpans).ConfigureAwait(false);
+            _logger.LogDebug("Imported traces from {FileName}", fileName);
+            imported = true;
+        }
+
+        if (telemetryData.ResourceMetrics is { Length: > 0 })
+        {
+            await ImportMetricsAsync(telemetryData.ResourceMetrics).ConfigureAwait(false);
+            _logger.LogDebug("Imported metrics from {FileName}", fileName);
+            imported = true;
+        }
+
+        if (!imported)
+        {
+            _logger.LogWarning("No telemetry data found in file: {FileName}", fileName);
+        }
+    }
+
+    private async Task ImportLogsAsync(OtlpResourceLogsJson[] resourceLogs)
+    {
+        var exportRequest = new OtlpExportLogsServiceRequestJson { ResourceLogs = resourceLogs };
+        var protobufRequest = OtlpJsonToProtobufConverter.ToProtobuf(exportRequest);
+
+        var addContext = new AddContext();
+        await _telemetryRepositoryWriter.AddLogsAsync(addContext, protobufRequest.ResourceLogs).ConfigureAwait(false);
+
+        _logger.LogDebug("Imported logs: {SuccessCount} succeeded, {FailureCount} failed", addContext.SuccessCount, addContext.FailureCount);
+    }
+
+    private async Task ImportTracesAsync(OtlpResourceSpansJson[] resourceSpans)
+    {
+        var exportRequest = new OtlpExportTraceServiceRequestJson { ResourceSpans = resourceSpans };
+        var protobufRequest = OtlpJsonToProtobufConverter.ToProtobuf(exportRequest);
+
+        var addContext = new AddContext();
+        await _telemetryRepositoryWriter.AddTracesAsync(addContext, protobufRequest.ResourceSpans).ConfigureAwait(false);
+
+        _logger.LogDebug("Imported traces: {SuccessCount} succeeded, {FailureCount} failed", addContext.SuccessCount, addContext.FailureCount);
+    }
+
+    private async Task ImportMetricsAsync(OtlpResourceMetricsJson[] resourceMetrics)
+    {
+        var exportRequest = new OtlpExportMetricsServiceRequestJson { ResourceMetrics = resourceMetrics };
+        var protobufRequest = OtlpJsonToProtobufConverter.ToProtobuf(exportRequest);
+
+        var addContext = new AddContext();
+        await _telemetryRepositoryWriter.AddMetricsAsync(addContext, protobufRequest.ResourceMetrics).ConfigureAwait(false);
+
+        _logger.LogDebug("Imported metrics: {SuccessCount} succeeded, {FailureCount} failed", addContext.SuccessCount, addContext.FailureCount);
+    }
+}

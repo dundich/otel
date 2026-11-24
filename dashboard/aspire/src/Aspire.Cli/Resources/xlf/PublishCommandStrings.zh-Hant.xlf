@@ -1,0 +1,52 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="zh-Hant" original="../PublishCommandStrings.resx">
+    <body>
+      <trans-unit id="Description">
+        <source>Generate deployment artifacts for an AppHost</source>
+        <target state="translated">為 AppHost 產生部署成品。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GeneratingArtifacts">
+        <source>Generating artifacts...</source>
+        <target state="translated">正在產生成品...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InputPromptLoading">
+        <source>Loading...</source>
+        <target state="translated">正在載入...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="NoBuildArgumentDescription">
+        <source>Do not build or restore the project before running</source>
+        <target state="translated">請勿在執行之前組建或還原專案</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="OperationCompletedPrefix">
+        <source>PUBLISHING COMPLETED</source>
+        <target state="translated">發佈完成</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="OperationFailedPrefix">
+        <source>PUBLISHING FAILED</source>
+        <target state="translated">發佈失敗</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="OutputPathArgumentDescription">
+        <source>The output path for the generated artifacts. Defaults to the AppHost directory's 'aspire-output' folder if not specified.</source>
+        <target state="translated">所產生之成品的輸出路徑。若未指定，則預設為 AppHost 目錄的 'aspire-output' 資料夾。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ProjectArgumentDescription">
+        <source>The path to the Aspire AppHost project file or a directory to search</source>
+        <target state="translated">要搜尋的 Aspire AppHost 專案檔案或目錄路徑</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SelectAPublisher">
+        <source>Select a publisher:</source>
+        <target state="translated">選取發行者：</target>
+        <note />
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

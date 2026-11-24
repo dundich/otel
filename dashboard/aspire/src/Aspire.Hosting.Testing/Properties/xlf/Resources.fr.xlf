@@ -1,0 +1,57 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="fr" original="../Resources.resx">
+    <body>
+      <trans-unit id="ApplicationNotStartedExceptionMessage">
+        <source>The application must be started before resolving endpoints or connection strings.</source>
+        <target state="translated">L’application doit être démarrée avant de résoudre les points de terminaison ou les chaînes de connexion.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DashboardDisabledExceptionMessage">
+        <source>The dashboard is not enabled for this application.</source>
+        <target state="translated">Le tableau de bord n’est pas activé pour cette application.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DashboardTestingPublishModeExceptionMessage">
+        <source>Dashboard testing is not supported in publish mode.</source>
+        <target state="translated">Le test du tableau de bord n’est pas pris en charge en mode de publication.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DashboardUrlApplicationNotStartedExceptionMessage">
+        <source>The application must be started before retrieving the dashboard URL.</source>
+        <target state="translated">L’application doit être démarrée avant de récupérer l’URL du tableau de bord.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DashboardUrlPublishModeExceptionMessage">
+        <source>The dashboard URL is not available in publish mode.</source>
+        <target state="translated">L’URL du tableau de bord n’est pas disponible en mode de publication.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DashboardUrlUnavailableExceptionMessage">
+        <source>The dashboard URL is not available.</source>
+        <target state="translated">L’URL du tableau de bord n’est pas disponible.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="EndpointForResourceNotFoundExceptionMessage">
+        <source>Endpoint '{0}' for resource '{1}' not found.</source>
+        <target state="translated">Le point de terminaison « {0} » de la ressource « {1} » est introuvable.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceDoesNotExposeConnectionStringExceptionMessage">
+        <source>Resource '{0}' does not expose a connection string.</source>
+        <target state="translated">La ressource « {0} » n’expose pas de chaîne de connexion.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceHasNoAllocatedEndpointsExceptionMessage">
+        <source>Resource '{0}' has no allocated endpoints.</source>
+        <target state="translated">La ressource « {0} » n’a aucun point de terminaison alloué.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceNotFoundExceptionMessage">
+        <source>Resource '{0}' not found.</source>
+        <target state="translated">Ressource « {0} » introuvable.</target>
+        <note />
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

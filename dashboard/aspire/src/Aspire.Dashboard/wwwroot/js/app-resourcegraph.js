@@ -1,0 +1,874 @@
+import './d3.v7.min.js'
+import { attachResourceGraphGame } from './app-resourcegraph-game.js'
+
+let resourceGraph = null;
+
+export function initializeResourcesGraph(resourcesInterop, graphIcons) {
+    resourceGraph = new ResourceGraph(resourcesInterop, graphIcons);
+    resourceGraph.resize();
+    // Pages that don't offer the Aspire Outage game (the previous dashboard experience) pass no game strings. Don't
+    // attach it there: besides the Play button, it would also take the O key from the dashboard's global shortcuts.
+    if (graphIcons?.game) {
+        attachResourceGraphGame(resourceGraph, graphIcons.game);
+    }
+
+    const observer = new ResizeObserver(function () {
+        resourceGraph.resize();
+    });
+
+    // Observe the element the graph is drawn in rather than the page layout around it. Its size also changes when
+    // the surrounding chrome changes (for example the previous experience's tab header wrapping) and when the graph is
+    // shown or hidden.
+    const viewport = resourceGraph.getViewportElement();
+    if (viewport) {
+        observer.observe(viewport);
+    }
+}
+
+export function updateResourcesGraph(resources) {
+    if (resourceGraph) {
+        resourceGraph.updateResources(resources);
+    }
+}
+
+export function updateResourcesGraphSelected(resourceName) {
+    if (resourceGraph) {
+        resourceGraph.switchTo(resourceName);
+    }
+}
+
+export function updateResourcesGraphContextMenu(open) {
+    if (resourceGraph) {
+        resourceGraph.contextMenuChanged(open);
+    }
+}
+
+class ResourceGraph {
+    constructor(resourcesInterop, graphIcons) {
+        this.resources = [];
+        this.resourcesInterop = resourcesInterop;
+
+        // Static icon (SVG path + tooltip) shared by every node's context-menu affordance (cog).
+        this.menuIcon = graphIcons ? graphIcons.menu : null;
+        this.hiddenIcon = graphIcons ? graphIcons.hidden : null;
+
+        this.nodes = [];
+        this.links = [];
+        this.hasFitInitialGraph = false;
+
+        this.svg = d3.select('.resource-graph');
+        this.baseGroup = this.svg.append("g");
+
+        // Enable zoom + pan
+        // https://www.d3indepth.com/zoom-and-pan/
+        // scaleExtent limits zoom to reasonable values
+        this.zoom = d3.zoom().scaleExtent([0.2, 4]).on('zoom', (event) => {
+            this.baseGroup.attr('transform', event.transform);
+        });
+        this.svg.call(this.zoom).on('dblclick.zoom', null);
+
+        // simulation setup with all forces
+        this.linkForce = d3
+            .forceLink()
+            .id(function (link) { return link.id })
+            .strength(1.0)
+            .distance(function (link) {
+                // adaptive distance: longer for highly connected nodes
+                const sourceDegree = link.source.degree || 1;
+                const targetDegree = link.target.degree || 1;
+                const maxDegree = Math.max(sourceDegree, targetDegree);
+
+                // scale distance with degree: 150 for low degree, up to 250 for high degree
+                return Math.min(150 + (maxDegree * 10), 250);
+            });
+
+        this.simulation = d3
+            .forceSimulation()
+            .force('link', this.linkForce)
+            .force('charge', d3.forceManyBody().strength(-800))
+            .force("collide", d3.forceCollide(function (d) {
+                var degree = d.degree || 1;
+
+                // scale collide radius with degree: 90 for low degree, up to 180 for high degree
+                return Math.min(90 + (degree * 10), 180);
+            }).iterations(10))
+            .force("x", d3.forceX().strength(0.2))
+            .force("y", d3.forceY().strength(0.4))
+            .force("center", d3.forceCenter().strength(0.01));
+
+        // Drag start is trigger on mousedown from click.
+        // Only change the state of the simulation when the drag event is triggered.
+        var dragActive = false;
+        var dragged = false;
+        this.dragDrop = d3.drag().on('start', (event) => {
+            dragActive = event.active;
+            event.subject.fx = event.subject.x;
+            event.subject.fy = event.subject.y;
+        }).on('drag', (event) => {
+            if (!dragActive) {
+                this.simulation.alphaTarget(0.1).restart();
+                dragActive = true;
+            }
+            dragged = true;
+            event.subject.fx = event.x;
+            event.subject.fy = event.y;
+        }).on('end', (event) => {
+            if (dragged) {
+                this.simulation.alphaTarget(0);
+                dragged = false;
+            }
+            event.subject.fx = null;
+            event.subject.fy = null;
+        });
+
+        var defs = this.svg.append("defs");
+        this.createArrowMarker(defs, "arrow-normal", "arrow-normal", 10, 10, 66);
+        this.createArrowMarker(defs, "arrow-highlight", "arrow-highlight", 15, 15, 48);
+        this.createArrowMarker(defs, "arrow-highlight-expand", "arrow-highlight-expand", 15, 15, 56);
+
+        var highlightedPattern = defs.append("pattern")
+            .attr("id", "highlighted-pattern")
+            .attr("patternUnits", "userSpaceOnUse")
+            .attr("width", "17.5")
+            .attr("height", "17.5")
+            .attr("patternTransform", "rotate(45)");
+
+        highlightedPattern
+            .append("rect")
+            .attr("x", "0")
+            .attr("y", "0")
+            .attr("width", "17.5")
+            .attr("height", "17.5")
+            .attr("fill", "var(--aspire-page-background)");
+
+        highlightedPattern
+            .append("line")
+            .attr("x1", "0")
+            .attr("y", "0")
+            .attr("x2", "0")
+            .attr("y2", "17.5")
+            .attr("stroke", "var(--resource-graph-secondary-hover-background)")
+            .attr("stroke-width", "15");
+
+        this.linkElementsG = this.baseGroup.append("g").attr("class", "links");
+        this.nodeElementsG = this.baseGroup.append("g").attr("class", "nodes");
+        // Selection updates can arrive before the first resource snapshot.
+        this.linkElements = this.linkElementsG.selectAll(".resource-link");
+        this.nodeElements = this.nodeElementsG.selectAll(".resource-group");
+
+        this.initializeButtons();
+    }
+
+    initializeButtons() {
+        d3.select('.graph-zoom-in').on("click", () => this.zoomIn());
+        d3.select('.graph-zoom-out').on("click", () => this.zoomOut());
+        d3.select('.graph-reset').on("click", () => this.resetZoomAndPan());
+    }
+
+    resetZoomAndPan() {
+        this.fitGraph(true);
+    }
+
+    // Returns false when the graph couldn't be measured, e.g. because it is hidden behind another tab.
+    fitGraph(animate) {
+        const bounds = this.baseGroup.node()?.getBBox();
+        const viewport = this.getViewportSize();
+        if (!bounds || !viewport || bounds.width <= 0 || bounds.height <= 0) {
+            const selection = animate ? this.svg.transition().duration(300) : this.svg;
+            selection.call(this.zoom.transform, d3.zoomIdentity);
+            return false;
+        }
+
+        const padding = 64;
+        const availableWidth = Math.max(viewport.width - (padding * 2), 1);
+        const availableHeight = Math.max(viewport.height - (padding * 2), 1);
+        const fitScale = Math.min(availableWidth / bounds.width, availableHeight / bounds.height);
+        // Avoid both extremes: don't enlarge a small graph, and don't reduce a large graph to an unreadable thumbnail.
+        // Larger topologies can still be panned after reset.
+        const scale = Math.min(Math.max(fitScale, 0.55), 1);
+        const centerX = bounds.x + (bounds.width / 2);
+        const centerY = bounds.y + (bounds.height / 2);
+        const transform = d3.zoomIdentity
+            .translate(-centerX * scale, -centerY * scale)
+            .scale(scale);
+
+        const selection = animate ? this.svg.transition().duration(300) : this.svg;
+        selection.call(this.zoom.transform, transform);
+        return true;
+    }
+
+    zoomIn() {
+        this.svg.transition().call(this.zoom.scaleBy, 1.5);
+    }
+
+    zoomOut() {
+        this.svg.transition().call(this.zoom.scaleBy, 2 / 3);
+    }
+
+    createArrowMarker(parent, id, className, width, height, x) {
+        parent.append("marker")
+            .attr("id", id)
+            .attr("viewBox", "0 -5 10 10")
+            .attr("refX", x)
+            .attr("refY", 0)
+            .attr("markerWidth", width)
+            .attr("markerHeight", height)
+            .attr("orient", "auto")
+            .attr("markerUnits", "userSpaceOnUse")
+            .attr("class", className)
+            .append("path")
+            .attr("d", 'M0,-5L10,0L0,5');
+    }
+
+    // The element the SVG is drawn in (.resource-graph-container). Every page that hosts the graph (the overview, the
+    // /graph page and the previous experience's resources page) sizes the SVG with CSS to fill it, so its size is the
+    // drawing area. A page that left the SVG sized by its viewBox would create a resize feedback loop here. Don't measure an ancestor such as
+    // .resources-summary-layout: on the previous experience's page it also contains the tab header, so a viewBox built
+    // from it is taller than the graph area and pushes the bottom-anchored graph controls out of view.
+    getViewportElement() {
+        return this.svg.node()?.parentElement ?? null;
+    }
+
+    getViewportSize() {
+        const viewport = this.getViewportElement();
+        if (!viewport || viewport.clientWidth <= 0 || viewport.clientHeight <= 0) {
+            return null;
+        }
+
+        return { width: viewport.clientWidth, height: viewport.clientHeight };
+    }
+
+    resize() {
+        // A hidden graph (another tab or overview mode is selected) has no size. Keep the last viewBox until it is shown.
+        const viewport = this.getViewportSize();
+        if (!viewport) {
+            return;
+        }
+
+        this.svg.attr("viewBox", [-viewport.width / 2, -viewport.height / 2, viewport.width, viewport.height]);
+
+        // Resources can arrive while the graph is hidden, when there is nothing to measure. Fit them the first time the
+        // graph has a size.
+        if (!this.hasFitInitialGraph && this.nodes.length > 0) {
+            this.hasFitInitialGraph = this.fitGraph(false);
+        }
+    }
+
+    switchTo(resourceName) {
+        this.selectedNode = this.nodes.find(node => node.id === resourceName);
+        this.updateNodeHighlights(null);
+    }
+
+    resourceEqual(r1, r2) {
+        if (r1.name !== r2.name) {
+            return false;
+        }
+        if (r1.displayName !== r2.displayName) {
+            return false;
+        }
+        if (r1.isHidden !== r2.isHidden) {
+            return false;
+        }
+        if (!this.iconEqual(r1.resourceIcon, r2.resourceIcon)) {
+            return false;
+        }
+        if (r1.referencedNames.length !== r2.referencedNames.length) {
+            return false;
+        }
+        for (var i = 0; i < r1.referencedNames.length; i++) {
+            if (r1.referencedNames[i] !== r2.referencedNames[i]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    iconEqual(i1, i2) {
+        if (i1.path !== i2.path) {
+            return false;
+        }
+        if (i1.color !== i2.color) {
+            return false;
+        }
+        if (i1.tooltip !== i2.tooltip) {
+            return false;
+        }
+
+        return true;
+    }
+
+    resourcesChanged(existingResource, newResources) {
+        if (!existingResource || newResources.length != existingResource.length) {
+            return true;
+        }
+
+        for (var i = 0; i < newResources.length; i++) {
+            if (!this.resourceEqual(newResources[i], existingResource[i], false)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    updateNodes(newResources) {
+        const existingNodes = this.nodes || []; // Ensure nodes is initialized
+        const updatedNodes = [];
+
+        // calculate degree (number of connections) for each resource
+        const degreeMap = new Map();
+        newResources.forEach(resource => {
+            degreeMap.set(resource.name, resource.referencedNames.length);
+        });
+
+        // also count incoming connections
+        newResources.forEach(resource => {
+            resource.referencedNames.forEach(refName => {
+                const currentDegree = degreeMap.get(refName) || 0;
+                degreeMap.set(refName, currentDegree + 1);
+            });
+        });
+
+        newResources.forEach(resource => {
+            const existingNode = existingNodes.find(node => node.id === resource.name);
+            const degree = degreeMap.get(resource.name) || 1;
+
+            if (existingNode) {
+                // Update existing node without replacing it
+                updatedNodes.push({
+                    ...existingNode,
+                    label: resource.displayName,
+                    endpointUrl: resource.endpointUrl,
+                    endpointText: resource.endpointText,
+                    resourceIcon: createIcon(resource.resourceIcon),
+                    stateIcon: createIcon(resource.stateIcon),
+                    isHidden: resource.isHidden,
+                    degree: degree
+                });
+            } else {
+                // Add new resource
+                updatedNodes.push({
+                    id: resource.name,
+                    label: resource.displayName,
+                    endpointUrl: resource.endpointUrl,
+                    endpointText: resource.endpointText,
+                    resourceIcon: createIcon(resource.resourceIcon),
+                    stateIcon: createIcon(resource.stateIcon),
+                    isHidden: resource.isHidden,
+                    degree: degree
+                });
+            }
+        });
+
+        this.nodes = updatedNodes;
+
+        function createIcon(resourceIcon) {
+            return {
+                path: resourceIcon.path,
+                color: resourceIcon.color,
+                tooltip: resourceIcon.tooltip
+            };
+        }
+    }
+
+    updateResources(newResources) {
+        // Check if the overall structure of the graph has changed. i.e. nodes or links have been added or removed.
+        var hasStructureChanged = this.resourcesChanged(this.resources, newResources);
+
+        this.resources = newResources;
+
+        this.updateNodes(newResources);
+
+        this.links = [];
+        for (var i = 0; i < newResources.length; i++) {
+            var resource = newResources[i];
+
+            var resourceLinks = resource.referencedNames
+                .filter((referencedName) => {
+                    return newResources.some(r => r.name === referencedName);
+                })
+                .map((referencedName, index) => {
+                    return {
+                        id: `${resource.name}-${referencedName}`,
+                        target: referencedName,
+                        source: resource.name,
+                        strength: 0.7
+                    };
+                });
+
+            this.links.push(...resourceLinks);
+        }
+
+        // Update nodes
+        this.nodeElements = this.nodeElementsG
+            .selectAll(".resource-group")
+            .data(this.nodes, n => n.id);
+
+        // Remove excess nodes:
+        this.nodeElements
+            .exit()
+            .transition()
+            .attr("opacity", 0)
+            .remove();
+
+        // Resource node
+        var newNodes = this.nodeElements
+            .enter().append("g")
+            .attr("class", "resource-group")
+            .attr("opacity", 0)
+            .attr("resource-name", n => n.id)
+            .call(this.dragDrop);
+
+        // Enter/leave keeps hover stable while moving between a node's child shapes.
+        var newNodesContainer = newNodes
+            .append("g")
+            .attr("class", "resource-scale")
+            .on('click', this.selectNode)
+            .on('contextmenu', this.nodeContextMenu)
+            .on('mouseenter', this.hoverNode)
+            .on('mouseleave', this.unHoverNode);
+        newNodesContainer
+            .append("circle")
+            .attr("r", 56)
+            .attr("class", "resource-node")
+            .attr("stroke", "white")
+            .attr("stroke-width", "4");
+        newNodesContainer
+            .append("circle")
+            .attr("r", 53)
+            .attr("class", "resource-node-border");
+        var iconTransform = newNodesContainer
+            .append("g")
+            .attr("transform", n => n.endpointText ? "translate(-24,-37)" : "translate(-24,-24)")
+        var iconPath = iconTransform
+            .append("path");
+        iconPath
+            .attr("fill", n => n.resourceIcon.color)
+            .attr("d", n => n.resourceIcon.path)
+            .attr("data-tooltip", n => n.resourceIcon.tooltip);
+
+        // Icon paths could be mixed size. We need to transform icons to always be displayed at a consistent size.
+        iconPath.each(function (d) {
+            const iconSize = 48;
+
+            const path = d3.select(this);
+            const node = path.node();
+            const bbox = node.getBBox();
+
+            const available = Math.max(1, iconSize - 2);
+            const largestDimension = Math.max(bbox.width, bbox.height);
+            if (!Number.isFinite(largestDimension) || largestDimension <= 0) {
+                path.attr("transform", null);
+                return;
+            }
+            const scale = available / largestDimension;
+
+            const cx = bbox.x + bbox.width / 2;
+            const cy = bbox.y + bbox.height / 2;
+
+            // apply scaling & centering inside this group
+            path.attr("transform",
+                `translate(${iconSize / 2},${iconSize / 2}) scale(${scale}) translate(${-cx},${-cy})`);
+        });
+
+        var endpointGroup = newNodesContainer
+            .append("g")
+            .attr("transform", "translate(0,28)")
+            .attr("class", "resource-endpoint")
+            .style("display", n => n.endpointText ? null : "none");
+        endpointGroup.append("text");
+
+        // Resource status
+        var statusGroup = newNodesContainer
+            .append("g")
+            .attr("transform", "scale(1.6) translate(14,-34)");
+        statusGroup
+            .append("circle")
+            .attr("r", 8)
+            .attr("cy", 8)
+            .attr("cx", 8)
+            .attr("class", "resource-status-circle");
+        statusGroup
+            .append("path")
+            .attr("class", "resource-status-path");
+
+        var resourceNameGroup = newNodesContainer
+            .append("g")
+            .attr("transform", "translate(0,71)")
+            .attr("class", "resource-name");
+        resourceNameGroup
+            .append("rect")
+            .attr("class", "resource-name-hitbox");
+        resourceNameGroup
+            .append("text")
+            .text(n => trimText(n.label, 30));
+        resourceNameGroup.attr("data-tooltip", n => n.label);
+
+        if (this.hiddenIcon) {
+            var hiddenIconGroup = resourceNameGroup
+                .append("g")
+                .attr("class", "resource-hidden-icon")
+                .style("display", n => n.isHidden ? null : "none");
+            hiddenIconGroup
+                .append("rect")
+                .attr("class", "resource-hidden-icon-hitbox")
+                .attr("x", -4)
+                .attr("width", 20);
+            hiddenIconGroup
+                .append("path")
+                .attr("d", this.hiddenIcon.path);
+            hiddenIconGroup
+                .append("title")
+                .text(this.hiddenIcon.tooltip);
+        }
+
+        // Context menu affordance. A cog positioned on the circle rim directly below the status badge.
+        // The status badge sits at the top-right via "scale(1.6) translate(14,-34)" (center ~(35,-42)),
+        // so mirroring it vertically puts the cog at the bottom-right ~(35,43). Hidden until the node is
+        // hovered (see .resource-menu-cog CSS); it makes the node's interactivity discoverable by opening
+        // the same context menu as right-clicking the node.
+        var cogGroup = newNodesContainer
+            .append("g")
+            .attr("class", "resource-menu-cog")
+            .attr("id", n => `resource-menu-cog-${n.id}`)
+            .attr("transform", "translate(35,43)")
+            .attr("role", "button")
+            .attr("tabindex", 0)
+            .attr("aria-label", n => this.getResourceMenuLabel(n))
+            .attr("aria-haspopup", "menu")
+            .attr("aria-expanded", "false")
+            // D3's drag handler is attached to the ancestor resource group. Stop drag-start
+            // events here so an imprecise cog click can never move the resource node.
+            .on('mousedown touchstart', event => event.stopPropagation())
+            .on('keydown', this.cogMenuKeyDown)
+            .on('click', this.cogMenuClick);
+        cogGroup
+            .append("circle")
+            .attr("r", 14)
+            .attr("class", "resource-menu-cog-background");
+        cogGroup.attr("data-tooltip", n => this.getResourceMenuLabel(n));
+        if (this.menuIcon) {
+            var cogIcon = cogGroup
+                .append("path")
+                .attr("class", "resource-menu-cog-icon")
+                .attr("d", this.menuIcon.path);
+
+            // Scale and center the icon inside the cog background, matching how resource icons are sized.
+            cogIcon.each(function () {
+                const iconSize = 16;
+                const path = d3.select(this);
+                const bbox = this.getBBox();
+                const largestDimension = Math.max(bbox.width, bbox.height);
+                if (!Number.isFinite(largestDimension) || largestDimension <= 0) {
+                    path.attr("transform", null);
+                    return;
+                }
+                const scale = iconSize / largestDimension;
+                const cx = bbox.x + bbox.width / 2;
+                const cy = bbox.y + bbox.height / 2;
+
+                path.attr("transform", `scale(${scale}) translate(${-cx},${-cy})`);
+            });
+        }
+
+        newNodes.transition()
+            .attr("opacity", 1);
+
+        this.nodeElements = newNodes.merge(this.nodeElements);
+        this.nodeElements.classed('resource-group-hidden', n => n.isHidden);
+
+        // Set resource values that change.
+        this.nodeElementsG
+            .selectAll(".resource-group")
+            .select(".resource-name")
+            .each(function (n) {
+                const nameGroup = d3.select(this);
+                const bounds = nameGroup.select("text").node().getBBox();
+                const hitboxHeight = Math.max(bounds.height, 16);
+                nameGroup.select(".resource-name-hitbox")
+                    .attr("x", bounds.x)
+                    .attr("y", bounds.y + (bounds.height - hitboxHeight) / 2)
+                    .attr("width", bounds.width)
+                    .attr("height", hitboxHeight);
+                const hiddenIconGroup = nameGroup
+                    .select(".resource-hidden-icon")
+                    .style("display", n.isHidden ? null : "none");
+                if (n.isHidden && !hiddenIconGroup.empty()) {
+                    // Join the icon's hitbox to the measured label, including the gap between them.
+                    hiddenIconGroup.attr("transform",
+                        `translate(${bounds.x + bounds.width + 4},${bounds.y + (bounds.height - 16) / 2})`);
+                    hiddenIconGroup.select(".resource-hidden-icon-hitbox")
+                        .attr("y", (16 - hitboxHeight) / 2)
+                        .attr("height", hitboxHeight);
+                }
+            });
+        this.nodeElementsG
+            .selectAll(".resource-group")
+            .select(".resource-menu-cog")
+            .attr("aria-label", n => this.getResourceMenuLabel(n))
+            .attr("data-tooltip", n => this.getResourceMenuLabel(n));
+        this.nodeElementsG
+            .selectAll(".resource-group")
+            .select(".resource-endpoint")
+            .style("display", n => n.endpointText ? null : "none")
+            .select("text")
+            .text(n => trimText(n.endpointText, 15));
+        this.nodeElementsG
+            .selectAll(".resource-group")
+            .select(".resource-endpoint")
+            .attr("data-tooltip", n => n.endpointText || "");
+        this.nodeElementsG
+            .selectAll(".resource-group")
+            .select(".resource-status-circle")
+            .attr("data-tooltip", n => n.stateIcon.tooltip);
+        this.nodeElementsG
+            .selectAll(".resource-group")
+            .select(".resource-status-path")
+            .attr("d", n => n.stateIcon.path)
+            .attr("fill", n => n.stateIcon.color)
+            .attr("data-tooltip", n => n.stateIcon.tooltip);
+
+        // Update links
+        this.linkElements = this.linkElementsG
+            .selectAll("line")
+            .data(this.links, (d) => { return d.id; });
+
+        this.linkElements
+            .exit()
+            .transition()
+            .attr("opacity", 0)
+            .remove();
+
+        var newLinks = this.linkElements
+            .enter().append("line")
+            .attr("opacity", 0)
+            .attr("class", "resource-link");
+
+        newLinks.transition()
+            .attr("opacity", 1);
+
+        this.linkElements = newLinks.merge(this.linkElements);
+
+        this.simulation
+            .nodes(this.nodes)
+            .on('tick', this.onTick);
+
+        this.simulation.force("link").links(this.links);
+        if (hasStructureChanged) {
+            this.simulation.stop();
+
+            // Set alpha (give energy) and simulate the graph before rendering.
+            // This prevents the graph from jumping around when loaded or changed.
+            this.simulation.alpha(1);
+            for (let i = 0; i < 300; i++) {
+                this.simulation.tick();
+            }
+            this.onTick();
+            if (!this.hasFitInitialGraph) {
+                this.hasFitInitialGraph = this.fitGraph(false);
+            }
+        }
+
+        this.simulation.restart();
+
+        function trimText(text, maxLength) {
+            if (!text) {
+                return "";
+            }
+            if (text.length > maxLength) {
+                return text.slice(0, maxLength) + "\u2026";
+            }
+            return text;
+        }
+    }
+
+    onTick = () => {
+        this.nodeElements.attr("transform", function (d) { return "translate(" + d.x + "," + d.y + ")"; });
+        this.linkElements
+            .attr('x1', function (link) { return link.source.x })
+            .attr('y1', function (link) { return link.source.y })
+            .attr('x2', function (link) { return link.target.x })
+            .attr('y2', function (link) { return link.target.y });
+    }
+
+    getNeighbors(node) {
+        return this.links.reduce(function (neighbors, link) {
+            if (link.target.id === node.id) {
+                neighbors.push(link.source.id);
+            } else if (link.source.id === node.id) {
+                neighbors.push(link.target.id);
+            }
+            return neighbors;
+        },
+            [node.id]);
+    }
+
+    getResourceMenuLabel(node) {
+        return this.menuIcon ? this.menuIcon.labelFormat.split('{0}').join(node.label) : "";
+    }
+
+    isNeighborLink(node, link) {
+        return link.target.id === node.id || link.source.id === node.id
+    }
+
+    getLinkClass(nodes, selectedNode, link) {
+        if (nodes.find(n => this.isNeighborLink(n, link))) {
+            if (this.nodeEquals(selectedNode, link.target)) {
+                return 'resource-link-highlight-expand';
+            }
+            return 'resource-link-highlight';
+        }
+        return 'resource-link';
+    }
+
+    nodeContextMenu = async (event) => {
+        var data = event.target.__data__;
+
+        // Prevent default browser context menu.
+        event.preventDefault();
+        event.stopPropagation();
+
+        await this.openResourceContextMenu(data.id, event.clientX, event.clientY, null, null);
+    };
+
+    cogMenuClick = async (event) => {
+        // currentTarget is the cog group the handler is attached to. Its datum is inherited from the
+        // node group (d3 propagates data to appended children).
+        var data = event.currentTarget.__data__;
+
+        // Stop the click from also reaching the node's click handler (which would select/deselect it).
+        event.preventDefault();
+        event.stopPropagation();
+
+        await this.openResourceContextMenu(data.id, event.clientX, event.clientY, event.currentTarget, null);
+    };
+
+    cogMenuKeyDown = async (event) => {
+        if (event.repeat || (event.key !== 'Enter' && event.key !== ' ')) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        var data = event.currentTarget.__data__;
+        var bounds = event.currentTarget.getBoundingClientRect();
+        await this.openResourceContextMenu(
+            data.id,
+            Math.round(bounds.left + bounds.width / 2),
+            Math.round(bounds.top + bounds.height / 2),
+            event.currentTarget,
+            event.currentTarget.id);
+    };
+
+    openResourceContextMenu = (id, clientX, clientY, trigger, focusElementId) => {
+        this.contextMenuTrigger?.setAttribute("aria-expanded", "false");
+        this.contextMenuTrigger = trigger;
+        this.contextMenuChanged(true);
+
+        return this.resourcesInterop.invokeMethodAsync('ResourceContextMenu', id, clientX, clientY, focusElementId)
+            .catch(error => {
+                this.contextMenuChanged(false);
+                throw error;
+            });
+    };
+
+    contextMenuChanged = (open) => {
+        this.openContextMenu = open;
+        this.contextMenuTrigger?.setAttribute("aria-expanded", open ? "true" : "false");
+        if (!open) {
+            this.contextMenuTrigger = null;
+            this.updateNodeHighlights(null);
+        }
+    };
+
+    selectNode = (event) => {
+        var data = event.target.__data__;
+
+        // Always send the clicked on resource to the server. It will clear the selection if the same resource is clicked again.
+        this.resourcesInterop.invokeMethodAsync('SelectResource', data.id);
+
+        // Unscale the previous selected node.
+        if (this.selectedNode) {
+            changeScale(this, this.selectedNode.id, 1);
+        }
+
+        // Scale selected node if it is not the same as the previous selected node.
+        var clearSelection = this.nodeEquals(data, this.selectedNode);
+        if (!clearSelection) {
+            changeScale(this, data.id, 1.2);
+        }
+
+        this.selectedNode = data;
+
+        function changeScale(self, id, scale) {
+            let match = self.nodeElementsG
+                .selectAll(".resource-group")
+                .filter(function (d) {
+                    return d.id == id;
+                });
+
+            match
+                .select(".resource-scale")
+                .transition()
+                .duration(300)
+                .style("transform", `scale(${scale})`)
+                .on("end", s => {
+                    match.select(".resource-scale").style("transform", null);
+                    self.updateNodeHighlights(null);
+                });
+        }
+    }
+
+    hoverNode = (event) => {
+        var mouseoverNode = event.currentTarget.__data__;
+
+        this.updateNodeHighlights(mouseoverNode);
+    }
+
+    unHoverNode = (event) => {
+        this.updateNodeHighlights(null);
+    };
+
+    nodeEquals(resource1, resource2) {
+        if (!resource1 || !resource2) {
+            return false;
+        }
+        return resource1.id === resource2.id;
+    }
+
+    updateNodeHighlights = (mouseoverNode) => {
+        var mouseoverNeighbors = mouseoverNode ? this.getNeighbors(mouseoverNode) : [];
+        var selectNeighbors = this.selectedNode ? this.getNeighbors(this.selectedNode) : [];
+        var neighbors = [...mouseoverNeighbors, ...selectNeighbors];
+
+        // we modify the styles to highlight selected nodes
+        this.nodeElements.attr('class', (node) => {
+            var classNames = ['resource-group'];
+            if (node.isHidden) {
+                classNames.push('resource-group-hidden');
+            }
+            if (this.nodeEquals(node, mouseoverNode)) {
+                classNames.push('resource-group-hover');
+            }
+            if (this.nodeEquals(node, this.selectedNode)) {
+                classNames.push('resource-group-selected');
+            }
+            if (neighbors.indexOf(node.id) > -1) {
+                classNames.push('resource-group-highlight');
+            }
+            return classNames.join(' ');
+        });
+        this.linkElements.attr('class', (link) => {
+            var nodes = [];
+            if (mouseoverNode) {
+                nodes.push(mouseoverNode);
+            }
+            if (this.selectedNode) {
+                nodes.push(this.selectedNode);
+            }
+            return this.getLinkClass(nodes, this.selectedNode, link);
+        });
+    };
+};

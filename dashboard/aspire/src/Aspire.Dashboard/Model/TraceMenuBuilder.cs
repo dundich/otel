@@ -1,0 +1,131 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+using Aspire.Dashboard.Components.Dialogs;
+using Aspire.Dashboard.Otlp.Model;
+using Aspire.Dashboard.Otlp.Storage;
+using Aspire.Dashboard.Resources;
+using Aspire.Dashboard.Utils;
+using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Localization;
+using Microsoft.FluentUI.AspNetCore.Components;
+using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons;
+
+namespace Aspire.Dashboard.Model;
+
+/// <summary>
+/// Builds menu items for trace context menus and action buttons.
+/// </summary>
+public sealed class TraceMenuBuilder
+{
+    private static readonly Icon s_viewDetailsIcon = new Icons.Regular.Size16.Info();
+    private static readonly Icon s_structuredLogsIcon = new Icons.Regular.Size16.SlideTextSparkle();
+    private static readonly Icon s_bracesIcon = new Icons.Regular.Size16.Braces();
+
+    private readonly IStringLocalizer<ControlsStrings> _controlsLoc;
+    private readonly NavigationManager _navigationManager;
+    private readonly DashboardDialogService _dialogService;
+    private readonly DashboardDataSource _dataSource;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="TraceMenuBuilder"/> class.
+    /// </summary>
+    public TraceMenuBuilder(
+        IStringLocalizer<ControlsStrings> controlsLoc,
+        NavigationManager navigationManager,
+        DashboardDialogService dialogService,
+        DashboardDataSource dataSource)
+    {
+        _controlsLoc = controlsLoc;
+        _navigationManager = navigationManager;
+        _dialogService = dialogService;
+        _dataSource = dataSource;
+    }
+
+    /// <summary>
+    /// Adds menu items for a trace to the provided list.
+    /// </summary>
+    /// <param name="menuItems">The list to add menu items to.</param>
+    /// <param name="trace">The trace to create menu items for.</param>
+    /// <param name="showViewDetails">Whether to include the View Details menu item. Defaults to <c>true</c>.</param>
+    public void AddMenuItems(
+        List<MenuButtonItem> menuItems,
+        OtlpTrace trace,
+        bool showViewDetails = true)
+    {
+        AddMenuItems(menuItems, trace.TraceId, () => trace, showViewDetails ? DashboardUrls.TraceDetailUrl(trace.TraceId) : null);
+    }
+
+    /// <summary>
+    /// Adds menu items for a trace summary to the provided list.
+    /// </summary>
+    /// <param name="menuItems">The list to add menu items to.</param>
+    /// <param name="summary">The trace summary to create menu items for.</param>
+    /// <param name="traceDetailUrl">
+    /// The URL the View Details menu item navigates to. Callers pass the hosting page's contextual URL so the
+    /// trace detail keeps the list's resource selection and filters, the same as clicking the row.
+    /// </param>
+    public void AddMenuItems(
+        List<MenuButtonItem> menuItems,
+        TraceSummary summary,
+        string traceDetailUrl)
+    {
+        AddMenuItems(menuItems, summary.TraceId, () => _dataSource.TelemetryRepository.GetTrace(summary.TraceId), traceDetailUrl);
+    }
+
+    private void AddMenuItems(
+        List<MenuButtonItem> menuItems,
+        string traceId,
+        Func<OtlpTrace?> getTrace,
+        string? viewDetailsUrl)
+    {
+        if (viewDetailsUrl is not null)
+        {
+            menuItems.Add(new MenuButtonItem
+            {
+                Text = _controlsLoc[nameof(ControlsStrings.ActionViewDetailsText)],
+                Icon = s_viewDetailsIcon,
+                OnClick = () =>
+                {
+                    _navigationManager.NavigateTo(viewDetailsUrl);
+                    return Task.CompletedTask;
+                }
+            });
+        }
+
+        menuItems.Add(new MenuButtonItem
+        {
+            Text = _controlsLoc[nameof(ControlsStrings.ActionStructuredLogsText)],
+            Icon = s_structuredLogsIcon,
+            OnClick = () =>
+            {
+                _navigationManager.NavigateTo(DashboardUrls.StructuredLogsUrl(traceId: traceId));
+                return Task.CompletedTask;
+            }
+        });
+
+        menuItems.Add(new MenuButtonItem
+        {
+            Text = _controlsLoc[nameof(ControlsStrings.ViewJson)],
+            Icon = s_bracesIcon,
+            OnClick = async () =>
+            {
+                var trace = getTrace();
+                if (trace is null)
+                {
+                    return;
+                }
+
+                var result = await ExportHelpers.GetTraceAsJsonAsync(trace, _dataSource.TelemetryRepository, CancellationToken.None).ConfigureAwait(false);
+                await TextVisualizerDialog.OpenDialogAsync(new OpenTextVisualizerDialogOptions
+                {
+                    DialogService = _dialogService,
+                    ValueDescription = result.FileName,
+                    Value = result.Content,
+                    DownloadFileName = result.FileName,
+                    FixedFormat = DashboardUIHelpers.JsonFormat
+                }).ConfigureAwait(false);
+            }
+        });
+    }
+}

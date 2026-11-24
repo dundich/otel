@@ -1,0 +1,84 @@
+name: ${COMPOSE_PROJECT_NAME:-otel-demo-standalone}
+
+# Отдельная standalone-версия: только официальный Aspire Dashboard-контейнер,
+# без AppHost и без Aspire orchestration. Панели Dashboard.Client работают так же.
+services:
+  aspire-dashboard:
+    build:
+      context: ..
+      dockerfile: dashboard/Dockerfile
+    image: ${ASPIRE_DASHBOARD_IMAGE:-ra-monitor-dashboard:17.0.0}
+    environment:
+      ASPIRE_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS: "true"
+      ASPIRE_DASHBOARD_APPLICATION_NAME: "${DASHBOARD_APP_NAME:-РА-Монитор}"
+      Dashboard__Otlp__SuppressUnsecuredMessage: "${DASHBOARD_SUPPRESS_UNSECURED:-true}"
+      ASPNETCORE_URLS: http://0.0.0.0:18888
+      ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL: http://0.0.0.0:18889
+      Dashboard__Frontend__PublicUrl: http://localhost:${GATEWAY_PORT:-8090}
+      Management__ApiBaseUrl: http://app2:8080/api
+      Dashboard__Files__Logs__Path: ${DASHBOARD_LOGS_PATH:-/workspace/logs}
+      Dashboard__Files__Share__Path: ${DASHBOARD_SHARE_PATH:-/host-home}
+    volumes:
+      - ..:/workspace:ro
+      - ${HOME}:/host-home:ro
+    ports:
+      - "${BIND_ADDR:-127.0.0.1}:${DASHBOARD_PORT:-18988}:18888"
+      - "${BIND_ADDR:-127.0.0.1}:${OTLP_PORT:-4327}:18889"
+    restart: unless-stopped
+
+  app1:
+    build:
+      context: ..
+      dockerfile: src/App1.Api/Dockerfile
+    environment:
+      ASPNETCORE_URLS: http://0.0.0.0:8080
+      DOTNET_ENVIRONMENT: Development
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
+      OTEL_SERVICE_NAME: app1
+      OTEL_METRIC_EXPORT_INTERVAL: "2000"
+      OTEL_BSP_SCHEDULE_DELAY: "1000"
+      # Extra panel with all input types, visible only in the standalone version.
+      Standalone__Enabled: "true"
+      Logging__LogLevel__Default: Information
+    ports:
+      - "${BIND_ADDR:-127.0.0.1}:${APP1_PORT:-8091}:8080"
+    depends_on:
+      - aspire-dashboard
+    restart: unless-stopped
+
+  app2:
+    build:
+      context: ..
+      dockerfile: src/App2.Counter/Dockerfile
+    environment:
+      ASPNETCORE_URLS: http://0.0.0.0:8080
+      DOTNET_ENVIRONMENT: Development
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://aspire-dashboard:18889
+      OTEL_SERVICE_NAME: app2
+      OTEL_METRIC_EXPORT_INTERVAL: "2000"
+      OTEL_BSP_SCHEDULE_DELAY: "1000"
+      App1__BaseUrl: http://app1:8080
+      Dashboard__PublicUrl: http://localhost:${GATEWAY_PORT:-8090}
+      Dashboard__Sources__0__Name: app1
+      Dashboard__Sources__0__Url: http://app1:8080
+      Dashboard__Sources__0__PublicUrl: ${APP1_PUBLIC_URL:-http://localhost:8091}
+      Dashboard__SelfPublicUrl: ${APP2_PUBLIC_URL:-http://localhost:8092}
+      Logging__LogLevel__Default: Information
+    ports:
+      - "${BIND_ADDR:-127.0.0.1}:${APP2_PORT:-8092}:8080"
+    depends_on:
+      - app1
+      - aspire-dashboard
+    restart: unless-stopped
+
+  gateway:
+    image: nginx:stable-alpine
+    volumes:
+      - ../deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ../deploy/dashboard-custom.js:/etc/nginx/custom/dashboard-custom.js:ro
+    ports:
+      - "${BIND_ADDR:-127.0.0.1}:${GATEWAY_PORT:-8090}:80"
+    depends_on:
+      - aspire-dashboard
+      - app2
+    restart: unless-stopped

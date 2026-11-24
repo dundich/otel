@@ -1,0 +1,194 @@
+# Azure App Service hosting integration
+
+Use this integration to model, configure, and orchestrate Azure App Service for compute resources in an Aspire solution.
+
+## Getting started
+
+### Prerequisites
+
+- Azure subscription (requires Owner access to the target subscription for role assignments)
+
+### Add the integration
+
+From your AppHost directory, add the `Aspire.Hosting.Azure.AppService` integration with the Aspire CLI:
+
+```bash
+aspire add Aspire.Hosting.Azure.AppService
+aspire add Aspire.Hosting.Dotnet
+```
+
+## Usage example
+
+In the AppHost, add an Azure App Service Environment and publish a compute resource as an Azure App Service Web App:
+
+```csharp
+var builder = DistributedApplication.CreateBuilder(args);
+
+var appServiceEnvironment = builder.AddAzureAppServiceEnvironment("env");
+
+builder.AddDotnetProject("webapp", "../MyWebApp/MyWebApp.csproj")
+    .WithExternalHttpEndpoints()
+    .PublishAsAzureAppServiceWebsite((infrastructure, website) =>
+    {
+        // Customize the App Service health check path and appsettings
+        website.SiteConfig.HealthCheckPath = "/health";
+        website.SiteConfig.AppSettings.Add(new AppServiceNameValuePair()
+        {
+            Name = "Environment",
+            Value = "Production"
+        });
+    });
+```
+
+## Azure App Service constraints
+
+When deploying to Azure App Service, the following constraints apply:
+
+- **External endpoints only**: App Service only supports external endpoints. All endpoints must be configured using `WithExternalHttpEndpoints()`.
+- **HTTP/HTTPS only**: Only HTTP and HTTPS endpoints are supported. Other protocols are not supported.
+- **Single endpoint**: App Service supports only a single target port. Resources with multiple external endpoints with different target ports are not supported. The default target port is 8000, which can be overridden using the `WithHttpEndpoint` extension method.
+
+### Private origins behind Azure Front Door
+
+Add the `Aspire.Hosting.Azure.FrontDoor` integration and connect the App Service environment with
+`environment.WithAzureFrontDoorPrivateLink(frontDoor)`, then add workloads with `frontDoor.WithOrigin(app)`.
+This experimental API disables public network access on all workload websites and uses Front Door Premium with a
+separate managed private endpoint per website. Approve each website's pending private endpoint connection after
+deployment. Existing plans are supported. With deployment slots, origins target the production site and the slot is not
+reachable through Front Door; swap it into production.
+
+The separately provisioned Aspire dashboard is unchanged. App-to-app calls require Front Door URLs or private
+networking and DNS; sharing an App Service plan does not bypass the public access restriction.
+See the [Front Door integration README](../Aspire.Hosting.Azure.FrontDoor/README.md#private-link-to-azure-app-service)
+for a complete example and approval commands.
+
+### Connection string names
+
+Connection resource names remain logical .NET configuration names. For example, a resource named `my-db` is still read as `ConnectionStrings:my-db`. Aspire deploys its value to App Service with the portable physical name `ConnectionStrings__my_db`, because App Service removes hyphens from environment variable names.
+
+Updated Aspire client integrations resolve both forms. Applications using older integrations or reading `IConfiguration` directly must update their connection-string resolution or supply an explicit portable connection name:
+
+```csharp
+var database = builder.AddPostgres("postgres")
+    .AddDatabase("my-db");
+
+builder.AddDotnetProject("api", "../Api/Api.csproj")
+    .WithReference(database, connectionName: "my_db");
+```
+
+Explicit `ConnectionStringEnvironmentVariable` values are physical names and are not normalized. App Service continues to reject explicit or unrelated environment-variable names containing `-`.
+
+### Publishing compute resources to Azure App Service
+
+The `PublishAsAzureAppServiceWebsite` extension method configures a compute resource to be published as an Azure App Service Web App when deploying to Azure. This method allows you to customize the App Service Web App configuration using the Azure Provisioning SDK.
+
+```csharp
+builder.AddDotnetProject("api", "../Api/Api.csproj")
+    .WithHttpEndpoint(targetPort: 8080)
+    .WithExternalHttpEndpoints()
+    .WithHealthProbe(ProbeType.Liveness, "/health")
+    .WithArgs("--environment", "Production")
+    .PublishAsAzureAppServiceWebsite((infrastructure, website) =>
+    {
+        // Customize the App Service Web App appsettings
+        website.SiteConfig.IsWebSocketsEnabled = true;
+        website.SiteConfig.MinTlsVersion = SupportedTlsVersions.Tls1_2;
+    });
+```
+
+### Adding an Azure App Service Environment
+
+The Azure App Service Environment resource creates the underlying infrastructure needed to host your applications, including:
+
+- An Azure App Service Plan (default SKU: P0v3)
+- An Azure Container Registry for storing container images
+- A managed identity for accessing the container registry
+- Optionally, the Aspire Dashboard as an Azure App Service Web App
+- Optionally, Application Insights for monitoring and telemetry
+
+```csharp
+var appServiceEnvironment = builder.AddAzureAppServiceEnvironment("env");
+```
+
+By default, the Aspire Dashboard is included in the App Service Environment. To disable the dashboard, use the `WithDashboard` extension method:
+
+```csharp
+var appServiceEnvironment = builder.AddAzureAppServiceEnvironment("env")
+    .WithDashboard(enable: false);
+```
+
+### Configuring regional virtual network integration
+
+To configure regional virtual network integration for the websites in an Azure App Service environment, add the `Aspire.Hosting.Azure.Network` integration:
+
+```bash
+aspire add Aspire.Hosting.Azure.Network
+```
+
+Then create a subnet and apply it to the environment:
+
+```csharp
+#pragma warning disable ASPIREAZURE003 // Azure Virtual Network APIs are experimental.
+var vnet = builder.AddAzureVirtualNetwork("vnet");
+var subnet = vnet.AddSubnet("app-service-subnet", "10.0.0.0/24");
+
+var appServiceEnvironment = builder.AddAzureAppServiceEnvironment("env")
+    .WithDelegatedSubnet(subnet);
+#pragma warning restore ASPIREAZURE003
+```
+
+**TypeScript**
+
+```typescript
+const vnet = await builder.addAzureVirtualNetwork("vnet");
+const subnet = await vnet.addSubnet("app-service-subnet", "10.0.0.0/24");
+
+const appServiceEnvironment = await builder.addAzureAppServiceEnvironment("env")
+    .withDelegatedSubnet(subnet);
+```
+
+`WithDelegatedSubnet` delegates the subnet to `Microsoft.Web/serverFarms` and configures every generated
+website, deployment slot, and the default Aspire Dashboard to use it for regional virtual network integration.
+The subnet must meet the [Azure App Service regional virtual network integration requirements](https://learn.microsoft.com/azure/app-service/overview-vnet-integration).
+
+Regional virtual network integration affects outbound traffic only. It does not make website or dashboard ingress
+private, and it does not enable Route All. Configure private endpoints or access restrictions and Route All
+separately when those behaviors are required.
+
+### Enabling Application Insights
+
+Application Insights can be enabled for the App Service Environment using the `WithAzureApplicationInsights` extension method. A different location can be specified for Application Insights using the optional location parameter:
+
+```csharp
+var appServiceEnvironment = builder.AddAzureAppServiceEnvironment("env")
+    .WithAzureApplicationInsights();
+```
+
+### Customizing the App Service Plan
+
+The App Service Plan can be customized using the `ConfigureInfrastructure` extension method.
+
+The default SKU for the App Service Plan is P0V3 and can be changed using this extension method:
+
+```csharp
+var appServiceEnvironment = builder.AddAzureAppServiceEnvironment("env")
+    .ConfigureInfrastructure((infra) =>
+    {
+        var plan = infra.GetProvisionableResources().OfType<AppServicePlan>().Single();
+        plan.Sku = new AppServiceSkuDescription
+        {
+            Name = "P2V3",
+            Tier = "Premium"
+        };
+    });
+```
+
+## Additional documentation
+
+* https://aspire.dev/integrations/gallery/
+* https://aspire.dev/integrations/cloud/azure/azure-app-service/azure-app-service-host/
+* https://learn.microsoft.com/azure/app-service/
+
+## Feedback & contributing
+
+https://github.com/microsoft/aspire

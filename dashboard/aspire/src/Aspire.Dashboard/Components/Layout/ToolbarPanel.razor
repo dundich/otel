@@ -1,0 +1,20 @@
+﻿
+<FluentDialogBody Class="toolbar-panel-body">
+    <ChildContent>
+        <div class="mobile-filter-toolbar">
+            @Content.ToolbarSection
+        </div>
+    </ChildContent>
+    <ActionTemplate>
+        <FluentButton Class="mobile-toolbar"
+                      Appearance="@ButtonAppearance.Primary"
+                      Disabled="true">
+            @Content.MobileToolbarButtonText
+        </FluentButton>
+    </ActionTemplate>
+</FluentDialogBody>
+
+@code {
+    [Parameter]
+    public required AspirePageContentLayout.MobileToolbar Content { get; set; }
+}

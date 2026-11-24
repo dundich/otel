@@ -1,0 +1,72 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="cs" original="../PsCommandStrings.resx">
+    <body>
+      <trans-unit id="Description">
+        <source>List running AppHosts</source>
+        <target state="translated">Vypsat spuštěné instance AppHost</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FollowOptionDescription">
+        <source>Keep running and emit updates as running AppHosts change. JSON output uses newline-delimited changed AppHost records by default, or full snapshots with --output snapshot.</source>
+        <target state="translated">Pokračovat v běhu a při změnách spuštěných instancí AppHost vypisovat aktualizace. Výstup ve formátu JSON ve výchozím nastavení obsahuje změněné záznamy instancí AppHost oddělené novým řádkem, při použití --output snapshot pak úplné snímky.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FollowRequiresJson">
+        <source>The --follow option only supports JSON output. Use --format json.</source>
+        <target state="translated">Možnost --follow podporuje jen výstup ve formátu JSON. Použijte --format json.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="HeaderCliPid">
+        <source>CLI PID</source>
+        <target state="translated">CLI PID</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="HeaderDashboard">
+        <source>Dashboard</source>
+        <target state="translated">Řídicí panel</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="HeaderPath">
+        <source>Path</source>
+        <target state="translated">Cesta</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="HeaderPid">
+        <source>PID</source>
+        <target state="translated">PID</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="HeaderSdk">
+        <source>SDK</source>
+        <target state="translated">Sada SDK</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InvalidOutputMode">
+        <source>The --output option must be default or snapshot.</source>
+        <target state="translated">Možnost --output musí mít hodnotu default nebo snapshot.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="JsonOptionDescription">
+        <source>Output format (Table or Json)</source>
+        <target state="translated">Výstupní formát (tabulka nebo JSON)</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="OutputOptionDescription">
+        <source>Output mode: default preserves the standard AppHost output; snapshot emits full AppHost snapshots with resource health, heartbeats, and errors. Snapshot requires --follow --format json.</source>
+        <target state="translated">Režim výstupu: default zachovává standardní výstup instancí AppHost; snapshot vypisuje úplné snímky instancí AppHost se stavem prostředků, prezenčními signály a chybami. Režim snapshot vyžaduje --follow --format json.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SnapshotRequiresFollowJson">
+        <source>The --output snapshot option requires --follow --format json.</source>
+        <target state="translated">Možnost --output snapshot vyžaduje --follow --format json.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="UnknownPath">
+        <source>Unknown</source>
+        <target state="translated">Neznámé</target>
+        <note />
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

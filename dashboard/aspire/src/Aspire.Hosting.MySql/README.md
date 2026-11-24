@@ -1,0 +1,98 @@
+# MySQL hosting integration
+
+Use this integration to model, configure, and orchestrate a MySQL resource in an Aspire solution.
+
+## Getting started
+
+### Add the integration
+
+From your AppHost directory, add the `Aspire.Hosting.MySql` integration with the Aspire CLI:
+
+```bash
+aspire add Aspire.Hosting.MySql
+aspire add Aspire.Hosting.Dotnet
+```
+
+## Usage example
+
+In the AppHost, add a MySQL resource and reference it from another resource with either C# or TypeScript:
+
+**C#**
+
+```csharp
+var db = builder.AddMySql("mysql").AddDatabase("mydb");
+
+var myService = builder.AddDotnetProject("myservice", "../MyService/MyService.csproj")
+                       .WithReference(db);
+```
+
+**TypeScript**
+
+```typescript
+const db = await builder.addMySql("mysql").addDatabase("mydb");
+
+const myService = await builder.addNodeApp("myService", "../my-service", "server.js")
+                       .withReference(db);
+```
+
+## MySQL REPL
+
+Call `WithRepl()` to opt into a **REPL** command on the MySQL server resource in the dashboard:
+
+```csharp
+builder.AddMySql("mysql").WithRepl();
+```
+
+```typescript
+await builder.addMySql("mysql").withRepl();
+```
+
+REPL access is disabled by default and is available only in run mode. Enable it only for trusted dashboard
+users: the shell uses the resource's configured credentials and is not read-only. Sharing the dashboard
+through a tunnel, Codespaces, or VS Code remote development also exposes this capability to users who can
+execute resource commands.
+
+Use `quit` before closing the terminal tab to end the session cleanly. Closing the tab alone can
+leave `mysql` running inside the container. Stopping the container also ends any remaining REPL processes.
+
+When the container is running, the command opens the bundled `mysql` client in the terminal dock, authenticated as `root` with the resource's configured password. No local MySQL client installation is required.
+
+The password is passed through an environment variable, not command-line arguments or SQL history. The command uses the configured Docker or Podman runtime and is not added in publish mode.
+
+## Connection Properties
+
+When you reference a MySQL resource using `WithReference`, the following connection properties are made available to the consuming project:
+
+### MySQL server
+
+The MySQL server resource exposes the following connection properties:
+
+| Property Name | Description |
+|---------------|-------------|
+| `Host` | The hostname or IP address of the MySQL server |
+| `Port` | The port number the MySQL server is listening on |
+| `Username` | The username for authentication |
+| `Password` | The password for authentication |
+| `Uri` | The connection URI, with the format `mysql://root:{Password}@{Host}:{Port}` |
+| `JdbcConnectionString` | The JDBC connection string for MySQL, with the format `jdbc:mysql://{Host}:{Port}`. User and password credentials are provided as separate `Username` and `Password` properties. |
+
+### MySQL database
+
+The MySQL database resource combines the server properties above and adds the following connection properties:
+
+| Property Name | Description |
+|---------------|-------------|
+| `DatabaseName` | The MySQL database name |
+| `Uri` | The database-specific URI, with the format `mysql://root:{Password}@{Host}:{Port}/{DatabaseName}` |
+| `JdbcConnectionString` | The database-specific JDBC connection string, with the format `jdbc:mysql://{Host}:{Port}/{DatabaseName}`. User and password credentials are provided as separate `Username` and `Password` properties. |
+
+Aspire exposes each property as an environment variable named `[RESOURCE]_[PROPERTY]`. For instance, the `Uri` property of a resource called `db1` becomes `DB1_URI`.
+
+## Additional documentation
+
+* https://aspire.dev/integrations/gallery/
+* https://aspire.dev/integrations/databases/mysql/mysql-host/
+
+## Feedback & contributing
+
+https://github.com/microsoft/aspire

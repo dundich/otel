@@ -1,0 +1,752 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="zh-Hans" original="../ControlsStrings.resx">
+    <body>
+      <trans-unit id="ActionStructuredLogsText">
+        <source>Structured logs</source>
+        <target state="translated">结构化日志</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ActionViewDetailsText">
+        <source>View details</source>
+        <target state="translated">查看详细信息</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ActionsButtonText">
+        <source>Actions</source>
+        <target state="translated">操作</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ActionsColumnHeader">
+        <source>Actions</source>
+        <target state="translated">操作</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ApplicationLower">
+        <source>application</source>
+        <target state="translated">应用程序</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ChartContainerAllTags">
+        <source>All tags</source>
+        <target state="translated">所有标记</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ChartContainerFilteredTags">
+        <source>Filtered tags</source>
+        <target state="translated">已筛选的标记</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ChartContainerFiltersHeader">
+        <source>Filters</source>
+        <target state="translated">筛选器</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ChartContainerGraphAccessibleLabel">
+        <source>Graph. For an accessible view please navigate to the Table tab</source>
+        <target state="translated">图。有关可访问的视图，请导航到“表”选项卡</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ChartContainerGraphTab">
+        <source>Graph</source>
+        <target state="translated">图</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ChartContainerIncompatibleHistogramBounds">
+        <source>Some histograms have no shared bucket boundaries. Percentiles cannot be calculated for those intervals. Use Show count to view observation counts.</source>
+        <target state="translated">部分直方图没有共享分箱边界。无法计算这些间隔的百分位数。使用“显示计数”查看观察计数。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ChartContainerOptionsHeader">
+        <source>Options</source>
+        <target state="translated">选项</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ChartContainerOverflowDescription">
+        <source>Some dimensions for the metric have been dropped by the OpenTelemetry SDK.</source>
+        <target state="translated">OpenTelemetry SDK 已删除指标的一些维度。</target>
+        <note>OpenTelemetry is the name of the standard.</note>
+      </trans-unit>
+      <trans-unit id="ChartContainerOverflowLink">
+        <source>For more information, see &lt;a href="{0}" target="_blank"&gt;OpenTelemetry specification cardinality limits&lt;/a&gt;.</source>
+        <target state="translated">有关详细信息，请参阅 &lt;a href="{0}" target="_blank"&gt;OpenTelemetry 规范基数限制&lt;/a&gt;。</target>
+        <note>OpenTelemetry is the name of the standard.</note>
+      </trans-unit>
+      <trans-unit id="ChartContainerOverflowTitle">
+        <source>Cardinality capping has been detected</source>
+        <target state="translated">已检测到基数上限</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ChartContainerShowChangePerIntervalLabel">
+        <source>Show change per interval</source>
+        <target state="new">Show change per interval</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ChartContainerShowCountLabel">
+        <source>Show count</source>
+        <target state="translated">显示计数</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ChartContainerTableTab">
+        <source>Table</source>
+        <target state="translated">表</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ChartContainerUnableToDisplay">
+        <source>Unable to display chart</source>
+        <target state="translated">无法显示图表</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ChartContainerUnitPerInterval">
+        <source>{0} per interval</source>
+        <target state="new">{0} per interval</target>
+        <note>{0} is the instrument's unit, e.g. "Requests"</note>
+      </trans-unit>
+      <trans-unit id="ClearAllResources">
+        <source>Remove all telemetry</source>
+        <target state="translated">移除所有遥测数据</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ClearPendingSelectedResource">
+        <source>Remove telemetry for resource</source>
+        <target state="translated">移除资源的遥测数据</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ClearSelectedResource">
+        <source>Remove telemetry for {0}</source>
+        <target state="translated">移除 {0} 的遥测数据</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ClearSignalsButtonTitle">
+        <source>Remove data</source>
+        <target state="translated">移除数据</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="CollapseAllSpansText">
+        <source>Collapse all</source>
+        <target state="translated">全部折叠</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DetailsColumnHeader">
+        <source>Details</source>
+        <target state="translated">详细信息</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="Download">
+        <source>Download</source>
+        <target state="translated">下载</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DurationColumnHeader">
+        <source>Duration</source>
+        <target state="translated">持续时间</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="EndpointNameColumnHeader">
+        <source>Endpoint name</source>
+        <target state="translated">终结点名称</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="EventColumnHeader">
+        <source>Event</source>
+        <target state="translated">事件</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ExceptionDetailsTitle">
+        <source>Exception details</source>
+        <target state="translated">异常详细信息</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ExpandAllSpansText">
+        <source>Expand all</source>
+        <target state="translated">全部展开</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ExportEnv">
+        <source>Export .env</source>
+        <target state="translated">导出 .env</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="OverviewGraphAccessibleLabel">
+        <source>Resource graph. The resource list shows the same resources in an accessible format</source>
+        <target state="new">Resource graph. The resource list shows the same resources in an accessible format</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ParameterDeleteValueAction">
+        <source>Delete value</source>
+        <target state="new">Delete value</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcesContainerGraphAccessibleLabel">
+        <source>Graph. For an accessible view please navigate to the Resources tab</source>
+        <target state="translated">图。有关可访问的视图，请导航到“资源”选项卡</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcesContainerGraphTab">
+        <source>Graph</source>
+        <target state="translated">图表</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcesContainerParametersTab">
+        <source>Parameters</source>
+        <target state="translated">参数</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcesContainerTableTab">
+        <source>Resources</source>
+        <target state="translated">资源</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ScrollToBottom">
+        <source>Scroll to bottom</source>
+        <target state="translated">滚动到底部</target>
+        <note>Accessible name and tooltip for the floating button that jumps a large scroll region to the bottom.</note>
+      </trans-unit>
+      <trans-unit id="SummaryDetailsViewCloseViewWithShortcut">
+        <source>Close (Esc)</source>
+        <target state="new">Close (Esc)</target>
+        <note>Tooltip of a close button that the Escape key also triggers. Esc is the label of the Escape key on keyboards.</note>
+      </trans-unit>
+      <trans-unit id="TextVisualizerContentLabel">
+        <source>Text content</source>
+        <target state="translated">文本内容</target>
+        <note>Accessible name for the scrollable text/code region in the text visualizer.</note>
+      </trans-unit>
+      <trans-unit id="ViewJson">
+        <source>View JSON</source>
+        <target state="translated">查看 JSON</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FilterPlaceholder">
+        <source>Filter...</source>
+        <target state="translated">筛选...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="EnvironmentVariablesFilterToggleShowAll">
+        <source>Show all properties</source>
+        <target state="translated">显示所有属性</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="EnvironmentVariablesFilterToggleShowSpecOnly">
+        <source>Show core properties</source>
+        <target state="translated">显示核心属性</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="EnvironmentVariablesHideVariableValues">
+        <source>Hide sensitive values</source>
+        <target state="translated">隐藏敏感值</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="EnvironmentVariablesShowVariableValues">
+        <source>Show sensitive values</source>
+        <target state="translated">显示敏感值</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FluentDataGridHeaderCellGrowAriaLabelText">
+        <source>Grow column width</source>
+        <target state="translated">增加列宽</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FluentDataGridHeaderCellResetAriaLabelText">
+        <source>Reset column widths</source>
+        <target state="translated">重置列宽</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FluentDataGridHeaderCellResizeButtonText">
+        <source>Resize</source>
+        <target state="translated">重设大小</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FluentDataGridHeaderCellResizeDiscreteLabel">
+        <source>Column width</source>
+        <target state="translated">列宽</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FluentDataGridHeaderCellResizeLabel">
+        <source>Column width (in pixels)</source>
+        <target state="translated">列宽(以像素为单位)</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FluentDataGridHeaderCellShrinkAriaLabelText">
+        <source>Shrink column width</source>
+        <target state="translated">缩小列宽</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FluentDataGridHeaderCellSortAscendingButtonText">
+        <source>Sort (ascending)</source>
+        <target state="translated">排序(升序)</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FluentDataGridHeaderCellSortButtonText">
+        <source>Sort</source>
+        <target state="translated">排序</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FluentDataGridHeaderCellSortDescendingButtonText">
+        <source>Sort (descending)</source>
+        <target state="translated">排序(降序)</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FluentDataGridHeaderCellSubmitAriaLabelText">
+        <source>Set column widths</source>
+        <target state="translated">设置列宽</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GenAIDetailsTitle">
+        <source>GenAI details</source>
+        <target state="translated">GenAI 详细信息</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GridValueCopied">
+        <source>Copied!</source>
+        <target state="translated">已复制!</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GridValueCopyToClipboard">
+        <source>Copy to clipboard</source>
+        <target state="translated">复制到剪贴板</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GridValueMaskHideValue">
+        <source>Hide value</source>
+        <target state="translated">隐藏值</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GridValueMaskShowValue">
+        <source>Show value</source>
+        <target state="translated">显示值</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="HideHiddenResources">
+        <source>Hide hidden resources</source>
+        <target state="translated">隐藏已隐藏的资源</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="LabelAll">
+        <source>(All)</source>
+        <target state="translated">(全部)</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="LabelEmpty">
+        <source>(Empty)</source>
+        <target state="translated">(空)</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="LabelNone">
+        <source>(None)</source>
+        <target state="translated">(无)</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="LabelOther">
+        <source>(Other)</source>
+        <target state="translated">其他</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="LabelValueUnset">
+        <source>(Unset)</source>
+        <target state="translated">(取消设置)</target>
+        <note>Unset is a noun, not a verb, to indicate that the value has not been set.</note>
+      </trans-unit>
+      <trans-unit id="LinkAddressColumnHeader">
+        <source>Address</source>
+        <target state="translated">地址</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="LinkTextColumnHeader">
+        <source>Text</source>
+        <target state="translated">文本</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="Loading">
+        <source>Loading...</source>
+        <target state="translated">正在加载...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="MetricTableExemplarsColumnHeader">
+        <source>Exemplars</source>
+        <target state="translated">样本</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="MetricTableNoMetricsFound">
+        <source>No metrics data found</source>
+        <target state="translated">未找到指标数据</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="MetricTableShowOnlyValueChanges">
+        <source>Only show value updates</source>
+        <target state="translated">仅显示值更新</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="MetricTableStartColumnHeader">
+        <source>Time</source>
+        <target state="translated">时间</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="MetricTableValueDecreased">
+        <source>Value decreased</source>
+        <target state="translated">已减小值</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="MetricTableValueIncreased">
+        <source>Value increased</source>
+        <target state="translated">已增加值</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="MetricTableValueNoChange">
+        <source>Value did not change</source>
+        <target state="translated">值未更改</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="MetricTableViewExemplarsLabel">
+        <source>View exemplars</source>
+        <target state="translated">查看示例</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="NameColumnHeader">
+        <source>Name</source>
+        <target state="translated">名称</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="PageToolbarLandmark">
+        <source>Page toolbar</source>
+        <target state="translated">页面工具栏</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ParameterSetValueAction">
+        <source>Click to set parameter value</source>
+        <target state="translated">单击以设置参数值</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ParameterValueNotSet">
+        <source>Value not set</source>
+        <target state="translated">未设置值</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="PauseButtonTitle">
+        <source>Pause incoming data</source>
+        <target state="translated">暂停传入数据</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="PauseWarningTitle">
+        <source>Capture paused</source>
+        <target state="translated">已暂停捕获</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="PlotlyChartCount">
+        <source>Count</source>
+        <target state="translated">计数</target>
+        <note>Count is the name of a plot y-axis label</note>
+      </trans-unit>
+      <trans-unit id="PlotlyChartExemplar">
+        <source>Exemplar</source>
+        <target state="translated">示例</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="PlotlyChartExemplars">
+        <source>Exemplars</source>
+        <target state="translated">样本</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="PlotlyChartLength">
+        <source>Length</source>
+        <target state="translated">长度</target>
+        <note>Length is the name of a plot y-axis label</note>
+      </trans-unit>
+      <trans-unit id="PlotlyChartTime">
+        <source>Time</source>
+        <target state="translated">时间</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="PlotlyChartTrace">
+        <source>Trace</source>
+        <target state="translated">跟踪</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="PlotlyChartValue">
+        <source>Value</source>
+        <target state="translated">值</target>
+        <note>Value is the name of a plot y-axis label</note>
+      </trans-unit>
+      <trans-unit id="PropertyGridValueColumnHeader">
+        <source>Value</source>
+        <target state="translated">值</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceActions">
+        <source>Resource actions</source>
+        <target state="translated">资源操作</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceDetailsBackReferences">
+        <source>Back references</source>
+        <target state="translated">向后引用</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceDetailsEnvironmentVariablesHeader">
+        <source>Environment variables</source>
+        <target state="translated">环境变量</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceDetailsReferences">
+        <source>References</source>
+        <target state="translated">引用</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceDetailsResourceHeader">
+        <source>Resource</source>
+        <target state="translated">资源</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceDetailsStateDescriptionHeader">
+        <source>State details</source>
+        <target state="translated">状态详细信息</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceDetailsTypeHeader">
+        <source>Type</source>
+        <target state="translated">类型</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceDetailsUrlsHeader">
+        <source>URLs</source>
+        <target state="translated">URL</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceDetailsVolumesHeader">
+        <source>Volumes</source>
+        <target state="translated">卷</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceDropdownReplicaAccessibleTitle">
+        <source>{0} (replica of {1})</source>
+        <target state="translated">{0} ({1} 的副本)</target>
+        <note>{0} is a resource name, {1} is a replica set name</note>
+      </trans-unit>
+      <trans-unit id="ResourceGraphNoEndpoints">
+        <source>No endpoints</source>
+        <target state="translated">无终结点</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceHealthChecksHeader">
+        <source>Health checks</source>
+        <target state="translated">运行状况检查</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceLabel">
+        <source>Resource</source>
+        <target state="translated">资源</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResumeButtonTitle">
+        <source>Resume incoming data</source>
+        <target state="translated">恢复传入数据</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SelectAResource">
+        <source>Select a resource</source>
+        <target state="translated">选择资源</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ShowHiddenResources">
+        <source>Show hidden resources</source>
+        <target state="translated">显示隐藏的资源</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SpanDetailsBacklinksHeader">
+        <source>Backlinks</source>
+        <target state="translated">反向链接</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SpanDetailsContextHeader">
+        <source>Context</source>
+        <target state="translated">上下文</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SpanDetailsDetailsColumnHeader">
+        <source>Details</source>
+        <target state="translated">详细信息</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SpanDetailsDurationLabel">
+        <source>Duration</source>
+        <target state="translated">持续时间</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SpanDetailsEventsHeader">
+        <source>Events</source>
+        <target state="translated">事件</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SpanDetailsLinksHeader">
+        <source>Links</source>
+        <target state="translated">链接</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SpanDetailsResourceHeader">
+        <source>Resource</source>
+        <target state="translated">资源</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SpanDetailsResourceLabel">
+        <source>Resource</source>
+        <target state="translated">资源</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SpanDetailsSpanColumnHeader">
+        <source>Span</source>
+        <target state="translated">范围</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SpanDetailsSpanHeader">
+        <source>Span</source>
+        <target state="translated">范围</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SpanDetailsSpanPrefix">
+        <source>Span</source>
+        <target state="translated">范围</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SpanDetailsStartTimeLabel">
+        <source>Start time</source>
+        <target state="translated">开始时间</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SpanTypeCloud">
+        <source>Cloud</source>
+        <target state="translated">云</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SpanTypeDatabase">
+        <source>Database</source>
+        <target state="translated">数据库</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SpanTypeGenAI">
+        <source>Gen AI</source>
+        <target state="translated">Gen AI</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SpanTypeHttp">
+        <source>HTTP</source>
+        <target state="translated">HTTP</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SpanTypeMessaging">
+        <source>Messaging</source>
+        <target state="translated">消息</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SpanTypeRpc">
+        <source>RPC</source>
+        <target state="translated">RPC</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="StateColumnHeader">
+        <source>State</source>
+        <target state="translated">状态</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="StructuredLogsDetailsContextHeader">
+        <source>Context</source>
+        <target state="translated">上下文</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="StructuredLogsDetailsExceptionHeader">
+        <source>Exception</source>
+        <target state="translated">异常</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="StructuredLogsDetailsLogEntryHeader">
+        <source>Log entry</source>
+        <target state="translated">日志条目</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="StructuredLogsDetailsResourceHeader">
+        <source>Resource</source>
+        <target state="translated">资源</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="StructuredLogsDetailsResourceLabel">
+        <source>Resource</source>
+        <target state="translated">资源</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="StructuredLogsDetailsTimestampLabel">
+        <source>Timestamp</source>
+        <target state="translated">时间戳</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="TimeOffsetColumnHeader">
+        <source>Time offset</source>
+        <target state="translated">时间偏移</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="TimestampColumnHeader">
+        <source>Timestamp</source>
+        <target state="translated">时间戳</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ToggleNesting">
+        <source>Toggle nesting</source>
+        <target state="translated">切换嵌套</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ViewAction">
+        <source>View</source>
+        <target state="translated">查看</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ViewLogsLink">
+        <source>View logs</source>
+        <target state="translated">查看日志</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SummaryDetailsViewCloseView">
+        <source>Close</source>
+        <target state="translated">关闭</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SummaryDetailsViewSplitHorizontal">
+        <source>Split horizontal</source>
+        <target state="translated">水平拆分</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SummaryDetailsViewSplitVertical">
+        <source>Split vertical</source>
+        <target state="translated">垂直拆分</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ViewStructuredLogsText">
+        <source>View structured logs</source>
+        <target state="translated">查看结构化日志</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="VolumeMountTypeColumnHeader">
+        <source>Mount type</source>
+        <target state="translated">装载类型</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="VolumeMountTypeReadOnlyTitle">
+        <source>Read-only</source>
+        <target state="new">Read-only</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="VolumePathColumnHeader">
+        <source>Path</source>
+        <target state="translated">路径</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="VolumeRevealFailed">
+        <source>Couldn't open '{0}'. It may not exist on this machine.</source>
+        <target state="new">Couldn't open '{0}'. It may not exist on this machine.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="VolumeRevealInFileExplorer">
+        <source>Reveal in file explorer</source>
+        <target state="new">Reveal in file explorer</target>
+        <note />
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

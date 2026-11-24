@@ -1,0 +1,31 @@
+﻿@using Aspire.Dashboard.Resources
+
+@inject IStringLocalizer<ControlsStrings> Loc
+
+@* Fluent Dropdown dismisses pointer selections only when fluent-option is the event target. *@
+<FluentStack Orientation="Orientation.Horizontal" HorizontalGap="3" Style="pointer-events: none;">
+    @if (ViewModel.Id?.Type is OtlpResourceType.ResourceGrouping)
+    {
+        <FluentIcon Icon="Icons.Regular.Size20.AppsList"
+                    Color="Color.Primary"
+                    Style="vertical-align: text-bottom;"/>
+        <span>@ViewModel.Name (<span class="resource-select-resource-label">@Loc[nameof(ControlsStrings.ApplicationLower)]</span>)</span>
+    }
+    else if (ViewModel.Id?.Type is OtlpResourceType.Instance)
+    {
+        <FluentIcon Icon="Icons.Regular.Size20.ArrowTurnDownRight"
+                    Color="Color.Primary"
+                    Style="vertical-align: text-bottom;" />
+        <span aria-hidden="true">@ViewModel.Name</span>
+        <span class="visually-hidden">@string.Format(@Loc[nameof(ControlsStrings.ResourceDropdownReplicaAccessibleTitle)], ViewModel.Name, ViewModel.Id.ReplicaSetName)</span>
+    }
+    else
+    {
+        @ViewModel.Name
+    }
+</FluentStack>
+
+@code {
+    [Parameter, EditorRequired]
+    public required SelectViewModel<ResourceTypeDetails> ViewModel { get; set; }
+}

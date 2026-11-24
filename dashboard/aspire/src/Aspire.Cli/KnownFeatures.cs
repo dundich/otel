@@ -1,0 +1,173 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+using Aspire.Cli.Configuration;
+using Aspire.Cli.Packaging;
+using Microsoft.Extensions.Configuration;
+
+namespace Aspire.Cli;
+
+/// <summary>
+/// Metadata for an Aspire feature flag.
+/// </summary>
+/// <param name="Name">The feature flag name (without the "features." prefix).</param>
+/// <param name="Description">A description of what the feature does.</param>
+/// <param name="DefaultValue">The default value if not explicitly configured.</param>
+/// <param name="Hidden">
+/// When <c>true</c>, the feature is omitted from user-facing surfaces (the <c>aspire config</c>
+/// available-features listing and <c>aspire config info</c> / its generated VS Code schemas). The
+/// flag still works if set directly in configuration; hiding only removes it from discovery.
+/// </param>
+/// <param name="ProjectOnly">Whether the feature requires explicit project configuration.</param>
+internal sealed record FeatureMetadata(string Name, string Description, bool DefaultValue, bool Hidden = false, bool ProjectOnly = false);
+
+// this is a copy of Shared/KnownResourceNames.cs
+internal static class KnownFeatures
+{
+    public static string FeaturePrefix => "features";
+    public static string UpdateNotificationsEnabled => "updateNotificationsEnabled";
+    public static string ShowDeprecatedPackages => "showDeprecatedPackages";
+    public static string StagingChannelEnabled => "stagingChannelEnabled";
+    public static string DefaultWatchEnabled => "defaultWatchEnabled";
+    public static string ShowAllTemplates => "showAllTemplates";
+    public static string ExperimentalPolyglotRust => "experimentalPolyglotRust";
+    public static string ExperimentalPolyglotJava => "experimentalPolyglotJava";
+    public static string ExperimentalPolyglotPython => "experimentalPolyglotPython";
+    public static string ExperimentalHostingIntegrations => "experimentalHostingIntegrations";
+    public static string AppHostServerV2 => "appHostServerV2";
+
+    // Server selection is an AppHost migration, not an ambient CLI preference.
+    // A global flag must not silently switch existing applications.
+    public static bool IsAppHostServerV2Enabled(AspireConfigFile? config)
+        => config?.Features is { } features && features.TryGetValue(AppHostServerV2, out var enabled) && enabled;
+    public static string NuGetSignatureVerificationEnabled => "nugetSignatureVerificationEnabled";
+    public static string PolyglotIntegrationFilterEnabled => "polyglotIntegrationFilterEnabled";
+
+    private static readonly Dictionary<string, FeatureMetadata> s_featureMetadata = new()
+    {
+        [UpdateNotificationsEnabled] = new(
+            UpdateNotificationsEnabled,
+            "Check if update notifications are disabled and set version check environment variable",
+            DefaultValue: true),
+
+        [ShowDeprecatedPackages] = new(
+            ShowDeprecatedPackages,
+            "Show or hide deprecated packages in 'aspire add' search results",
+            DefaultValue: false),
+
+        [StagingChannelEnabled] = new(
+            StagingChannelEnabled,
+            "Enable or disable access to the staging channel for early access to preview features and packages",
+            DefaultValue: false),
+
+        [DefaultWatchEnabled] = new(
+            DefaultWatchEnabled,
+            "Enable or disable watch mode by default when running Aspire applications for automatic restarts on file changes",
+            DefaultValue: false),
+
+        [ShowAllTemplates] = new(
+            ShowAllTemplates,
+            "Show all available templates including experimental ones in 'aspire new' and 'aspire init' commands",
+            DefaultValue: false),
+
+        [ExperimentalPolyglotRust] = new(
+            ExperimentalPolyglotRust,
+            "Enable or disable experimental Rust language support for polyglot Aspire applications",
+            DefaultValue: false),
+
+        [ExperimentalPolyglotJava] = new(
+            ExperimentalPolyglotJava,
+            "Enable or disable experimental Java language support for polyglot Aspire applications",
+            DefaultValue: false),
+
+        [ExperimentalPolyglotPython] = new(
+            ExperimentalPolyglotPython,
+            "Enable or disable experimental Python language support for polyglot Aspire applications",
+            DefaultValue: false),
+
+        [ExperimentalHostingIntegrations] = new(
+            ExperimentalHostingIntegrations,
+            "Enable experimental hosting integrations authored outside .NET",
+            DefaultValue: false),
+
+        [AppHostServerV2] = new(
+            AppHostServerV2,
+            "Use AppHost Server v2 for this AppHost. Requires an explicit project configuration setting.",
+            DefaultValue: false,
+            ProjectOnly: true),
+
+        [NuGetSignatureVerificationEnabled] = new(
+            NuGetSignatureVerificationEnabled,
+            "Enable or disable defaulting the DOTNET_NUGET_SIGNATURE_VERIFICATION environment variable for NuGet operations",
+            DefaultValue: true),
+
+        [PolyglotIntegrationFilterEnabled] = new(
+            PolyglotIntegrationFilterEnabled,
+            "(Experimental) Restrict 'aspire add', 'aspire integration list', and 'aspire integration search' in non-C# AppHosts to integrations carrying the 'polyglot' NuGet tag. Disabled by default because no remote feed resolves the tag usefully today: Azure DevOps Artifacts feeds ignore 'tags:' query scoping, and nuget.org returns no first-party integrations for it. The filter fails closed, so enabling it against a remote feed hides every integration. Enable it only against a local package source or hive, where the tag is read from the nuspec.",
+            DefaultValue: false)
+    };
+
+    /// <summary>
+    /// Gets metadata for a specific feature.
+    /// </summary>
+    public static FeatureMetadata? GetFeatureMetadata(string featureName)
+    {
+        return s_featureMetadata.TryGetValue(featureName, out var metadata) ? metadata : null;
+    }
+
+    /// <summary>
+    /// Gets all available feature metadata.
+    /// </summary>
+    public static IEnumerable<FeatureMetadata> GetAllFeatureMetadata()
+    {
+        return s_featureMetadata.Values.OrderBy(m => m.Name);
+    }
+
+    /// <summary>
+    /// Gets all available feature names (without the "features." prefix).
+    /// </summary>
+    public static IEnumerable<string> GetAllFeatureNames()
+    {
+        return s_featureMetadata.Keys.OrderBy(name => name);
+    }
+
+    /// <summary>
+    /// Resolves external hosting integration opt-in for the target AppHost.
+    /// </summary>
+    public static bool IsHostingIntegrationsEnabled(IFeatures features, AspireConfigFile config)
+    {
+        if (IsAppHostServerV2Enabled(config))
+        {
+            return true;
+        }
+        // --apphost can target a different directory than the CLI's configuration scope.
+        // Honor that AppHost's explicit setting before falling back to CLI/global settings.
+        return config.Features is { } projectFeatures
+            && projectFeatures.TryGetValue(ExperimentalHostingIntegrations, out var enabled)
+            ? enabled
+            : features.IsFeatureEnabled(ExperimentalHostingIntegrations, defaultValue: false);
+    }
+
+    /// <summary>
+    /// Determines whether the staging channel is enabled by checking both the feature flag
+    /// and the configured channel. The staging channel is considered enabled if either the
+    /// <see cref="StagingChannelEnabled"/> feature flag is <c>true</c>, or the configured
+    /// channel is set to <c>"staging"</c>.
+    /// </summary>
+    /// <param name="features">The feature flags service.</param>
+    /// <param name="configuration">The configuration to check for the channel setting.</param>
+    /// <returns><c>true</c> if the staging channel should be available; otherwise, <c>false</c>.</returns>
+    /// <remarks>
+    /// Note that the channel check reads <c>configuration["channel"]</c> (the layered .NET
+    /// configuration — environment variables, command-line, global / per-project
+    /// <c>aspire.config.json#channel</c>), NOT
+    /// <see cref="CliExecutionContext.IdentityChannel"/>. Callers that also need to expose
+    /// staging for a CLI baked with <c>AspireCliChannel=staging</c> should combine this
+    /// helper with an identity-channel check.
+    /// </remarks>
+    public static bool IsStagingChannelEnabled(IFeatures features, IConfiguration configuration)
+    {
+        return features.IsFeatureEnabled(StagingChannelEnabled, false)
+            || string.Equals(configuration["channel"], PackageChannelNames.Staging, StringComparisons.ChannelName);
+    }
+}

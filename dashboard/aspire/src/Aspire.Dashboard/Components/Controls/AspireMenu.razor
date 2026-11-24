@@ -1,0 +1,27 @@
+﻿@namespace Aspire.Dashboard.Components
+@inherits FluentComponentBase
+
+@if (!Anchored)
+{
+    <span id="@Anchor" aria-hidden="true" style="@CursorAnchorStyle"></span>
+}
+
+@* aspire-menu-container is added to the div parent of FluentMenu, not the FluentMenu *@
+<FluentMenu Class="aspire-menu-container"
+            @ref="_menu"
+            Trigger="@Anchor"
+            OpenedChanged="OnOpenChanged"
+            Style="@Style"
+            PersistOnItemClick="true"
+            aria-labelledby="@HeaderId">
+    <FluentMenuList role="menu" aria-labelledby="@HeaderId">
+        @foreach (var item in Items)
+        {
+            <AspireMenuItem @key="item.RenderKey"
+                            Item="item"
+                            OnItemActivated="HandleItemActivatedAsync"
+                            OnSecondaryActionClicked="HandleSecondaryActionClicked"
+                            OnItemToggled="HandleItemToggledAsync" />
+        }
+    </FluentMenuList>
+</FluentMenu>

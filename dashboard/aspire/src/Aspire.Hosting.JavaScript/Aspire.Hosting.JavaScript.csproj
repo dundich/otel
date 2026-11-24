@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>$(DefaultTargetFramework)</TargetFramework>
+    <IsPackable>true</IsPackable>
+    <PackageTags>aspire integration hosting Node Nodejs javascript framework runtime</PackageTags>
+    <Description>JavaScript support for Aspire.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Aspire.Hosting.JavaScript.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Source-share YARP container image tags with Aspire.Hosting.Yarp -->
+    <Compile Include="..\Aspire.Hosting.Yarp\YarpContainerImageTags.cs" Link="YarpContainerImageTags.cs" />
+    <!-- Source-share browser debugger types with Aspire.Hosting.Blazor via the shared source directory -->
+    <Compile Include="$(SharedDir)BrowserDebuggerResource.cs" Link="BrowserDebuggerResource.cs" />
+    <Compile Include="$(SharedDir)BrowserLaunchConfiguration.cs" Link="BrowserLaunchConfiguration.cs" />
+    <Compile Include="$(SharedDir)PathNormalizer.cs" Link="Utils\PathNormalizer.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Aspire.Hosting\Aspire.Hosting.csproj" />
+  </ItemGroup>
+
+</Project>

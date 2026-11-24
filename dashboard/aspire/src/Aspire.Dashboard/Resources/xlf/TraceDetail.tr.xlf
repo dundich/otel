@@ -1,0 +1,82 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="tr" original="../TraceDetail.resx">
+    <body>
+      <trans-unit id="TotalItemsFooterPluralText">
+        <source>Showing &lt;strong&gt;{0} spans&lt;/strong&gt;</source>
+        <target state="new">Showing &lt;strong&gt;{0} spans&lt;/strong&gt;</target>
+        <note>{0} is a number. This is raw markup, so &lt;strong&gt; and &lt;/strong&gt; should not be modified</note>
+      </trans-unit>
+      <trans-unit id="TotalItemsFooterSingularText">
+        <source>Showing &lt;strong&gt;{0} span&lt;/strong&gt;</source>
+        <target state="new">Showing &lt;strong&gt;{0} span&lt;/strong&gt;</target>
+        <note>{0} is a number. This is raw markup, so &lt;strong&gt; and &lt;/strong&gt; should not be modified</note>
+      </trans-unit>
+      <trans-unit id="TraceDetailBackToTraces">
+        <source>Back to traces</source>
+        <target state="new">Back to traces</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="TraceDetailBackToTracesButton">
+        <source>Traces</source>
+        <target state="new">Traces</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="TraceDetailDepthHeader">
+        <source>Depth</source>
+        <target state="translated">Derinlik</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="TraceDetailDurationHeader">
+        <source>Duration</source>
+        <target state="translated">Süre</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="TraceDetailMobileToolbarButtonText">
+        <source>Trace details</source>
+        <target state="translated">İzleme ayrıntıları</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="TraceDetailNameHeader">
+        <source>Name</source>
+        <target state="translated">Ad</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="TraceDetailNoSpans">
+        <source>No spans found</source>
+        <target state="translated">Aralık bulunamadı</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="TraceDetailPageTitle">
+        <source>{0} trace</source>
+        <target state="translated">{0} izleme</target>
+        <note>{0} is an application name</note>
+      </trans-unit>
+      <trans-unit id="TraceDetailResourceHeader">
+        <source>Resource</source>
+        <target state="translated">Kaynak</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="TraceDetailResourcesHeader">
+        <source>Resources</source>
+        <target state="translated">Kaynaklar</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="TraceDetailTotalSpansHeader">
+        <source>Total spans</source>
+        <target state="translated">Toplam yayılma sayısı</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="TraceDetailTraceNotFound">
+        <source>Trace "{0}" not found</source>
+        <target state="translated">"{0}" izi bulunamadı</target>
+        <note>{0} is an identifier</note>
+      </trans-unit>
+      <trans-unit id="TraceDetailTraceStartHeader">
+        <source>Trace detail</source>
+        <target state="translated">İzleme ayrıntıları</target>
+        <note />
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

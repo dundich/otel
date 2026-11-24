@@ -1,0 +1,87 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <Import Project="$(RepoRoot)eng/ReplaceText.targets" />
+
+  <PropertyGroup>
+    <TargetFrameworks>$(AllTargetFrameworks)</TargetFrameworks>
+    <IsPackable>true</IsPackable>
+    <PackageTags>aspire hosting</PackageTags>
+    <Description>Core library and MSBuild logic for Aspire AppHost projects.</Description>
+    <SkipAspireIntegrationAnalyzersReference>true</SkipAspireIntegrationAnalyzersReference>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <UsePublicApiAnalyzers>false</UsePublicApiAnalyzers>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <TextReplacementValue Include="VERSION" NewValue="$(PackageVersion)" />
+
+    <None Include="**/*.props;**/*.targets;AspireAppHostConfiguration.json" Pack="true" PackagePath="%(RecursiveDir)%(Filename)%(Extension)" />
+    <None Update="build\Aspire.Hosting.AppHost.in.targets" Pack="true" PerformTextReplacement="True" PackagePath="build\Aspire.Hosting.AppHost.targets" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 
+        Note that this package won't add a transitive dependency to DCP and Dashboard, as those will dynamically be added by Aspire.AppHost.Sdk.
+        This is done so that we don't pull in DCP and Dashboard packages for all of the platforms. 
+    -->
+    <ProjectReference Include="..\Aspire.Hosting\Aspire.Hosting.csproj" />
+  </ItemGroup>
+
+  <!-- Download DCP orchestrator components for local development -->
+  <ItemGroup>
+    <PackageDownload Include="Microsoft.DeveloperControlPlane.$(BuildOs)-$(BuildArch)" Version="[$(MicrosoftDeveloperControlPlanedarwinamd64Version)]" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Reference the analyzer to ensure it's built but don't reference its output -->
+    <ProjectReference Include="..\Aspire.Hosting.Analyzers\Aspire.Hosting.Analyzers.csproj" ReferenceOutputAssembly="false" Private="true" />
+    <!-- Reference the tasks project to ensure it's built/restored but don't reference its output -->
+    <ProjectReference Include="..\Aspire.Hosting.Tasks\Aspire.Hosting.Tasks.csproj" ReferenceOutputAssembly="false" Private="true" />
+  </ItemGroup>
+
+  <!-- Include the analyzer and tasks in the package -->
+  <PropertyGroup>
+    <BeforePack>$(BeforePack);IncludeAnalyzerInPackage;IncludeTasksInPackage</BeforePack>
+  </PropertyGroup>
+  <Target Name="IncludeAnalyzerInPackage">
+    <MSBuild Projects="..\Aspire.Hosting.Analyzers\Aspire.Hosting.Analyzers.csproj" Targets="GetTargetPath">
+      <Output TaskParameter="TargetOutputs" PropertyName="AspireHostingAnalyzerFile" />
+    </MSBuild>
+
+    <Error Condition="'$(AspireHostingAnalyzerFile)' == ''" Text="Could not find Aspire.Hosting.Analyzers.dll." />
+
+    <ItemGroup>
+      <None Include="$(AspireHostingAnalyzerFile)" Pack="True" PackagePath="analyzers/dotnet/cs" />
+    </ItemGroup>
+  </Target>
+
+    <!-- Build ALL TFMs of the tasks project before this project builds -->
+  <Target Name="BuildAllTasksTFMs">
+    <MSBuild Projects="..\Aspire.Hosting.Tasks\Aspire.Hosting.Tasks.csproj"
+             Targets="Build"
+             Properties="Configuration=$(Configuration)" />
+    <!-- This builds all TFMs because the Tasks project is multi-targeted -->
+  </Target>
+
+  <Target Name="IncludeTasksInPackage"
+          DependsOnTargets="BuildAllTasksTFMs">
+    <!-- Get the output paths for the tasks project for both net10.0 and net472 -->
+    <MSBuild Projects="..\Aspire.Hosting.Tasks\Aspire.Hosting.Tasks.csproj" Targets="GetTargetPath" Properties="TargetFramework=net10.0">
+      <Output TaskParameter="TargetOutputs" PropertyName="AspireHostingTasksNet100File" />
+    </MSBuild>
+    <MSBuild Projects="..\Aspire.Hosting.Tasks\Aspire.Hosting.Tasks.csproj" Targets="GetTargetPath" Properties="TargetFramework=net472">
+      <Output TaskParameter="TargetOutputs" PropertyName="AspireHostingTasksNet472File" />
+    </MSBuild>
+
+    <Error Condition="'$(AspireHostingTasksNet100File)' == ''" Text="Could not find Aspire.Hosting.Tasks.dll for net10.0." />
+    <Error Condition="'$(AspireHostingTasksNet472File)' == ''" Text="Could not find Aspire.Hosting.Tasks.dll for net472." />
+
+    <ItemGroup>
+      <None Include="$(AspireHostingTasksNet100File)" Pack="True" PackagePath="tools/net10.0" />
+      <None Include="$(AspireHostingTasksNet472File)" Pack="True" PackagePath="tools/net472" />
+    </ItemGroup>
+  </Target>
+
+</Project>

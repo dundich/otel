@@ -1,0 +1,1018 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
+using System.Net.Http.Headers;
+using System.Reflection;
+using System.Text.RegularExpressions;
+using Aspire.Hosting.ApplicationModel;
+using Aspire.Hosting.DevTunnels;
+using Aspire.Hosting.DevTunnels.Resources;
+using Aspire.Hosting.Eventing;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Logging;
+
+namespace Aspire.Hosting;
+
+/// <summary>
+/// Provides extension methods for adding dev tunnels resources to an <see cref="IDistributedApplicationBuilder"/>.
+/// </summary>
+public static partial class DevTunnelsResourceBuilderExtensions
+{
+    private static readonly string s_aspireUserAgent = GetUserAgent();
+
+    /// <summary>
+    /// Adds a dev tunnel resource to the application model.
+    /// </summary>
+    /// <remarks>
+    /// Dev tunnels can be used to expose local endpoints to the public internet via a secure tunnel. By default,
+    /// the tunnel requires authentication, but anonymous access can be enabled via <see cref="WithAnonymousAccess(IResourceBuilder{DevTunnelResource})"/>.
+    /// This overload is not available in polyglot app hosts. Use <see cref="AddDevTunnelForPolyglot"/> instead.
+    /// </remarks>
+    /// <example>
+    /// The following example shows how to create a dev tunnel resource that exposes all endpoints on a web application project and enable anonymous access:
+    /// <code lang="csharp">
+    /// var builder = DistributedApplication.CreateBuilder(args);
+    /// var web = builder.AddDotnetProject("web", "../WebApp/WebApp.csproj");
+    /// var tunnel = builder.AddDevTunnel("mytunnel")
+    ///     .WithReference(web)
+    ///     .WithAnonymousAccess();
+    /// builder.Build().Run();
+    /// </code>
+    /// </example>
+    [AspireExportIgnore(Reason = "Use the dedicated polyglot overload instead.")]
+    public static IResourceBuilder<DevTunnelResource> AddDevTunnel(
+        this IDistributedApplicationBuilder builder,
+        [ResourceName] string name,
+        string? tunnelId = null,
+        DevTunnelOptions? options = null)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentNullException.ThrowIfNull(name);
+
+        var appHostId = builder.Configuration["AppHost:Sha256"]?[..8];
+        tunnelId ??= $"{name}-{appHostId}".ToLowerInvariant();
+
+        // Validate the TunnelId format [a-z0-9][a-z0-9-]{1,58}[a-z0-9]
+        if (!TunnelIdRegex().IsMatch(tunnelId))
+        {
+            throw new ArgumentException($"""
+                The tunnel ID '{tunnelId}' is invalid. A valid tunnel ID must:
+                - start and end with a letter or number
+                - consist of lowercase letters, numbers, and hyphens
+                - be 1-58 characters long
+                """, nameof(tunnelId));
+        }
+
+        options ??= new DevTunnelOptions();
+        options.Labels ??= [];
+        options.Labels.Add($"aspire_{name}-{appHostId}");
+        options.Description ??= $"Dev tunnel for '{name}' in Aspire AppHost '{builder.Environment.ApplicationName}'";
+
+        if (!TryValidateLabels(options.Labels, out var errorMessage))
+        {
+            throw new ArgumentException(errorMessage, nameof(options));
+        }
+
+        // Add services
+        builder.Services.TryAddSingleton<DevTunnelLoginManager>();
+        builder.Services.TryAddSingleton<LoggedOutNotificationManager>();
+        builder.Services.TryAddSingleton<IDevTunnelClient, DevTunnelCliClient>();
+
+        var workingDirectory = builder.AppHostDirectory;
+        var tunnelResource = new DevTunnelResource(name, tunnelId, DevTunnelCli.GetCliPath(builder.Configuration), workingDirectory, options);
+
+        builder.Services.AddKeyedSingleton<DevTunnelMonitor>(tunnelResource, (services, _) => new(tunnelResource, services));
+
+        // Health check
+        var healtCheckKey = $"{name}-check";
+        builder.Services.AddHealthChecks().Add(new HealthCheckRegistration(
+            healtCheckKey,
+            services => new DevTunnelHealthCheck(services.GetRequiredKeyedService<DevTunnelMonitor>(tunnelResource)),
+            failureStatus: default,
+            tags: default,
+            timeout: default));
+
+        var rb = builder.AddResource(tunnelResource)
+            .WithArgs("host", tunnelResource.ResolvedTunnelId, "--nologo")
+            .WithIconName("CloudBidirectional")
+            .WithEnvironment("TUNNEL_SERVICE_USER_AGENT", s_aspireUserAgent)
+            .WithInitialState(new()
+            {
+                ResourceType = "DevTunnel",
+                CreationTimeStamp = DateTime.UtcNow,
+                State = KnownResourceStates.NotStarted,
+                Properties = [
+                    new("TunnelId", tunnelId)
+                ]
+            })
+            .ExcludeFromManifest() // Dev tunnels do not get deployed
+            .WithHealthCheck(healtCheckKey)
+            // Lifecycle
+            .OnBeforeResourceStarted(static async (tunnelResource, e, ct) =>
+            {
+                var logger = e.Services.GetRequiredService<ResourceLoggerService>().GetLogger(tunnelResource);
+                var eventing = e.Services.GetRequiredService<IDistributedApplicationEventing>();
+                var commandValidator = e.Services.GetRequiredService<IRequiredCommandValidator>();
+                var devTunnelEnvironmentManager = e.Services.GetRequiredService<DevTunnelLoginManager>();
+                var devTunnelClient = e.Services.GetRequiredService<IDevTunnelClient>();
+
+                // Validate the CLI is available and version is supported.
+                // We use manual validation here instead of WithRequiredCommand call because our
+                // OnBeforeResourceStarted handler runs before the global RequiredCommandValidationLifecycleHook runs.
+                var cliAnnotation = new RequiredCommandAnnotation(tunnelResource.Command)
+                {
+                    HelpLink = "https://learn.microsoft.com/azure/developer/dev-tunnels/get-started#install",
+                    ValidationCallback = ValidateDevTunnelCliVersionAsync
+                };
+                var result = await commandValidator.ValidateAsync(tunnelResource, cliAnnotation, ct).ConfigureAwait(false);
+                if (!result.IsValid)
+                {
+                    throw new DistributedApplicationException(result.ValidationMessage);
+                }
+
+                // Login to the dev tunnels service if needed
+                logger.LogInformation("Ensuring user is logged in to dev tunnel service");
+                await devTunnelEnvironmentManager.EnsureUserLoggedInAsync(ct).ConfigureAwait(false);
+
+                // Create the dev tunnel
+                string resolvedTunnelId;
+                try
+                {
+                    logger.LogInformation("Ensuring dev tunnel '{TunnelId}' is configured", tunnelResource.TunnelId);
+                    var tunnelStatus = await devTunnelClient.CreateTunnelAsync(tunnelResource.TunnelId, tunnelResource.Options, logger, ct).ConfigureAwait(false);
+                    // The CLI resolves a bare ID and returns its cluster-qualified ID. Use that ID for
+                    // port operations because bare IDs may not resolve tunnels across clusters.
+                    // See https://github.com/microsoft/aspire/issues/18790.
+                    resolvedTunnelId = tunnelStatus.TunnelId;
+                    logger.LogDebug("Dev tunnel '{TunnelId}' configured", tunnelResource.TunnelId);
+                }
+                catch (Exception ex)
+                {
+                    var exception = new DistributedApplicationException($"Error trying to create the dev tunnel resource '{tunnelResource.TunnelId}' this port belongs to: {ex.Message}", ex);
+                    foreach (var portResource in tunnelResource.Ports)
+                    {
+#pragma warning disable CS0618 // Type or member is obsolete
+                        portResource.TunnelEndpointAnnotation.AllocatedEndpointSnapshot.SetException(exception);
+#pragma warning restore CS0618 // Type or member is obsolete
+                    }
+                    throw;
+                }
+
+                // Wait for target resource endpoints to be allocated
+                await Task.WhenAll(tunnelResource.Ports.Select(p => p.TargetEndpoint.GetValueAsync(ct).AsTask())).ConfigureAwait(false);
+
+                // Start the tunnel ports
+                var notifications = e.Services.GetRequiredService<ResourceNotificationService>();
+
+                // Ensure any ports that aren't in the application model are deleted
+                var portTasks = new List<Task> { DeleteUnmodeledPortsAsync() };
+                portTasks.AddRange(tunnelResource.Ports.Select(StartPortAsync));
+                await Task.WhenAll(portTasks).ConfigureAwait(false);
+
+                await e.Services.GetRequiredKeyedService<DevTunnelMonitor>(tunnelResource).StartAsync(resolvedTunnelId, ct).ConfigureAwait(false);
+
+                async Task DeleteUnmodeledPortsAsync()
+                {
+                    var existingPorts = await devTunnelClient.GetPortListAsync(resolvedTunnelId, logger, ct).ConfigureAwait(false);
+                    var modeledPortNumbers = (await Task.WhenAll(tunnelResource.Ports.Select(p => p.GetTunnelPortAsync(ct).AsTask())).ConfigureAwait(false)).ToHashSet();
+                    var unmodeledPorts = existingPorts.Ports.Where(p => !modeledPortNumbers.Contains(p.PortNumber)).ToList();
+                    if (unmodeledPorts.Count > 0)
+                    {
+                        logger.LogInformation("Deleting {Count} unmodeled ports from dev tunnel '{TunnelId}': {Ports}", unmodeledPorts.Count, tunnelResource.TunnelId, string.Join(", ", unmodeledPorts.Select(p => p.PortNumber)));
+                        await Task.WhenAll(unmodeledPorts.Select(p => devTunnelClient.DeletePortAsync(resolvedTunnelId, p.PortNumber, logger, ct))).ConfigureAwait(false);
+                    }
+                }
+
+                async Task StartPortAsync(DevTunnelPortResource portResource)
+                {
+                    var portLogger = e.Services.GetRequiredService<ResourceLoggerService>().GetLogger(portResource);
+                    var tunnelPort = await portResource.GetTunnelPortAsync(ct).ConfigureAwait(false);
+
+                    // Clear any prior port status
+                    portLogger.LogInformation("Tunnel starting");
+                    await notifications.PublishUpdateAsync(portResource, snapshot => snapshot with
+                    {
+                        State = KnownResourceStates.Starting
+                    }).ConfigureAwait(false);
+
+                    // Create the tunnel port
+                    try
+                    {
+                        _ = await devTunnelClient.CreatePortAsync(
+                                resolvedTunnelId,
+                                tunnelPort,
+                                portResource.Options,
+                                portLogger,
+                                ct)
+                            .ConfigureAwait(false);
+
+                        portLogger.LogInformation("Configured dev tunnel port '{Port}' on tunnel '{Tunnel}' targeting endpoint '{Endpoint}' on resource '{TargetResource}'", tunnelPort, portResource.DevTunnel.TunnelId, portResource.TargetEndpoint.EndpointName, portResource.TargetEndpoint.Resource.Name);
+                    }
+                    catch (Exception ex)
+                    {
+                        portLogger.LogError(ex, "Error trying to create dev tunnel port '{Port}' on tunnel '{Tunnel}': {Error}", tunnelPort, portResource.DevTunnel.TunnelId, ex.Message);
+#pragma warning disable CS0618 // Type or member is obsolete
+                        portResource.TunnelEndpointAnnotation.AllocatedEndpointSnapshot.SetException(ex);
+#pragma warning restore CS0618 // Type or member is obsolete
+                        throw;
+                    }
+
+                    await eventing.PublishAsync<BeforeResourceStartedEvent>(new(portResource, e.Services), EventDispatchBehavior.NonBlockingConcurrent, ct).ConfigureAwait(false);
+                }
+            })
+            .OnResourceStopped(static (tunnelResource, e, ct) =>
+                e.Services.GetRequiredKeyedService<DevTunnelMonitor>(tunnelResource).StopAsync(ct));
+
+        // Tunnels will expire after not being hosted for 30 days by default so we won't forcibly delete them when the resource or AppHost is stopped
+
+        return rb;
+    }
+
+    /// <summary>
+    /// Adds a Dev Tunnel resource to the distributed application model.
+    /// </summary>
+    [AspireExport("addDevTunnel")]
+    internal static IResourceBuilder<DevTunnelResource> AddDevTunnelForPolyglot(
+        this IDistributedApplicationBuilder builder,
+        [ResourceName] string name,
+        string? tunnelId = null,
+        bool allowAnonymous = false,
+        string? description = null,
+        string[]? labels = null)
+        => AddDevTunnel(builder, name, tunnelId, new DevTunnelOptions
+        {
+            AllowAnonymous = allowAnonymous,
+            Description = description,
+            Labels = labels is null ? null : [.. labels]
+        });
+
+    /// <summary>
+    /// Adds ports on the dev tunnel for all endpoints found on the referenced resource and sets whether anonymous access is allowed.
+    /// </summary>
+    /// <param name="tunnelBuilder">The resource builder.</param>
+    /// <param name="resourceBuilder">The resource builder for the referenced resource.</param>
+    /// <param name="allowAnonymous">Whether anonymous access is allowed.</param>
+    /// <returns>The resource builder.</returns>
+    [AspireExport("withReferenceResourceAnonymous", MethodName = "withTunnelReferenceAll")]
+    public static IResourceBuilder<DevTunnelResource> WithReference<TResource>(
+        this IResourceBuilder<DevTunnelResource> tunnelBuilder,
+        IResourceBuilder<TResource> resourceBuilder,
+        bool allowAnonymous)
+        where TResource : IResourceWithEndpoints
+    {
+        ArgumentNullException.ThrowIfNull(tunnelBuilder);
+        ArgumentNullException.ThrowIfNull(resourceBuilder);
+
+        return tunnelBuilder.WithReference(resourceBuilder, new DevTunnelPortOptions { AllowAnonymous = allowAnonymous });
+    }
+
+    /// <summary>
+    /// Adds ports on the dev tunnel for all endpoints found on the referenced resource.
+    /// </summary>
+    /// <remarks>
+    /// This overload is not available in polyglot app hosts. Use the overload that accepts a <see langword="bool"/> <c>allowAnonymous</c> parameter instead.
+    /// To expose only specific endpoints on the referenced resource, use <see cref="WithReference(IResourceBuilder{DevTunnelResource}, EndpointReference, DevTunnelPortOptions?)"/>.
+    /// </remarks>
+    /// <param name="tunnelBuilder">The resource builder.</param>
+    /// <param name="resourceBuilder">The resource builder for the referenced resource.</param>
+    /// <param name="portOptions">Options for the dev tunnel ports.</param>
+    /// <returns>The resource builder.</returns>
+    [AspireExportIgnore(Reason = "DevTunnelPortOptions is not ATS-compatible. Use the overload with bool allowAnonymous parameter instead.")]
+    public static IResourceBuilder<DevTunnelResource> WithReference<TResource>(
+        this IResourceBuilder<DevTunnelResource> tunnelBuilder,
+        IResourceBuilder<TResource> resourceBuilder,
+        DevTunnelPortOptions? portOptions = null)
+        where TResource : IResourceWithEndpoints
+    {
+        ArgumentNullException.ThrowIfNull(tunnelBuilder);
+        ArgumentNullException.ThrowIfNull(resourceBuilder);
+
+        foreach (var endpoint in resourceBuilder.Resource.GetEndpoints())
+        {
+            AddDevTunnelPort(tunnelBuilder, endpoint, portOptions);
+        }
+
+        return tunnelBuilder;
+    }
+
+    // NOTE: This is a separate overload to ensure it's bound over the generic service discovery extension method
+    /// <summary>
+    /// Exposes the specified endpoint via the dev tunnel.
+    /// </summary>
+    /// <param name="tunnelBuilder">The resource builder.</param>
+    /// <param name="targetEndpoint">The endpoint to expose via the dev tunnel.</param>
+    /// <returns>The resource builder.</returns>
+    [AspireExport("withReferenceEndpoint", MethodName = "withTunnelReference")]
+    public static IResourceBuilder<DevTunnelResource> WithReference(
+        this IResourceBuilder<DevTunnelResource> tunnelBuilder,
+        EndpointReference targetEndpoint)
+        => tunnelBuilder.WithReference(targetEndpoint, portOptions: null);
+
+    /// <summary>
+    /// Exposes the specified endpoint via the dev tunnel and sets whether anonymous access is allowed.
+    /// </summary>
+    /// <param name="tunnelBuilder">The resource builder.</param>
+    /// <param name="targetEndpoint">The endpoint to expose via the dev tunnel.</param>
+    /// <param name="allowAnonymous">Whether anonymous access is allowed.</param>
+    /// <returns>The resource builder.</returns>
+    [AspireExport("withReferenceEndpointAnonymous", MethodName = "withTunnelReferenceAnonymous")]
+    public static IResourceBuilder<DevTunnelResource> WithReference(
+        this IResourceBuilder<DevTunnelResource> tunnelBuilder,
+        EndpointReference targetEndpoint,
+        bool allowAnonymous)
+        => tunnelBuilder.WithReference(targetEndpoint, new DevTunnelPortOptions { AllowAnonymous = allowAnonymous });
+
+    /// <summary>
+    /// Exposes the specified endpoint via the dev tunnel.
+    /// </summary>
+    /// <remarks>
+    /// This overload is not available in polyglot app hosts. Use <see cref="WithReference(IResourceBuilder{DevTunnelResource}, EndpointReference)"/> or <see cref="WithReference(IResourceBuilder{DevTunnelResource}, EndpointReference, bool)"/> instead.
+    /// </remarks>
+    /// <param name="tunnelBuilder">The resource builder.</param>
+    /// <param name="targetEndpoint">The endpoint to expose via the dev tunnel.</param>
+    /// <param name="portOptions">Options for the dev tunnel port.</param>
+    /// <returns>The resource builder.</returns>
+    [AspireExportIgnore(Reason = "DevTunnelPortOptions is not ATS-compatible. Use the overload with EndpointReference or EndpointReference + bool instead.")]
+    public static IResourceBuilder<DevTunnelResource> WithReference(
+        this IResourceBuilder<DevTunnelResource> tunnelBuilder,
+        EndpointReference targetEndpoint,
+        DevTunnelPortOptions? portOptions)
+    {
+        ArgumentNullException.ThrowIfNull(tunnelBuilder);
+        ArgumentNullException.ThrowIfNull(targetEndpoint);
+
+        AddDevTunnelPort(tunnelBuilder, targetEndpoint, portOptions);
+
+        return tunnelBuilder;
+    }
+
+    /// <summary>
+    /// Allows the tunnel to be publicly accessed without authentication.
+    /// </summary>
+    /// <remarks>
+    /// Sets <see cref="DevTunnelOptions.AllowAnonymous"/> to <c>true</c> on <see cref="DevTunnelResource.Options"/> .
+    /// </remarks>
+    /// <param name="tunnelBuilder">The resource builder.</param>
+    /// <returns>The resource builder.</returns>
+    [AspireExport]
+    public static IResourceBuilder<DevTunnelResource> WithAnonymousAccess(this IResourceBuilder<DevTunnelResource> tunnelBuilder)
+    {
+        tunnelBuilder.Resource.Options.AllowAnonymous = true;
+        return tunnelBuilder;
+    }
+
+    /// <summary>
+    /// Configures how long the tunnel can remain unused or unmodified before it expires.
+    /// </summary>
+    /// <param name="tunnelBuilder">The resource builder.</param>
+    /// <param name="expirationHours">The idle expiration period, in whole hours from one hour through 30 days, inclusive.</param>
+    /// <returns>The resource builder.</returns>
+    /// <remarks>
+    /// Applies to both new and existing tunnels. This does not limit hosting duration or access-token lifetime.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">The <paramref name="tunnelBuilder"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">The <paramref name="expirationHours"/> is outside the supported range.</exception>
+    /// <example>
+    /// <code lang="csharp">
+    /// var tunnel = builder.AddDevTunnel("mytunnel")
+    ///     .WithExpiration(24)
+    ///     .WithReference(web);
+    /// </code>
+    /// </example>
+    [AspireExport]
+    public static IResourceBuilder<DevTunnelResource> WithExpiration(this IResourceBuilder<DevTunnelResource> tunnelBuilder, int expirationHours)
+    {
+        ArgumentNullException.ThrowIfNull(tunnelBuilder);
+        ArgumentOutOfRangeException.ThrowIfLessThan(expirationHours, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(expirationHours, 30 * 24);
+
+        tunnelBuilder.Resource.Options.ExpirationHours = expirationHours;
+
+        return tunnelBuilder;
+    }
+
+    /// <summary>
+    /// Gets the tunnel endpoint reference for the specified target resource and endpoint.
+    /// </summary>
+    /// <remarks>
+    /// This method is not available in polyglot app hosts. Use <see cref="GetEndpoint(IResourceBuilder{DevTunnelResource}, IResource, string)"/> instead.
+    /// </remarks>
+    /// <typeparam name="TResource">The type of the target resource.</typeparam>
+    /// <param name="tunnelBuilder">The dev tunnel resource builder.</param>
+    /// <param name="resourceBuilder">The target resource builder.</param>
+    /// <param name="endpointName">The name of the endpoint on the target resource.</param>
+    /// <returns>An <see cref="EndpointReference"/> representing the public tunnel endpoint.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the specified endpoint is not found in the tunnel.</exception>
+    [AspireExportIgnore(Reason = "Delegates to the IResource-based overload which is already exported.")]
+    public static EndpointReference GetEndpoint<TResource>(this IResourceBuilder<DevTunnelResource> tunnelBuilder, IResourceBuilder<TResource> resourceBuilder, string endpointName)
+        where TResource : IResourceWithEndpoints
+    {
+        ArgumentNullException.ThrowIfNull(tunnelBuilder);
+        ArgumentNullException.ThrowIfNull(resourceBuilder);
+        ArgumentNullException.ThrowIfNull(endpointName);
+
+        return tunnelBuilder.GetEndpoint(resourceBuilder.Resource, endpointName);
+    }
+
+    /// <summary>
+    /// Gets the tunnel endpoint reference for the specified target resource and endpoint.
+    /// </summary>
+    /// <remarks>
+    /// This method is not available in polyglot app hosts. Use <see cref="GetEndpoint(IResourceBuilder{DevTunnelResource}, EndpointReference)"/> instead.
+    /// </remarks>
+    /// <param name="tunnelBuilder">The dev tunnel resource builder.</param>
+    /// <param name="resource">The target resource.</param>
+    /// <param name="endpointName">The name of the endpoint on the target resource.</param>
+    /// <returns>An <see cref="EndpointReference"/> representing the public tunnel endpoint.</returns>
+    [AspireExportIgnore(Reason = "IResource parameter type is not ATS-compatible. Use the EndpointReference-based overload instead.")]
+    public static EndpointReference GetEndpoint(this IResourceBuilder<DevTunnelResource> tunnelBuilder, IResource resource, string endpointName)
+    {
+        ArgumentNullException.ThrowIfNull(tunnelBuilder);
+        ArgumentNullException.ThrowIfNull(resource);
+        ArgumentNullException.ThrowIfNull(endpointName);
+
+        var portResource = tunnelBuilder.Resource.Ports
+            .FirstOrDefault(p => p.TargetEndpoint.Resource == resource && string.Equals(p.TargetEndpoint.EndpointName, endpointName, StringComparisons.EndpointAnnotationName));
+
+        if (portResource is null)
+        {
+            return CreateEndpointReferenceWithError(tunnelBuilder.Resource, resource, endpointName);
+        }
+
+        return portResource.TunnelEndpoint;
+    }
+
+    /// <summary>
+    /// Gets the tunnel endpoint reference for the specified target endpoint.
+    /// </summary>
+    /// <param name="tunnelBuilder">The dev tunnel resource builder.</param>
+    /// <param name="targetEndpointReference">The target endpoint reference.</param>
+    /// <returns>An <see cref="EndpointReference"/> representing the public tunnel endpoint.</returns>
+    [AspireExport("getEndpointByEndpointReference", MethodName = "getTunnelEndpoint")]
+    public static EndpointReference GetEndpoint(this IResourceBuilder<DevTunnelResource> tunnelBuilder, EndpointReference targetEndpointReference)
+    {
+        ArgumentNullException.ThrowIfNull(tunnelBuilder);
+        ArgumentNullException.ThrowIfNull(targetEndpointReference);
+
+        var portResource = tunnelBuilder.Resource.Ports
+            .FirstOrDefault(p => p.TargetEndpoint.Resource == targetEndpointReference.Resource
+                && string.Equals(p.TargetEndpoint.EndpointName, targetEndpointReference.EndpointName, StringComparisons.EndpointAnnotationName));
+
+        if (portResource is null)
+        {
+            return CreateEndpointReferenceWithError(tunnelBuilder.Resource, targetEndpointReference.Resource, targetEndpointReference.EndpointName);
+        }
+
+        return portResource.TunnelEndpoint;
+    }
+
+    private static EndpointReference CreateEndpointReferenceWithError(DevTunnelResource tunnelResource, IResource targetResource, string endpointName)
+    {
+        return new EndpointReference(tunnelResource, endpointName)
+        {
+            ErrorMessage = $"The dev tunnel '{tunnelResource.Name}' has not been associated with '{endpointName}' on resource '{targetResource.Name}'. Use 'WithReference({targetResource.Name})' on the dev tunnel to expose this endpoint."
+        };
+    }
+
+    /// <summary>
+    /// Injects service discovery and endpoint information as environment variables from the dev tunnel resource into the destination resource, using the tunneled resource's name as the service name.
+    /// Each endpoint defined on the target resource will be injected using the format defined by the <see cref="ReferenceEnvironmentInjectionAnnotation"/> on the destination resource, i.e.
+    /// either "services__{sourceResourceName}__{endpointScheme}__{endpointIndex}={uriString}" for .NET service discovery, or "{RESOURCE_ENDPOINT}={uri}" for endpoint injection.
+    /// </summary>
+    /// <remarks>
+    /// Referencing a dev tunnel will delay the start of the resource until the referenced dev tunnel's endpoint is allocated.
+    /// This method is not available in polyglot app hosts.
+    /// </remarks>
+    /// <param name="builder">The builder.</param>
+    /// <param name="targetResource">The resource to inject service discovery information for.</param>
+    /// <param name="tunnelResource">The dev tunnel resource to resolve the tunnel address from.</param>
+    /// <returns>The builder.</returns>
+    [AspireExportIgnore(Reason = "This method extends generic IResourceBuilder<TResource> and injects dev tunnel service discovery. It requires two IResourceBuilder parameters which makes the polyglot API confusing. Use WithReference on the DevTunnelResource builder instead.")]
+    public static IResourceBuilder<TResource> WithReference<TResource>(this IResourceBuilder<TResource> builder,
+        IResourceBuilder<IResourceWithEndpoints> targetResource, IResourceBuilder<DevTunnelResource> tunnelResource)
+        where TResource : IResourceWithEnvironment
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentNullException.ThrowIfNull(targetResource);
+        ArgumentNullException.ThrowIfNull(tunnelResource);
+
+        if (builder.ApplicationBuilder.ExecutionContext.IsPublishMode)
+        {
+            // Skip DevTunnel operations during publish mode to avoid hanging
+            return builder;
+        }
+
+        builder
+            .WithReferenceRelationship(tunnelResource)
+            .WithEnvironment(context =>
+            {
+                // Determine what to inject based on the annotation on the destination resource
+                var injectionAnnotation = context.Resource.TryGetLastAnnotation<ReferenceEnvironmentInjectionAnnotation>(out var annotation) ? annotation : null;
+                var flags = injectionAnnotation?.Flags ?? ReferenceEnvironmentInjectionFlags.All;
+
+                // Add environment variables for each tunnel port that references an endpoint on the target resource
+                var schemeIndexTracker = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+                foreach (var port in tunnelResource.Resource.Ports.Where(p => p.TargetEndpoint.Resource == targetResource.Resource))
+                {
+                    var serviceName = targetResource.Resource.Name;
+                    var endpointName = port.TargetEndpoint.EndpointName;
+                    var encodedServiceName = EnvironmentVariableNameEncoder.Encode(serviceName);
+                    var encodedEndpointName = EnvironmentVariableNameEncoder.Encode(endpointName);
+
+                    if (flags.HasFlag(ReferenceEnvironmentInjectionFlags.ServiceDiscovery))
+                    {
+                        // Use the endpoint's scheme for "http" and "https" endpoint names to handle
+                        // TLS upgrades correctly. For all other endpoint names, use the endpoint name
+                        // so that .NET service discovery's named endpoint resolution can match them.
+                        var schemeKey = port.TargetEndpoint.IsHttpSchemeNamedEndpoint ? port.TargetEndpoint.Scheme : endpointName;
+                        if (!schemeIndexTracker.TryGetValue(schemeKey, out var index))
+                        {
+                            index = 0;
+                        }
+
+                        // Find the next unused index for this scheme in case of collisions with other callbacks.
+                        var key = $"services__{serviceName}__{schemeKey}__{index}";
+                        while (context.EnvironmentVariables.ContainsKey(key))
+                        {
+                            index++;
+                            key = $"services__{serviceName}__{schemeKey}__{index}";
+                        }
+
+                        context.EnvironmentVariables[key] = port.TunnelEndpoint;
+                        schemeIndexTracker[schemeKey] = index + 1;
+                    }
+
+                    if (flags.HasFlag(ReferenceEnvironmentInjectionFlags.Endpoints))
+                    {
+                        var endpointKey = $"{encodedServiceName.ToUpperInvariant()}_{encodedEndpointName.ToUpperInvariant()}";
+                        context.EnvironmentVariables[endpointKey] = port.TunnelEndpoint;
+                    }
+                }
+            });
+
+        return builder;
+    }
+
+    private static void AddDevTunnelPort(
+        IResourceBuilder<DevTunnelResource> tunnelBuilder,
+        EndpointReference targetEndpoint,
+        DevTunnelPortOptions? portOptions)
+    {
+        var tunnel = tunnelBuilder.Resource;
+        var targetResource = targetEndpoint.Resource;
+
+        if (tunnel.Ports.FirstOrDefault(p => p.TargetEndpoint == targetEndpoint) is { } existingPort)
+        {
+            // Port already added to the tunnel for this endpoint
+            throw new ArgumentException($"Target endpoint '{targetEndpoint.EndpointName}' on resource '{targetEndpoint.Resource.Name}' has already been added to dev tunnel '{tunnel.Name}'.", nameof(targetEndpoint));
+        }
+
+        if (targetEndpoint.Resource.Annotations.OfType<EndpointAnnotation>()
+            .SingleOrDefault(a => string.Equals(a.Name, targetEndpoint.EndpointName, StringComparisons.EndpointAnnotationName)) is { } targetEndpointAnnotation)
+        {
+            // The target endpoint already exists so let's ensure it's target is localhost
+            if (!EndpointHostHelpers.IsLocalhostOrLocalhostTld(targetEndpointAnnotation.TargetHost))
+            {
+                // Target endpoint is not localhost so can't be tunneled
+                throw new ArgumentException($"Cannot tunnel endpoint '{targetEndpointAnnotation.Name}' with host '{targetEndpointAnnotation.TargetHost}' on resource '{targetResource.Name}' because it is not a localhost endpoint.", nameof(targetEndpoint));
+            }
+        }
+
+        portOptions ??= new();
+        if (portOptions.Protocol is { } proto && proto is not "http" and not "https" and not "auto")
+        {
+            throw new ArgumentException($"Invalid protocol '{proto}' specified in port options. Supported protocols are 'http', 'https', or 'auto'. Set protocol to null to use the endpoint's scheme.", nameof(portOptions));
+        }
+        portOptions.Protocol ??= targetEndpoint.Scheme switch
+        {
+            "https" or "http" => targetEndpoint.Scheme,
+            _ => throw new ArgumentException($"Cannot tunnel endpoint '{targetEndpoint.EndpointName}' on resource '{targetResource.Name}' because it uses the unsupported scheme '{targetEndpoint.Scheme}'. Only 'http' and 'https' endpoints can be tunneled."),
+        };
+        portOptions.Description ??= $"{targetResource.Name}/{targetEndpoint.EndpointName}";
+
+        var portName = $"{tunnel.Name}-{targetResource.Name}-{targetEndpoint.EndpointName}";
+        portOptions.Labels ??= [];
+        portOptions.Labels.Add(targetResource.Name);
+        portOptions.Labels.Add(targetEndpoint.EndpointName);
+
+        if (!TryValidateLabels(portOptions.Labels, out var errorMessage))
+        {
+            throw new ArgumentException(errorMessage, nameof(portOptions));
+        }
+
+        var portResource = new DevTunnelPortResource(
+            portName,
+            tunnel,
+            targetEndpoint,
+            portOptions);
+
+        tunnel.Ports.Add(portResource);
+
+        // Add the tunnel endpoint annotation
+        portResource.Annotations.Add(portResource.TunnelEndpointAnnotation);
+
+        // WaitFor only observes health when the dependency has a health-check annotation.
+        // The monitor owns live connection health; this stateless registration must not publish
+        // sampled unhealthy results that could overwrite a more recent reconnect observation.
+        var readinessCheckKey = $"{portName}-ready";
+        tunnelBuilder.ApplicationBuilder.Services.AddHealthChecks().AddCheck(readinessCheckKey, static () => HealthCheckResult.Healthy());
+
+        var portBuilder = tunnelBuilder.ApplicationBuilder.AddResource(portResource)
+            // visual grouping beneath the tunnel
+            .WithParentRelationship(tunnelBuilder)
+            // indicate the target resource relationship
+            .WithReferenceRelationship(targetResource)
+            .ExcludeFromManifest() // Dev tunnels do not get deployed
+            .WithHealthCheck(readinessCheckKey)
+            .WithCommand(
+                DevTunnelPortResource.ShowTunnelUrlsCommandName,
+                MessageStrings.ShowTunnelUrlsCommandDisplayName,
+                context => ShowTunnelUrlsAsync(portResource, context),
+                new CommandOptions
+                {
+                    Description = MessageStrings.ShowTunnelUrlsCommandDescription,
+                    IconName = "LinkMultiple",
+                    IconVariant = IconVariant.Regular,
+                    IsHighlighted = true,
+                    Visibility = ResourceCommandVisibility.UI,
+                    UpdateState = context =>
+                    {
+                        var interactionService = context.Services.GetRequiredService<IInteractionService>();
+                        return interactionService.IsAvailable &&
+                            context.ResourceSnapshot.State?.Text == KnownResourceStates.Running &&
+                            context.ResourceSnapshot.HealthStatus == HealthStatus.Healthy &&
+                            portResource.LastKnownStatus?.PortUri is not null
+                            ? ResourceCommandState.Enabled
+                            : ResourceCommandState.Disabled;
+                    }
+                })
+            // NOTE:
+            // The endpoint target full host is set by the dev tunnels service and is not known in advance, but the suffix is always devtunnels.ms
+            // We might consider updating the central logic that creates endpoint URLs to allow setting a target host like *.devtunnels.ms & if the
+            // host of the allocated endpoint matches that pattern, *don't* try to add a localhost version of the URL too (because it won't work), e.g.:
+            //  .WithEndpoint(DevTunnelPortResource.TunnelEndpointName, e => { e.TargetHost = "*.devtunnels.ms"; }, createIfNotExists: false)
+            .WithUrls(static context =>
+            {
+                var urls = context.Urls;
+
+                // Remove the port and trailing slash from the tunnel URL since the dev tunnels service always uses 443 for HTTPS
+                if (urls.FirstOrDefault(u => string.Equals(u.Endpoint?.EndpointName, DevTunnelPortResource.TunnelEndpointName, StringComparisons.EndpointAnnotationName)
+                                             && !string.Equals(new UriBuilder(u.Url).Host, "localhost")) is { } tunnelUrl)
+                {
+                    tunnelUrl.Url = new UriBuilder(tunnelUrl.Url).Uri.ToString().TrimEnd('/');
+                }
+
+                // Remove the localhost version of the tunnel URL that's added by the central endpoint URL logic
+                // HACK: See the NOTE above about potentially handling this more generically in the central endpoint URL logic
+                if (urls.FirstOrDefault(u => string.Equals(u.Endpoint?.EndpointName, DevTunnelPortResource.TunnelEndpointName, StringComparisons.EndpointAnnotationName)
+                                             && string.Equals(new UriBuilder(u.Url).Host, "localhost", StringComparison.OrdinalIgnoreCase)) is { } localhostTunnelUrl)
+                {
+                    urls.Remove(localhostTunnelUrl);
+                }
+
+                // Remove any existing inspect URL
+                if (urls.FirstOrDefault(u => string.Equals(u.DisplayText, "Inspect", StringComparison.OrdinalIgnoreCase)) is { } inspectUrl)
+                {
+                    urls.Remove(inspectUrl);
+                }
+
+                // Add the inspect URL if available
+                var portResource = (DevTunnelPortResource)context.Resource;
+                if (portResource.LastKnownStatus?.PortUri is { } portUri && GetInspectUrl(portUri) is { } inspectUrlString)
+                {
+                    urls.Add(new()
+                    {
+                        Url = inspectUrlString,
+                        DisplayText = "Inspect",
+                        DisplayLocation = UrlDisplayLocation.DetailsOnly
+                    });
+                }
+            })
+            .ExcludeFromManifest() // Dev tunnels do not get deployed
+            .WithIconName("VirtualNetwork")
+            .WithInitialState(new()
+            {
+                ResourceType = "DevTunnelPort",
+                CreationTimeStamp = DateTime.UtcNow,
+                State = KnownResourceStates.NotStarted,
+                Properties =
+                [
+                    new(CustomResourceKnownProperties.Source, $"{targetResource.Name}/{targetEndpoint.EndpointName}"),
+                    new("TargetResource", targetResource.Name),
+                    new("TargetEndpoint", targetEndpoint.EndpointName),
+                    new("Protocol", portOptions.Protocol),
+                    new("Description", portOptions.Description),
+                    new("Labels", portOptions.Labels is null ? "" : $"{string.Join(", ", portOptions.Labels)}"),
+                ]
+            });
+    }
+
+    internal static async Task UpdatePortAsync(DevTunnelPortResource portResource, bool available, ResourceNotificationService notifications, ResourceLoggerService logs, CancellationToken cancellationToken)
+    {
+        var port = await portResource.GetTunnelPortAsync(cancellationToken).ConfigureAwait(false);
+        var description = available
+            ? string.Format(CultureInfo.CurrentCulture, MessageStrings.DevTunnelPortHealthy, port, portResource.DevTunnel.TunnelId)
+            : string.Format(CultureInfo.CurrentCulture, MessageStrings.DevTunnelUnhealthy_PortInactive, portResource.DevTunnel.TunnelId, port);
+
+        if (!available)
+        {
+            await notifications.PublishUpdateAsync(portResource, snapshot =>
+                DevTunnelMonitor.WithConnectionHealth(snapshot with
+                {
+                    Properties = [.. snapshot.Properties.Where(p => !IsDevTunnelUrlProperty(p.Name))],
+                    Urls = [.. snapshot.Urls.Select(u => u with { IsInactive = true })]
+                }, portResource.Name, false, description)).ConfigureAwait(false);
+            return;
+        }
+
+        var portUri = portResource.LastKnownStatus?.PortUri
+            ?? throw new InvalidOperationException("An active dev tunnel port must have an observed public URI.");
+        var previousAddress = portResource.TunnelEndpointAnnotation.AllocatedEndpoint?.Address;
+
+        // Browser origins resolve from these finalized URL objects, not from dashboard snapshots.
+        foreach (var url in portResource.Annotations.OfType<ResourceUrlAnnotation>())
+        {
+            url.Url = UpdatePortUrl(url.Url, url.Endpoint?.EndpointName, url.DisplayText, previousAddress, portUri);
+        }
+
+        portResource.TunnelEndpointAnnotation.AllocatedEndpoint = new(portResource.TunnelEndpointAnnotation, portUri.Host, 443);
+
+        var wasAvailable = notifications.TryGetCurrentState(portResource.Name, out var previous)
+            && previous.Snapshot.State?.Text == KnownResourceStates.Running
+            && previous.Snapshot.HealthStatus == HealthStatus.Healthy;
+        await notifications.PublishUpdateAsync(portResource, snapshot =>
+            DevTunnelMonitor.WithConnectionHealth(snapshot with
+            {
+                State = KnownResourceStates.Running,
+                StartTimeStamp = snapshot.State?.Text == KnownResourceStates.Running ? snapshot.StartTimeStamp : DateTime.UtcNow,
+                Properties = [.. snapshot.Properties.Where(p => !IsDevTunnelUrlProperty(p.Name)), .. GetUrlProperties(portResource)],
+                Urls = [.. snapshot.Urls.Select(u => u with
+                {
+                    Url = UpdatePortUrl(u.Url, u.Name, u.DisplayProperties.DisplayName, previousAddress, portUri),
+                    IsInactive = false
+                })]
+            }, portResource.Name, true, description)).ConfigureAwait(false);
+
+        if (!wasAvailable || !string.Equals(previousAddress, portUri.Host, StringComparison.OrdinalIgnoreCase))
+        {
+            logs.GetLogger(portResource)
+                .LogInformation("Forwarding from {PortUrl} to {TargetUrl} ({TargetResourceName}/{TargetEndpointName})",
+                    NormalizeUrl(portUri), portResource.TargetEndpoint.Url, portResource.TargetEndpoint.Resource.Name, portResource.TargetEndpoint.EndpointName);
+        }
+    }
+
+    private static string UpdatePortUrl(string url, string? endpointName, string? displayName, string? previousAddress, Uri portUri)
+    {
+        if (previousAddress is null
+            || string.Equals(previousAddress, portUri.Host, StringComparison.OrdinalIgnoreCase)
+            || !Uri.TryCreate(url, UriKind.Absolute, out var currentUri))
+        {
+            return url;
+        }
+
+        string? replacementHost = null;
+        if (string.Equals(endpointName, DevTunnelPortResource.TunnelEndpointName, StringComparisons.EndpointAnnotationName)
+            && string.Equals(currentUri.Host, previousAddress, StringComparison.OrdinalIgnoreCase))
+        {
+            replacementHost = portUri.Host;
+        }
+        else if (displayName == "Inspect"
+            && GetInspectUrl(new UriBuilder(portUri) { Host = previousAddress }.Uri) is { } previousInspectUrl
+            && string.Equals(currentUri.Host, new Uri(previousInspectUrl).Host, StringComparison.OrdinalIgnoreCase)
+            && GetInspectUrl(portUri) is { } inspectUrl)
+        {
+            replacementHost = new Uri(inspectUrl).Host;
+        }
+        if (replacementHost is null)
+        {
+            return url;
+        }
+
+        // URL callbacks may add paths, queries, fragments, and multiple links for one endpoint.
+        // Only migrate the endpoint-derived host; leave customized links and their suffixes intact.
+        var updated = new UriBuilder(currentUri) { Host = replacementHost }.Uri;
+        return currentUri.PathAndQuery == "/" && currentUri.Fragment.Length == 0 && !url.EndsWith('/')
+            ? updated.GetLeftPart(UriPartial.Authority)
+            : updated.AbsoluteUri;
+    }
+
+    internal static async Task UpdatePortAccessAsync(DevTunnelPortResource portResource, ResourceNotificationService notifications, ResourceLoggerService logs, DateTimeOffset now)
+    {
+        var effectivePolicy = portResource.LastKnownAccessStatus?.GetAnonymousAccessPolicy(now);
+        var previousPolicy = notifications.TryGetCurrentState(portResource.Name, out var current)
+            ? current.Snapshot.Properties.FirstOrDefault(p => p.Name == "Anonymous access")?.Value as string
+            : null;
+        if (!string.Equals(effectivePolicy, previousPolicy, StringComparison.Ordinal) && portResource.LastKnownAccessStatus is { } access)
+        {
+            access.LogAnonymousAccessPolicy(logs.GetLogger(portResource), now);
+        }
+
+        ResourcePropertySnapshot[] policyProperties = effectivePolicy is null ? [] : [new("Anonymous access", effectivePolicy)];
+        await notifications.PublishUpdateAsync(portResource, snapshot => snapshot with
+        {
+            Properties = [
+                .. snapshot.Properties.Where(p => !string.Equals(p.Name, "Anonymous access", StringComparison.OrdinalIgnoreCase)),
+                .. policyProperties
+            ]
+        }).ConfigureAwait(false);
+    }
+
+    internal static async Task StopPortAsync(DevTunnelPortResource portResource, IServiceProvider services, CancellationToken cancellationToken)
+    {
+        var notifications = services.GetRequiredService<ResourceNotificationService>();
+        if (notifications.TryGetCurrentState(portResource.Name, out var current)
+            && KnownResourceStates.TerminalStates.Contains(current.Snapshot.State?.Text))
+        {
+            return;
+        }
+        portResource.LastKnownStatus = null;
+        portResource.LastKnownAccessStatus = null;
+        services.GetRequiredService<ResourceLoggerService>().GetLogger(portResource).LogInformation("Port forwarding stopped");
+        CustomResourceSnapshot? stoppedSnapshot = null;
+        await notifications.PublishUpdateAsync(portResource, snapshot => stoppedSnapshot = snapshot with
+        {
+            State = KnownResourceStates.Finished,
+            StopTimeStamp = DateTime.UtcNow,
+            Properties = [.. snapshot.Properties.Where(p => !IsDevTunnelUrlProperty(p.Name) && p.Name != "Anonymous access")],
+            Urls = [.. snapshot.Urls.Select(u => u with { IsInactive = true })]
+        }).ConfigureAwait(false);
+        // Stopped callbacks may restart the parent. Don't hold its serialized monitor loop
+        // while executing those user callbacks.
+        await services.GetRequiredService<IDistributedApplicationEventing>()
+            .PublishAsync(new ResourceStoppedEvent(portResource, services, new(portResource, portResource.Name, stoppedSnapshot!)),
+                EventDispatchBehavior.NonBlockingSequential, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task<ExecuteCommandResult> ShowTunnelUrlsAsync(DevTunnelPortResource portResource, ExecuteCommandContext context)
+    {
+        var urlProperties = GetUrlProperties(portResource);
+        if (urlProperties.Count == 0)
+        {
+            return CommandResults.Failure(MessageStrings.ShowTunnelUrlsCommandUnavailable);
+        }
+
+        var interactionService = context.Services.GetRequiredService<IInteractionService>();
+        if (!interactionService.IsAvailable)
+        {
+            return CommandResults.Failure(MessageStrings.ShowTunnelUrlsCommandInteractionUnavailable);
+        }
+
+        var markdown = string.Join(
+            $"  {Environment.NewLine}",
+            urlProperties.Select(p => $"**{p.DisplayName}:** <{p.Value}>"));
+
+        // This action only inspects derived resource state, so open an interaction directly instead of
+        // returning command-result data through the generic text visualizer.
+        _ = await interactionService.PromptMessageBoxAsync(
+            MessageStrings.ShowTunnelUrlsCommandResultHeading,
+            markdown,
+            new MessageBoxInteractionOptions
+            {
+                Intent = MessageIntent.None,
+                EnableMessageMarkdown = true,
+                PrimaryButtonText = MessageStrings.ShowTunnelUrlsCommandClose,
+                ShowSecondaryButton = false
+            },
+            context.CancellationToken).ConfigureAwait(false);
+
+        return CommandResults.Success();
+    }
+
+    private static List<ResourcePropertySnapshot> GetUrlProperties(DevTunnelPortResource portResource)
+    {
+        if (portResource.LastKnownStatus?.PortUri is not { } portUri)
+        {
+            return [];
+        }
+
+        List<ResourcePropertySnapshot> properties =
+        [
+            new(DevTunnelPortResource.TunnelUrlPropertyName, NormalizeUrl(portUri))
+            {
+                DisplayName = MessageStrings.ShowTunnelUrlsCommandTunnelUrlLabel,
+                IsHighlighted = true
+            }
+        ];
+
+        if (GetInspectUrl(portUri) is { } inspectUrl)
+        {
+            properties.Add(new(DevTunnelPortResource.InspectUrlPropertyName, inspectUrl)
+            {
+                DisplayName = MessageStrings.ShowTunnelUrlsCommandInspectUrlLabel,
+                IsHighlighted = true
+            });
+        }
+
+        if (GetAllocatedUrl(portResource.TargetEndpoint) is { Length: > 0 } localUrl)
+        {
+            properties.Add(new(DevTunnelPortResource.LocalEndpointUrlPropertyName, localUrl)
+            {
+                DisplayName = MessageStrings.ShowTunnelUrlsCommandLocalEndpointUrlLabel,
+                IsHighlighted = true
+            });
+        }
+
+        return properties;
+    }
+
+    private static string? GetAllocatedUrl(EndpointReference endpoint)
+    {
+        var networkId = endpoint.ContextNetworkID ?? KnownNetworkIdentifiers.LocalhostNetwork;
+        // EndpointReference.Url preserves network context but throws while allocation is pending.
+        // Check the matching snapshot first so the optional local URL remains non-blocking.
+        var isAllocated = endpoint.EndpointAnnotation.AllAllocatedEndpoints.Any(
+            endpointSnapshot => endpointSnapshot.NetworkID == networkId && endpointSnapshot.Snapshot.IsValueSet);
+
+        return isAllocated ? endpoint.Url : null;
+    }
+
+    private static bool IsDevTunnelUrlProperty(string name) =>
+        name is DevTunnelPortResource.TunnelUrlPropertyName
+            or DevTunnelPortResource.InspectUrlPropertyName
+            or DevTunnelPortResource.LocalEndpointUrlPropertyName;
+
+    private static string NormalizeUrl(Uri url) => new UriBuilder(url).Uri.ToString().TrimEnd('/');
+
+    private static string? GetInspectUrl(Uri portUri)
+    {
+        // Dev Tunnel port hosts use a shape such as `n4skq32k-3000.use.devtunnels.ms`.
+        // The inspect host inserts `-inspect` before the first dot: `n4skq32k-3000-inspect.use.devtunnels.ms`.
+        var hostPrefixLength = portUri.Host.IndexOf('.');
+        if (hostPrefixLength < 0)
+        {
+            return null;
+        }
+
+        var hostPrefix = portUri.Host[..hostPrefixLength];
+        var hostSuffix = portUri.Host[hostPrefixLength..];
+        return NormalizeUrl(new UriBuilder(portUri) { Host = $"{hostPrefix}-inspect{hostSuffix}" }.Uri);
+    }
+
+    private static string GetUserAgent()
+    {
+        var assembly = typeof(DevTunnelResource).Assembly;
+        var version = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+            ?? assembly.GetName().Version?.ToString()
+            ?? "unknown";
+        return new ProductInfoHeaderValue("Aspire.DevTunnels", version).ToString();
+    }
+
+    internal static async Task<RequiredCommandValidationResult> ValidateDevTunnelCliVersionAsync(RequiredCommandValidationContext context)
+    {
+        var devTunnelClient = context.Services.GetRequiredService<IDevTunnelClient>();
+
+        try
+        {
+            var version = await devTunnelClient.GetVersionAsync(logger: null, context.CancellationToken).ConfigureAwait(false);
+
+            if (version < DevTunnelCli.MinimumSupportedVersion)
+            {
+                return RequiredCommandValidationResult.Failure(
+                    string.Format(CultureInfo.CurrentCulture, MessageStrings.DevtunnelCliVersionNotSupported, version, DevTunnelCli.MinimumSupportedVersion));
+            }
+
+            return RequiredCommandValidationResult.Success();
+        }
+        catch (Exception ex)
+        {
+            return RequiredCommandValidationResult.Failure(ex.Message);
+        }
+    }
+
+    private static bool TryValidateLabels(List<string>? labels, [NotNullWhen(false)] out string? errorMessage)
+    {
+        if (labels is null || labels.Count == 0)
+        {
+            errorMessage = null;
+            return true;
+        }
+
+        foreach (var label in labels)
+        {
+            // Validate the label format '[\w-=]{1,50}'
+            if (!LabelRegex().IsMatch(label))
+            {
+                errorMessage = $"""
+                    The label '{label}' is invalid. A valid label must:
+                    - consist of letters, numbers, underscores, hyphens, or equals signs
+                    - be 1-50 characters long
+                    """;
+                return false;
+            }
+        }
+
+        errorMessage = null;
+        return true;
+    }
+
+    [GeneratedRegex(@"^[a-z0-9][a-z0-9-]{1,58}[a-z0-9]$")]
+    private static partial Regex TunnelIdRegex();
+
+    [GeneratedRegex(@"^[\w\-=_]{1,50}$")]
+    private static partial Regex LabelRegex();
+}

@@ -1,0 +1,422 @@
+::deep .span-messages-container {
+    background: var(--main-container-background-color);
+    color: var(--colorNeutralForeground1);
+    border: var(--strokeWidthThin) solid var(--colorNeutralBackground3);
+    border-radius: var(--aspire-radius-medium);
+    padding: 8px 8px 16px 16px;
+    height: 65vh;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+}
+
+::deep .span-messages-container fluent-button.back-button::part(control):not(:hover) {
+    background: var(--main-container-background-color);
+}
+
+.dialog-title-grid ::deep .genai-dialog-title {
+    display: block;
+    overflow: hidden;
+    color: inherit;
+    font: inherit;
+}
+
+::deep .span-messages-sidebar {
+    height: 65vh;
+    overflow-y: auto;
+}
+
+::deep .message-container {
+    padding: 12px;
+    border: var(--strokeWidthThin) solid var(--aspire-button-hover-border);
+    border-radius: var(--aspire-radius-small);
+    display: flex;
+    flex-direction: column;
+    row-gap: var(--aspire-space-3);
+    position: relative;
+}
+
+::deep .message-container .message-title {
+    font-size: var(--aspire-font-size-heading);
+    display: flex;
+    align-items: center;
+}
+
+::deep .section-title {
+    font-family: var(--aspire-font-display);
+    font-size: var(--aspire-font-size-heading);
+    font-weight: var(--aspire-font-weight-semibold);
+}
+
+.dialog-title-grid ::deep .trace-id {
+    display: inline;
+    color: var(--foreground-subtext-rest);
+    padding-left: 0.5rem;
+    font-size: var(--aspire-font-size-secondary);
+    font-weight: var(--aspire-font-weight-regular);
+    line-height: 1;
+}
+
+.genai-visualizer-container ::deep .fluent-multi-splitter-bar {
+    margin-inline: 0;
+    flex-shrink: 0;
+}
+
+.genai-visualizer-container ::deep .fluent-multi-splitter-bar:not(:hover)::before {
+    opacity: 0;
+}
+
+::deep .genai-message-tree {
+    min-width: auto;
+}
+
+::deep fluent-tree-item::part(positioning-region) {
+    min-height: 33px;
+    box-sizing: border-box;
+    padding: 0;
+    margin-bottom: 1px;
+    border: 1px solid transparent;
+    border-radius: var(--aspire-radius-small);
+}
+
+::deep fluent-tree-item[selected]::part(positioning-region) {
+    background-color: var(--colorNeutralBackground3);
+}
+
+::deep fluent-tree-item:not([selected])::part(positioning-region):hover {
+    background-color: var(--colorNeutralBackground3);
+}
+
+::deep fluent-tree-item:not([selected])::part(positioning-region):not(:hover) {
+    background-color: unset;
+}
+
+::deep .message-tree-item-container {
+    margin-left: 16px;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+}
+
+::deep .message-name {
+    display: inline-flex;
+    column-gap: var(--aspire-space-1);
+}
+
+::deep .category-badge, ::deep .llm-badge {
+    display: inline-flex;
+}
+
+::deep .category-badge {
+    border-radius: var(--aspire-radius-small);
+    margin-left: 8px;
+    font-size: var(--aspire-font-size-secondary);
+    line-height: 18px;
+    padding: 0px 2px;
+    column-gap: 2px;
+}
+
+::deep .llm-badge {
+    border-radius: var(--aspire-radius-medium);
+    padding: 0px 8px;
+    background-color: var(--llm-background-color);
+    color: var(--llm-color);
+    margin-right: 8px;
+    font-size: var(--aspire-font-size-secondary);
+    font-weight: var(--aspire-font-weight-semibold);
+    pointer-events: none;
+}
+
+::deep .category-message {
+    background-color: var(--message-background-color);
+    color: var(--message-color);
+    --icon-color: var(--message-color);
+}
+
+::deep .category-tool-calls {
+    background-color: var(--tool-calls-background-color);
+    color: var(--tool-calls-color);
+    --icon-color: var(--tool-calls-color);
+}
+
+::deep .category-tool-response {
+    background-color: var(--tool-response-background-color);
+    color: var(--tool-response-color);
+    --icon-color: var(--tool-response-color);
+}
+
+::deep .category-output {
+    background-color: var(--output-background-color);
+    color: var(--output-color);
+    --icon-color: var(--output-color);
+}
+
+::deep .message-header {
+    display: flex;
+    align-items: center;
+    height: 50px;
+}
+
+::deep .back-button {
+    margin-left: auto;
+}
+
+::deep .message-header-details {
+    display: flex;
+    flex-flow: column;
+    font-size: var(--aspire-font-size-secondary);
+    margin-left: auto;
+    margin-right: 8px;
+}
+
+::deep .message-header-title {
+    display: flex;
+    flex-flow: column;
+}
+
+::deep .message-header-date {
+    color: var(--colorNeutralForeground3);
+    font-size: var(--aspire-font-size-secondary);
+}
+
+::deep .tab-container {
+    margin-top: 10px;
+    padding-right: 8px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    row-gap: var(--aspire-space-3);
+    /* don't stretch images */
+    align-items: flex-start;
+    /* break up long words that take up the entire line. avoid horizontal scrollbars */
+    word-break: break-word;
+}
+
+::deep .tab-container img, ::deep .tab-container video {
+    /* don't exceed available space and keep aspect ratio */
+    max-width: 100%;
+    height: auto;
+}
+
+::deep .tab-container audio {
+    flex: 0 0 auto; /* prevent shrinking */
+}
+
+::deep .section-container {
+    display: flex;
+    flex-direction: column;
+    row-gap: var(--aspire-space-3);
+    width: 100%;
+    margin-bottom: 4px;
+}
+
+::deep .span-details-layout, ::deep .property-grid-container {
+    padding: 0;
+    overflow: initial;
+    display: block;
+    width: 100%;
+}
+
+::deep .property-grid-container {
+    --property-grid-background-color: var(--property-grid-genai-dialog-background-color);
+}
+
+::deep .message-container .log-content {
+    /* don't break on every word */
+    word-break: normal;
+}
+
+::deep .message-container .defaultHidden {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    display: none;
+}
+
+::deep .message-container:hover .defaultHidden {
+    display: block;
+}
+
+::deep .no-message-content,
+::deep .no-message-content-content {
+    color: var(--colorNeutralForeground3);
+    font-size: var(--aspire-font-size-secondary);
+}
+
+::deep .display-error-message {
+    color: var(--error);
+}
+
+::deep .error-message-text {
+    color: var(--error);
+    font-weight: var(--aspire-font-weight-semibold);
+}
+
+::deep .display-error-content {
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+::deep .no-message-content-content {
+    padding-bottom: 12px;
+}
+
+::deep .message-copy-button {
+    --aspire-button-border-color: transparent;
+    --colorNeutralBackground1Hover: var(--colorNeutralBackground3);
+    --colorNeutralStroke1Hover: transparent;
+    --colorNeutralStroke1Pressed: transparent;
+    width: auto;
+    height: 28px;
+    min-height: 28px;
+    padding-inline: 2px;
+    border-color: transparent;
+    border-radius: var(--aspire-radius-small);
+    color: var(--colorNeutralForeground1);
+    font-weight: var(--aspire-font-weight-regular);
+    margin-left: auto;
+    margin-top: 4px;
+    margin-right: 4px;
+}
+
+::deep fluent-button.message-copy-button::part(control) {
+    height: 28px;
+    min-height: 28px;
+    padding-inline: 2px;
+    border-color: transparent;
+    border-radius: var(--aspire-radius-small);
+    background: var(--main-container-background-color);
+}
+
+::deep fluent-button.message-copy-button:hover::part(control),
+::deep fluent-button.message-copy-button:active::part(control) {
+    background: var(--colorNeutralBackground3);
+}
+
+::deep fluent-button.message-copy-button > [slot="start"] {
+    margin-inline-end: 3px;
+}
+
+::deep .markdown-container {
+    width: 100%;
+}
+
+::deep .tools-list {
+    width: 100%;
+    align-items: stretch;
+    gap: var(--aspire-space-1);
+}
+
+::deep .tab-container .tools-list fluent-accordion-item.tool-highlighted {
+    border: 2px solid var(--colorBrandBackground);
+}
+
+::deep .tab-container .tools-list fluent-accordion-item,
+::deep .tab-container .tools-list fluent-accordion-item::part(heading),
+::deep .tab-container .tools-list fluent-accordion-item::part(content) {
+    background-color: var(--property-grid-genai-dialog-background-color);
+}
+
+::deep .tab-container .tools-list fluent-accordion-item {
+    display: block;
+    width: 100%;
+    max-width: none;
+    overflow: hidden;
+    border: var(--strokeWidthThin) solid var(--colorNeutralBackground3);
+    border-radius: var(--aspire-radius-medium);
+}
+
+::deep .tab-container .tools-list fluent-accordion-item::part(heading) {
+    --accordion-marker-background: transparent;
+}
+
+::deep .tab-container .tools-list fluent-accordion-item::part(heading):hover {
+    --accordion-marker-background: var(--aspire-menu-item-hover-background);
+}
+
+::deep .tab-container .tools-list fluent-accordion-item::part(button) {
+    text-align: left;
+}
+
+::deep .tab-container .tool-heading {
+    display: flex;
+    align-items: center;
+    gap: var(--aspire-space-3);
+    padding-left: 4px;
+}
+
+::deep .tab-container .tool-heading .tool-name {
+    font-weight: var(--aspire-font-weight-semibold);
+    white-space: nowrap;
+}
+
+::deep .tab-container .type-name {
+    white-space: nowrap;
+    margin-right: 0.25rem;
+}
+
+::deep .tab-container .tool-description {
+    margin: 0 0 8px 4px;
+    font-size: small;
+}
+
+::deep .tab-container .tool-description * {
+    font-size: inherit;
+}
+
+::deep .tab-container .tool-footer {
+    padding-left: 4px;
+    font-weight: var(--aspire-font-weight-semibold);
+    margin-bottom: 8px;
+}
+
+::deep .tab-container .tool-parameters-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+::deep .tab-container .tool-button-container {
+    display: flex;
+    gap: var(--aspire-space-2);
+    margin-top: 4px;
+}
+
+::deep .tab-container .tool-cell {
+    text-align: left;
+    padding: 8px;
+    border-bottom: 1px solid var(--colorNeutralStroke3);
+}
+
+::deep .tab-container strong {
+    font-weight: var(--aspire-font-weight-semibold);
+}
+
+::deep .tab-container th.tool-cell {
+    font-weight: var(--aspire-font-weight-semibold);
+}
+
+::deep .tab-container .tool-cell-nowrap {
+    text-wrap: nowrap;
+}
+
+::deep .tab-container .evaluation-container {
+    padding: 12px;
+    border: var(--strokeWidthThin) solid var(--colorNeutralStroke1Hover);
+    border-radius: var(--aspire-radius-small);
+    width: 100%;
+    row-gap: var(--aspire-space-3);
+    display: flex;
+    flex-direction: column;
+}
+
+::deep .tab-container .evaluation-header {
+    display: flex;
+    flex-direction: row;
+    column-gap: var(--aspire-space-2);
+    align-items: center;
+    font-weight: var(--aspire-font-weight-semibold);
+}
+
+::deep .tab-container .evaluation-divider {
+    height: 20px;
+    border-color: var(--colorNeutralStroke1Hover);
+}

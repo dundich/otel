@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="ko" original="../RestoreCommandStrings.resx">
+    <body>
+      <trans-unit id="Description">
+        <source>Restore dependencies and generate SDK code for an AppHost</source>
+        <target state="translated">종속성 복원 및 AppHost용 SDK 코드 생성</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="UnrecognizedAppHostType">
+        <source>Unrecognized AppHost type.</source>
+        <target state="translated">인식할 수 없는 AppHost 유형입니다.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="RestoringSdkCode">
+        <source>Restoring SDK code...</source>
+        <target state="translated">SDK 코드를 복원하는 중...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="RestoreSucceeded">
+        <source>SDK code restored successfully for {0}.</source>
+        <target state="translated">{0}에 대한 SDK 코드를 복원했습니다.</target>
+        <note>{0} is the AppHost project file name.</note>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

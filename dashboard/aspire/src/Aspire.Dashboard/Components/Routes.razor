@@ -1,0 +1,59 @@
+﻿@using Aspire.Dashboard.Components.Resize
+@inject IStringLocalizer<Resources.Routes> Loc
+@inject NavigationManager NavigationManager
+
+<BrowserDimensionWatcher @bind-ViewportInformation="@_viewportInformation" />
+
+@if (_viewportInformation is null)
+{
+    // prevent render until we've determined the browser viewport so that we don't have to re-render
+    // if we guess wrong
+    return;
+}
+
+<CascadingValue Value="@_viewportInformation">
+    <Router AppAssembly="@typeof(App).Assembly">
+        <Found Context="routeData">
+            <!-- AuthorizeRouteView also uses DefaultLayout for denied authorization.
+                 Only allow the protected default layout after the frontend policy succeeds. -->
+            <AuthorizeView Policy="@FrontendAuthorizationDefaults.PolicyName" Context="routeAuthenticationState">
+                <Authorized>
+                    <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@GetDefaultLayout(routeData)" />
+                </Authorized>
+                <NotAuthorized>
+                    <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(Layout.EmptyLayout)">
+                        <NotAuthorized>
+                            <DashboardNotAuthorized />
+                        </NotAuthorized>
+                    </AuthorizeRouteView>
+                </NotAuthorized>
+            </AuthorizeView>
+        </Found>
+        <NotFound>
+            <!-- Missing routes bypass AuthorizeRouteView, so enforce authorization before rendering the main layout. -->
+            <AuthorizeView Policy="@FrontendAuthorizationDefaults.PolicyName">
+                <Authorized>
+                    <PageTitle>@Loc[nameof(Resources.Routes.NotFoundPageTitle)]</PageTitle>
+                    @if (DashboardExperienceComponents.TryGetLegacyNotFound(
+                        NavigationManager,
+                        out var legacyLayout,
+                        out var legacyNotFound))
+                    {
+                        <LayoutView Layout="@legacyLayout">
+                            <DynamicComponent Type="@legacyNotFound" />
+                        </LayoutView>
+                    }
+                    else
+                    {
+                        <LayoutView Layout="@typeof(Layout.MainLayout)">
+                            <Aspire.Dashboard.Components.Pages.NotFound />
+                        </LayoutView>
+                    }
+                </Authorized>
+                <NotAuthorized>
+                    <DashboardNotAuthorized />
+                </NotAuthorized>
+            </AuthorizeView>
+        </NotFound>
+    </Router>
+</CascadingValue>

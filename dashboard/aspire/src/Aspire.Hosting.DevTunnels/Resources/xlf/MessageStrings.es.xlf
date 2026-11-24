@@ -1,0 +1,127 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="es" original="../MessageStrings.resx">
+    <body>
+      <trans-unit id="AuthenticationExpiredNotification">
+        <source>Dev tunnels authentication has expired. Restart the dev tunnel resources to re-authenticate.</source>
+        <target state="translated">La autenticación de los túneles de desarrollo ha expirado. Reinicie los recursos del túnel de desarrollo para volver a autenticarse.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="AuthenticationRequiredNotification">
+        <source>Dev tunnels requires authentication to continue:</source>
+        <target state="translated">Los túneles de desarrollo requieren autenticación para continuar:</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DevTunnelHealthy">
+        <source>Dev tunnel '{0}' is active with {1} host connections and {2} ports.</source>
+        <target state="translated">El túnel de desarrollo '{0}' está activo con {1} conexiones de host y {2} puertos.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DevTunnelHostDisconnected">
+        <source>The local host for dev tunnel '{0}' is disconnected.</source>
+        <target state="translated">El host local del túnel de desarrollo '{0}' está desconectado.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DevTunnelHostHealthy">
+        <source>Dev tunnel '{0}' is connected and hosting all expected ports.</source>
+        <target state="translated">El túnel de desarrollo '{0}' está conectado y hospeda todos los puertos esperados.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DevTunnelHostNotReady">
+        <source>Waiting for dev tunnel '{0}' to connect and expose its ports.</source>
+        <target state="translated">Esperando a que el túnel de desarrollo "{0}" se conecte y exponga sus puertos.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DevTunnelPortHealthy">
+        <source>Dev tunnel port '{0}' on dev tunnel '{1}' is active.</source>
+        <target state="translated">El puerto '{0}' del túnel de desarrollo '{1}' está activo.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DevTunnelPortUnhealthy_Error">
+        <source>Failed to check port '{0}' on dev tunnel '{1}': {2}</source>
+        <target state="translated">No se pudo comprobar el puerto '{0}' en el túnel de desarrollo '{1}': {2}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DevTunnelPortUnhealthy_StatusUnknown">
+        <source>Dev tunnel port '{0}' on dev tunnel '{1}' status is not known.</source>
+        <target state="translated">No se conoce el puerto de túnel de desarrollo '{0}' en el estado de túnel de desarrollo '{1}'.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DevTunnelUnhealthy_Error">
+        <source>Failed to check dev tunnel '{0}': {1}</source>
+        <target state="translated">No se pudo comprobar el túnel de desarrollo '{0}': {1}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DevTunnelUnhealthy_NoActiveHostConnections">
+        <source>Dev tunnel '{0}' has no active host connections.</source>
+        <target state="translated">El túnel de desarrollo '{0}' no tiene conexiones activas de host.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DevTunnelUnhealthy_PortInactive">
+        <source>Dev tunnel '{0}' port '{1}' is not active.</source>
+        <target state="translated">El túnel de desarrollo '{0}' del puerto '{1}' no está activo.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DevtunnelCliVersionNotSupported">
+        <source>The installed devtunnel CLI version {0} is not supported. Version {1} or higher is required.</source>
+        <target state="translated">La versión instalada de la CLI de devtunnel {0} no es compatible. Se requiere la versión {1} o superior.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="LoginWithGitHub">
+        <source>Login with GitHub</source>
+        <target state="translated">Iniciar sesión con GitHub</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="LoginWithMicrosoft">
+        <source>Login with Microsoft</source>
+        <target state="translated">Iniciar sesión con Microsoft</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ShowTunnelUrlsCommandClose">
+        <source>Close</source>
+        <target state="translated">Cerrar</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ShowTunnelUrlsCommandDescription">
+        <source>Opens available public, inspect, and local URLs for the dev tunnel port.</source>
+        <target state="translated">Abre las direcciones URL públicas, de inspección y locales disponibles para el puerto de túnel de desarrollo.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ShowTunnelUrlsCommandDisplayName">
+        <source>Show tunnel URLs</source>
+        <target state="translated">Mostrar direcciones URL de túnel</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ShowTunnelUrlsCommandInspectUrlLabel">
+        <source>Inspect URL</source>
+        <target state="translated">Inspeccionar dirección URL</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ShowTunnelUrlsCommandInteractionUnavailable">
+        <source>Dev tunnel URLs can only be shown in an interactive environment.</source>
+        <target state="translated">Las direcciones URL del túnel de desarrollo solo se pueden mostrar en un entorno interactivo.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ShowTunnelUrlsCommandLocalEndpointUrlLabel">
+        <source>Local endpoint URL</source>
+        <target state="translated">Dirección URL del punto de conexión local</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ShowTunnelUrlsCommandResultHeading">
+        <source>Dev tunnel URLs</source>
+        <target state="translated">Direcciones URL de túnel de desarrollo</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ShowTunnelUrlsCommandTunnelUrlLabel">
+        <source>Tunnel URL</source>
+        <target state="translated">Dirección URL de túnel</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ShowTunnelUrlsCommandUnavailable">
+        <source>Dev tunnel URLs are not available yet.</source>
+        <target state="translated">Las direcciones URL del túnel de desarrollo aún no están disponibles.</target>
+        <note />
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

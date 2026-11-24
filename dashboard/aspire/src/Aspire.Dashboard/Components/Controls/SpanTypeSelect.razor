@@ -1,0 +1,33 @@
+@if (ViewportInformation.IsDesktop)
+{
+    <label for="@_spanTypeSelectId">@Loc[nameof(Dashboard.Resources.Traces.SpanTypeLabel)]</label>
+
+    <DesktopToolbarDivider />
+
+    <FluentSelect TOption="SelectViewModel<SpanType>" TValue="SelectViewModel<SpanType>"
+                  Class="toolbar-select toolbar-select-compact"
+                  Id="@_spanTypeSelectId"
+                  Items="@SpanTypes"
+                  Position="SelectPosition.Below"
+                  OptionText="@(c => c?.Name)"
+                  @bind-Value="@SpanType"
+                  @bind-Value:after="@HandleSelectedSpanTypeChangedInternalAsync"
+                  AriaLabel="@Loc[nameof(Dashboard.Resources.Traces.SpanTypeSelectSpanType)]"
+                  @attributes="@AdditionalAttributes" />
+}
+else
+{
+    <div>
+        <FluentSelect TOption="SelectViewModel<SpanType>" TValue="SelectViewModel<SpanType>"
+                      Class="toolbar-select"
+                      Id="@_spanTypeSelectId"
+                      Items="@SpanTypes"
+                      Position="SelectPosition.Below"
+                      OptionText="@(c => c?.Name)"
+                      Label="@Loc[nameof(Dashboard.Resources.Traces.SpanTypeLabel)]"
+                      @bind-Value="@SpanType"
+                      @bind-Value:after="@HandleSelectedSpanTypeChangedInternalAsync"
+                      AriaLabel="@Loc[nameof(Dashboard.Resources.Traces.SpanTypeSelectSpanType)]"
+                      @attributes="@AdditionalAttributes" />
+    </div>
+}

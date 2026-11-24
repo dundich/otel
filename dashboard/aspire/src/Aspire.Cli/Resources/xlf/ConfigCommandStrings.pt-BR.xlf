@@ -1,0 +1,232 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="pt-BR" original="../ConfigCommandStrings.resx">
+    <body>
+      <trans-unit id="AvailableFeaturesHeader">
+        <source>Available features</source>
+        <target state="translated">Recursos disponíveis</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConfigurationArrayIndexInvalid">
+        <source>Configuration key '{0}' requires a non-negative integer array index.</source>
+        <target state="new">Configuration key '{0}' requires a non-negative integer array index.</target>
+        <note>{0} is the configuration key.</note>
+      </trans-unit>
+      <trans-unit id="ConfigurationArrayIndexOutOfRange">
+        <source>Array index {0} in configuration key '{1}' is out of range. Edit an existing element or append at index {2}.</source>
+        <target state="new">Array index {0} in configuration key '{1}' is out of range. Edit an existing element or append at index {2}.</target>
+        <note>{0} is the requested index, {1} is the configuration key, and {2} is the array length.</note>
+      </trans-unit>
+      <trans-unit id="ConfigurationArrayRequired">
+        <source>Configuration key '{0}' requires an array, but the existing value is not an array.</source>
+        <target state="new">Configuration key '{0}' requires an array, but the existing value is not an array.</target>
+        <note>{0} is the configuration key.</note>
+      </trans-unit>
+      <trans-unit id="ConfigurationKeyDeletedGlobally">
+        <source>Configuration '{0}' deleted globally.</source>
+        <target state="translated">A configuração "{0}" foi excluída globalmente.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConfigurationKeyDeletedLocally">
+        <source>Configuration '{0}' deleted locally.</source>
+        <target state="translated">A configuração "{0}" foi excluída localmente.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConfigurationKeyInvalid">
+        <source>Configuration key '{0}' is invalid. Use dots for nested properties and brackets containing a non-negative integer for array indices.</source>
+        <target state="new">Configuration key '{0}' is invalid. Use dots for nested properties and brackets containing a non-negative integer for array indices.</target>
+        <note>{0} is the configuration key.</note>
+      </trans-unit>
+      <trans-unit id="ConfigurationKeySetGlobally">
+        <source>Configuration '{0}' set to '{1}' globally.</source>
+        <target state="translated">A configuração "{0}" foi definida como "{1}" globalmente.</target>
+        <note>{0} is the key, {1} is the value</note>
+      </trans-unit>
+      <trans-unit id="ConfigurationKeySetLocally">
+        <source>Configuration '{0}' set to '{1}' locally.</source>
+        <target state="translated">A configuração "{0}" foi definida como "{1}" localmente.</target>
+        <note>{0} is the key, {1} is the value</note>
+      </trans-unit>
+      <trans-unit id="DeleteCommand_Description">
+        <source>Delete a configuration value</source>
+        <target state="translated">Excluir um valor de configuração</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DeleteCommand_GlobalArgumentDescription">
+        <source>Delete the configuration value from the global $HOME/.aspire/settings.json instead of the local settings file</source>
+        <target state="translated">Exclua o valor de configuração do arquivo global $HOME/.aspire/settings.json em vez do arquivo de configurações local</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DeleteCommand_KeyArgumentDescription">
+        <source>The configuration key to delete. Use dots for nested properties and [index] for array elements.</source>
+        <target state="needs-review-translation">A chave de configuração a ser excluída</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DeleteCommand_PromptForGlobal">
+        <source>Delete the configuration value from the global $HOME/.aspire/settings.json instead of the local settings file?</source>
+        <target state="translated">Excluir o valor de configuração do arquivo global $HOME/.aspire/settings.json em vez do arquivo de configurações local?</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DeleteCommand_PromptForKey">
+        <source>Which config value do you want to delete?</source>
+        <target state="translated">Qual valor de configuração você quer excluir?</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="Description">
+        <source>Manage CLI configuration including feature flags</source>
+        <target state="translated">Gerenciar a configuração da CLI, incluindo sinalizadores de recursos</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ExtensionActionPrompt">
+        <source>What do you want to do?</source>
+        <target state="translated">O que você deseja fazer?</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GetCommand_Description">
+        <source>Get a configuration value</source>
+        <target state="translated">Obter um valor de configuração</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GetCommand_KeyArgumentDescription">
+        <source>The configuration key to retrieve. Use dots for nested properties and [index] for array elements.</source>
+        <target state="needs-review-translation">A chave de configuração a ser recuperada</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GetCommand_PromptForKey">
+        <source>Which configuration key do you want to retrieve?</source>
+        <target state="translated">Qual chave de configuração você quer recuperar?</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GlobalConfigurationHeader">
+        <source>Global configuration</source>
+        <target state="translated">Configuração global</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="HeaderKey">
+        <source>Key</source>
+        <target state="translated">Chave</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="HeaderValue">
+        <source>Value</source>
+        <target state="translated">Valor</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InfoCommand_AvailableFeatures">
+        <source>Available features</source>
+        <target state="translated">Recursos disponíveis</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InfoCommand_Description">
+        <source>Display configuration file paths and available features</source>
+        <target state="translated">Exibir caminhos de arquivo de configuração e recursos disponíveis</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InfoCommand_GlobalSettingsPath">
+        <source>Global settings path</source>
+        <target state="translated">Caminho de configurações globais</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InfoCommand_JsonOptionDescription">
+        <source>Output information in JSON format</source>
+        <target state="translated">Informações de saída no formato JSON</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InfoCommand_LocalSettingsPath">
+        <source>Local settings path</source>
+        <target state="translated">Caminho de configurações locais</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InfoCommand_SettingsProperties">
+        <source>Settings file properties</source>
+        <target state="translated">Propriedades do arquivo de configurações</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ListCommand_AllFeaturesHint">
+        <source>Run 'aspire config list --all' to see all available feature flags.</source>
+        <target state="translated">Execute "aspire config list --all" para ver todos os sinalizadores de recursos disponíveis.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ListCommand_AllOptionDescription">
+        <source>Show all available features that can be configured</source>
+        <target state="translated">Mostrar todos os recursos disponíveis que podem ser configurados</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ListCommand_Description">
+        <source>List all configuration values</source>
+        <target state="translated">Listar todos os valores de configuração</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="LocalConfigurationHeader">
+        <source>Local configuration</source>
+        <target state="translated">Configuração local</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="NoConfigurationValuesFound">
+        <source>No configuration values found.</source>
+        <target state="translated">Nenhum valor de configuração encontrado.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="NoGlobalConfigurationFound">
+        <source>No global configuration found.</source>
+        <target state="translated">Nenhuma configuração global encontrada.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="NoLocalConfigurationFound">
+        <source>No local configuration found.</source>
+        <target state="translated">Nenhuma configuração local encontrada.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SetCommand_Description">
+        <source>Set a configuration value</source>
+        <target state="translated">Definir um valor de configuração</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SetCommand_GlobalArgumentDescription">
+        <source>Set the configuration value globally in $HOME/.aspire/settings.json instead of the local settings file</source>
+        <target state="translated">Defina o valor de configuração globalmente em $HOME/.aspire/settings.json em vez do arquivo de configurações local</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SetCommand_KeyArgumentDescription">
+        <source>The configuration key to set. Use dots for nested properties and [index] to create or edit array elements.</source>
+        <target state="needs-review-translation">A chave de configuração a ser definida</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SetCommand_PromptForGlobal">
+        <source>Where do you want to set the configuration value?</source>
+        <target state="translated">Onde você quer definir o valor de configuração?</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SetCommand_PromptForGlobal_GlobalOption">
+        <source>Globally ($HOME/.aspire/settings.json)</source>
+        <target state="translated">Globalmente ($HOME/.aspire/settings.json)</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SetCommand_PromptForGlobal_LocalOption">
+        <source>Locally</source>
+        <target state="translated">Localmente</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SetCommand_PromptForKey">
+        <source>Which configuration key do you want to set?</source>
+        <target state="translated">Qual chave de configuração você quer definir?</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SetCommand_PromptForValue">
+        <source>What value do you want to set?</source>
+        <target state="translated">Qual valor você quer definir?</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SetCommand_ValueArgumentDescription">
+        <source>The configuration value to set</source>
+        <target state="translated">O valor de configuração a ser definido</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SetFeatureHint">
+        <source>Use 'aspire config set features.&lt;name&gt; true|false' to enable or disable a feature.</source>
+        <target state="translated">Use 'aspire config set features.&lt;name&gt; true|false' para ativar ou desativar um recurso.</target>
+        <note />
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

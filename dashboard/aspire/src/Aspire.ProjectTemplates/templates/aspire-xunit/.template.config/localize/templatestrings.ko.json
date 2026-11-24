@@ -1,0 +1,19 @@
+{
+  "author": "Microsoft",
+  "name": "Aspire 테스트 프로젝트(xUnit)",
+  "description": "Aspire AppHost 프로젝트의 xUnit.net 통합 테스트를 포함하는 프로젝트입니다.",
+  "symbols/Framework/description": "프로젝트에 대한 대상 프레임워크입니다.",
+  "symbols/Framework/choices/net10.0/description": "대상 net10.0",
+  "symbols/Framework/choices/net11.0/description": "대상 net11.0",
+  "symbols/XUnitVersion/description": "사용할 xUnit.net 버전.",
+  "symbols/XUnitVersion/displayName": "xUnit.net 버전",
+  "symbols/XUnitVersion/choices/v2/displayName": "v2",
+  "symbols/XUnitVersion/choices/v2/description": "VSTest가 포함된 xUnit.net v2 선택",
+  "symbols/XUnitVersion/choices/v3/displayName": "v3",
+  "symbols/XUnitVersion/choices/v3/description": "VSTest가 포함된 xUnit.net v3 선택(Aspire 버전 9.2 이상만 해당)",
+  "symbols/XUnitVersion/choices/v3mtp/displayName": "microsoft 테스트 플랫폼이 포함된 v3",
+  "symbols/XUnitVersion/choices/v3mtp/description": "Microsoft 테스트 플랫폼이 포함된 xUnit.net v3 선택(Aspire 버전 9.2 이상만 해당)",
+  "symbols/skipRestore/description": "지정된 경우, 프로젝트 생성 시 자동 복원을 건너뜁니다.",
+  "postActions/restore/description": "이 프로젝트에 필요한 NuGet 패키지를 복원합니다.",
+  "postActions/restore/manualInstructions/default/text": "'dotnet restore' 실행"
+}

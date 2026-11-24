@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>$(DefaultTargetFramework)</TargetFramework>
+    <IsPackable>true</IsPackable>
+    <PackageTags>aspire integration hosting azure monitoring observability cloud</PackageTags>
+    <Description>Azure Log Analytics resource types for Aspire.</Description>
+    <PackageIconFullPath>$(SharedDir)AzureLogAnalytics_256x.png</PackageIconFullPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Aspire.Hosting.Azure\Aspire.Hosting.Azure.csproj" />
+    <PackageReference Include="Azure.Provisioning" />
+    <PackageReference Include="Azure.Provisioning.OperationalInsights" />
+  </ItemGroup>
+
+</Project>

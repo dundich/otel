@@ -1,0 +1,123 @@
+﻿@namespace Aspire.Dashboard.Components
+@using Aspire.Dashboard.Resources
+@using Aspire.Shared.ConsoleLogs
+
+@inject IJSRuntime JS
+@inject IStringLocalizer<ConsoleLogs> Loc
+
+@* Console logs always have a dark background. Set data-theme="dark" so dark theme accent colors are used *@
+<div id="@ScrollContainerId" class="log-overflow console-overflow continuous-scroll-overflow" tabindex="0" role="region" aria-label="@Loc[nameof(ConsoleLogs.ConsoleLogsHeader)]" data-theme="dark">
+    <aspire-scroll-to-bottom hidden data-follow-initial-content data-scroll-to-bottom-label="@ControlsStringsLoc[nameof(ControlsStrings.ScrollToBottom)]"></aspire-scroll-to-bottom>
+    <div class="@GetLogContainerClass()" id="logContainer">
+        @if (LogEntries is { } logEntries)
+        {
+            @if (ShowNoLogsMessage && logEntries.EntriesCount == 0)
+            {
+                <div class="console-empty-message" role="status" aria-live="polite">
+                    <FluentIcon Value="@(new Icons.Regular.Size24.SlideText())" Color="Color.Primary" aria-hidden="true" />
+                    <span>@(NoLogsMessage ?? Loc[nameof(ConsoleLogs.ConsoleLogsNoLogsFound)])</span>
+                </div>
+            }
+            else if (!string.IsNullOrWhiteSpace(FilterText) && logEntries.EntriesCount > 0 && GetVisibleEntries().Count == 0)
+            {
+                <div class="console-empty-message" role="status" aria-live="polite">
+                    <FluentIcon Value="@(new Icons.Regular.Size24.SlideText())" Color="Color.Primary" aria-hidden="true" />
+                    <span>@Loc[nameof(ConsoleLogs.ConsoleLogsNoLogsMatchFilter)]</span>
+                </div>
+            }
+            <Virtualize @ref="VirtualizeRef" ItemsProvider="@GetItems" ItemComparer="@s_logEntryComparer" ItemSize="20" OverscanCount="100" AnchorMode="VirtualizeAnchorMode.End" TItem="LogEntry">
+                @if (context.Pause is { } pause)
+                {
+                    // If this is a previous pause but no logs were obtained during the pause, we don't need to show anything.
+                    if (pause is { FilteredCount: 0, EndTime: not null })
+                    {
+                        return;
+                    }
+
+                    <div class="log-line-row-container">
+                        <div class="log-line-row console-line-row">
+                            <div class="log-line-area" role="log">
+                                <span class="log-line-number"></span>
+                                <span class="log-content log-pause">
+                                    @{
+                                        var hasPrefix = false;
+                                    }
+                                    @if (ShowResourcePrefix && context.ResourcePrefix is { } resourcePrefix)
+                                    {
+                                        if (DisplayPrefix(ref hasPrefix))
+                                        {
+                                            @s_spaceMarkup
+                                        }
+                                        <span class="resource-prefix" style="@ResourcePrefixStyle.GetStyle(resourcePrefix)">@resourcePrefix</span>
+                                    }
+                                    @if (DisplayPrefix(ref hasPrefix))
+                                    {
+                                        @s_spaceMarkup
+                                    }
+                                    @pause.GetDisplayText(Loc, TimeProvider)
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                     <div class="log-line-row-container">
+                        <div class="log-line-row console-line-row">
+                            <span class="log-line-area" role="log">
+                                <span class="log-line-number">@context.LineNumber</span>
+                                <span class="log-content">
+                                    @{
+                                        var hasPrefix = false;
+                                    }
+                                    @if (ShowTimestamp && context.Timestamp is { } timestamp)
+                                    {
+                                        if (DisplayPrefix(ref hasPrefix))
+                                        {
+                                            @s_spaceMarkup
+                                        }
+                                        <span class="timestamp">@GetDisplayTimestamp(timestamp)</span>
+                                    }
+                                    @if (ShowResourcePrefix && context.ResourcePrefix is { } resourcePrefix)
+                                    {
+                                        if (DisplayPrefix(ref hasPrefix))
+                                        {
+                                            @s_spaceMarkup
+                                        }
+                                        <span class="resource-prefix" style="@ResourcePrefixStyle.GetStyle(resourcePrefix)">@resourcePrefix</span>
+                                    }
+                                    @if (context.Type == LogEntryType.Error)
+                                    {
+                                        if (DisplayPrefix(ref hasPrefix))
+                                        {
+                                            @s_spaceMarkup
+                                        }
+                                        <fluent-badge appearance="accent">stderr</fluent-badge>
+                                    }
+                                    @if (DisplayPrefix(ref hasPrefix))
+                                    {
+                                        @s_spaceMarkup
+                                    }
+                                    @((MarkupString)(context.Content ?? string.Empty))
+                                </span>
+                            </span>
+                        </div>
+                    </div>
+                }
+            </Virtualize>
+        }
+    </div>
+</div>
+
+@code {
+    public bool DisplayPrefix(ref bool hasPrefix)
+    {
+        if (hasPrefix)
+        {
+            return true;
+        }
+
+        hasPrefix = true;
+        return false;
+    }
+}

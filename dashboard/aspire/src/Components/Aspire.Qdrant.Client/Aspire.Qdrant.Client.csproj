@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>$(AllTargetFrameworks)</TargetFrameworks>
+    <IsPackable>true</IsPackable>
+    <PackageTags>$(ComponentCommonPackageTags) qdrant vector database ai-search</PackageTags>
+    <Description>A Qdrant client that integrates with Aspire, including logging.</Description>
+    <PackageIconFullPath>$(SharedDir)QdrantLogo_256x.png</PackageIconFullPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Common\ConfigurationSchemaAttributes.cs" Link="ConfigurationSchemaAttributes.cs" />
+    <Compile Include="..\Common\HealthChecksExtensions.cs" Link="HealthChecksExtensions.cs" />
+    <Compile Include="..\Common\ConnectionStringConfigurationExtensions.cs" Link="ConnectionStringConfigurationExtensions.cs" />
+    <Compile Include="$(SharedDir)EnvironmentVariableNameEncoder.cs" Link="EnvironmentVariableNameEncoder.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Qdrant.Client" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Condition="'$(TargetFramework)' == 'net10.0'" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" />
+  </ItemGroup>
+  
+</Project>

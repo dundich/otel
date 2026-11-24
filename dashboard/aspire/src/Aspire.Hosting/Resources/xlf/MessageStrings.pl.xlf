@@ -1,0 +1,152 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="pl" original="../MessageStrings.resx">
+    <body>
+      <trans-unit id="ContainerMountAnonymousVolumesReadOnlyExceptionMessage">
+        <source>Anonymous volumes cannot be read-only.</source>
+        <target state="translated">Woluminy anonimowe nie mogą być tylko do odczytu.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ContainerMountBindMountsRequireRootedPaths">
+        <source>Bind mounts must specify an absolute path.</source>
+        <target state="translated">Instalacje powiązań muszą określać ścieżkę bezwzględną.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ContainerMountBindMountsRequireSourceExceptionMessage">
+        <source>Bind mounts must specify a source path.</source>
+        <target state="translated">Instalacje wiązania muszą określać ścieżkę źródłową.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DcpDependencyCheckFailedMessage">
+        <source>Application orchestrator dependency check returned an error: {0}</source>
+        <target state="translated">Kontrola zależności orkiestratora aplikacji zwróciło błąd: {0}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DcpVersionCheckTooLowMessage">
+        <source>Newer version of the Aspire.Hosting.AppHost package is required to run the application. Ensure you are referencing at least version '{0}'.</source>
+        <target state="translated">Do uruchomienia aplikacji jest wymagana nowsza wersja pakietu Aspire.Hosting.AppHost. Upewnij się, że odwołujesz się do co najmniej wersji „{0}”.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InstallationInstructions">
+        <source>Installation instructions</source>
+        <target state="translated">Instrukcje instalacji</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="MissingCommandNotificationTitle">
+        <source>Missing command</source>
+        <target state="translated">Brakujące polecenie</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="PersistentContainerWithoutUserSecrets">
+        <source>Resource '{0}' has a persistent lifetime but the AppHost project does not have user secrets configured. Generated parameter values (such as passwords) may change on each restart, causing persistent containers to be recreated. Run 'aspire secret set' to initialize user secrets.</source>
+        <target state="translated">Zasób „{0}” ma trwały okres istnienia, ale host AppHost nie ma skonfigurowanych wpisów tajnych użytkownika. Wygenerowane wartości parametru (takie jak hasła) mogą ulec zmianie przy każdym ponownym uruchomieniu, co spowoduje ponowne utworzenie trwałych kontenerów. Uruchom „zestaw wpisów tajnych aspire” w celu zainicjowania wpisów tajnych użytkownika.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="PublishModeNotSupportedByRunCommand">
+        <source>The AppHost is in publish mode and cannot be started with 'aspire run'. Use 'aspire publish' instead.</source>
+        <target state="translated">Host AppHost jest w trybie publikowania i nie można go uruchomić przy użyciu polecenia „aspire run”. Zamiast tego użyj polecenia „aspire publish”.</target>
+        <note>Do not translate the command names 'aspire run' and 'aspire publish'.</note>
+      </trans-unit>
+      <trans-unit id="RequiredCommandNotFound">
+        <source>Required command '{0}' was not found on PATH or at the specified location.</source>
+        <target state="translated">Nie znaleziono wymaganego polecenia „{0}” w ścieżce PATH lub w podanej lokalizacji.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="RequiredCommandNotFoundWithLink">
+        <source>Required command '{0}' was not found on PATH or at the specified location. For installation instructions, see: {1}</source>
+        <target state="translated">Nie znaleziono wymaganego polecenia „{0}” w ścieżce PATH lub w podanej lokalizacji. Instrukcje instalacji znajdziesz pod adresem: {1}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="RequiredCommandValidationFailed">
+        <source>Command '{0}' validation failed: {1}</source>
+        <target state="translated">Walidacja polecenia „{0}” nie powiodła się: {1}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="RequiredCommandValidationFailedWithLink">
+        <source>Command '{0}' validation failed: {1}. For installation instructions, see: {2}</source>
+        <target state="translated">Weryfikacja polecenia „{0}” nie powiodła się: {1}. Instrukcje instalacji znajdziesz pod adresem: {2}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceMayFailToStart">
+        <source>Resource '{0}' may fail to start: {1}</source>
+        <target state="translated">Uruchomienie zasobu „{0}” może się nie powieść: {1}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyContainerArgumentsDisplayName">
+        <source>Container arguments</source>
+        <target state="translated">Argumenty kontenera</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyContainerCommandDisplayName">
+        <source>Container command</source>
+        <target state="translated">Polecenie kontenera</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyContainerIdDisplayName">
+        <source>Container ID</source>
+        <target state="translated">Identyfikator kontenera</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyContainerImageDisplayName">
+        <source>Container image</source>
+        <target state="translated">Obraz kontenera</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyContainerLifetimeDisplayName">
+        <source>Container lifetime</source>
+        <target state="translated">Okres istnienia kontenera</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyContainerPortsDisplayName">
+        <source>Container ports</source>
+        <target state="translated">Porty kontenerów</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyExecutableArgumentsDisplayName">
+        <source>Executable arguments</source>
+        <target state="translated">Argumenty pliku wykonywalnego</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyExecutablePathDisplayName">
+        <source>Executable path</source>
+        <target state="translated">Ścieżka pliku wykonywalnego</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyExecutableProcessIdDisplayName">
+        <source>Process ID</source>
+        <target state="translated">Identyfikator procesu</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyExecutableWorkingDirectoryDisplayName">
+        <source>Working directory</source>
+        <target state="translated">Katalog roboczy</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyParameterValueDisplayName">
+        <source>Value</source>
+        <target state="translated">Wartość</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyProjectLaunchProfileDisplayName">
+        <source>Launch profile</source>
+        <target state="translated">Uruchom profil</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyProjectPathDisplayName">
+        <source>Project path</source>
+        <target state="translated">Ścieżka projektu</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyToolPackageDisplayName">
+        <source>Tool package</source>
+        <target state="translated">Pakiet narzędzi</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyToolVersionDisplayName">
+        <source>Tool version</source>
+        <target state="translated">Wersja narzędzia</target>
+        <note />
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

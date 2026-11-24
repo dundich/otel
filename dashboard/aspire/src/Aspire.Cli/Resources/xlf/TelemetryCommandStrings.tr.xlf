@@ -1,0 +1,232 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="tr" original="../TelemetryCommandStrings.resx">
+    <body>
+      <trans-unit id="ApiKeyOptionDescription">
+        <source>API key for authenticating with the dashboard (optional, for dashboards with API key authentication)</source>
+        <target state="translated">Pano ile kimlik doğrulaması yapmak için API anahtarı (isteğe bağlı, API anahtarı kimlik doğrulaması olan panolar için)</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConfiguredDashboardDisplayValue">
+        <source>the configured dashboard</source>
+        <target state="translated">yapılandırılmış pano</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DashboardApiNotEnabled">
+        <source>Could not fetch telemetry data from the dashboard. The dashboard at '{0}' does not have the telemetry API enabled.</source>
+        <target state="translated">Panodan telemetri verileri getirilemedi. '{0}' panosunda telemetri API'si etkin değil.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DashboardApiNotEnabledHint">
+        <source>Start the dashboard with 'aspire dashboard run' or set Dashboard:Api:Enabled to true.</source>
+        <target state="translated">Pano'yu 'aspire dashboard run' ile başlatın veya Dashboard:Api:Enabled değerini true olarak ayarlayın.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DashboardAuthFailed">
+        <source>Could not fetch telemetry data from the dashboard. Authentication failed.</source>
+        <target state="translated">Panodan telemetri verileri getirilemedi. Kimlik doğrulaması başarısız oldu.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DashboardAuthFailedAnonymousHint">
+        <source>Alternatively, allow anonymous access with 'aspire dashboard run --allow-anonymous' or by setting the ASPIRE_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS environment variable to true.</source>
+        <target state="translated">Alternatif olarak, 'aspire dashboard run --allow-anonymous' ile veya aspıre_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS ortam değişkenini true olarak ayarlayarak anonim erişime izin verin.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DashboardAuthFailedHint">
+        <source>Authenticate with the dashboard either with a --dashboard-url including a valid login token (e.g. http://localhost:18888/login?t=TOKEN), or with an --api-key matching the dashboard's configured API key.</source>
+        <target state="translated">Geçerli bir oturum açma belirteci içeren bir --dashboard-url (ör. http://localhost:18888/login?t=TOKEN) veya pano için yapılandırılmış API anahtarıyla eşleşen bir --api-key kullanarak pano ile kimlik doğrulaması yapın.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DashboardConnectionFailed">
+        <source>Could not fetch telemetry data from the dashboard. Unable to connect to '{0}'.</source>
+        <target state="translated">Panodan telemetri verileri getirilemedi. '{0}' bağlanılamıyor.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DashboardConnectionFailedHint">
+        <source>Verify the dashboard is running and the URL is correct.</source>
+        <target state="translated">Pano'nun çalıştığını ve URL'nin doğru olduğunu doğrulayın.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DashboardConnectionLost">
+        <source>The connection to the dashboard was lost.</source>
+        <target state="translated">Panoya bağlantı kesildi.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DashboardLoginTokenFailed">
+        <source>Could not fetch telemetry data from the dashboard. The login token in the URL is invalid or expired.</source>
+        <target state="translated">Pano'dan telemetri verileri alınamadı. URL'deki oturum açma belirteci geçersiz veya süresi dolmuş.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DashboardLoginTokenFailedAnonymousHint">
+        <source>Alternatively, allow anonymous access with 'aspire dashboard run --allow-anonymous' or by setting the ASPIRE_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS environment variable to true.</source>
+        <target state="translated">Alternatif olarak, 'aspire dashboard run --allow-anonymous' ile veya aspıre_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS ortam değişkenini true olarak ayarlayarak anonim erişime izin verin.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DashboardLoginTokenFailedHint">
+        <source>Ensure you are using the login URL from the currently running dashboard instance.</source>
+        <target state="translated">Şu anda çalışan pano örneğinden oturum açma URL'sini kullandığınızdan emin olun.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DashboardNotAvailable">
+        <source>Could not fetch telemetry data from the dashboard. The dashboard is not available.</source>
+        <target state="translated">Panodan telemetri verileri getirilemedi. Pano kullanılamıyor.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DashboardNotAvailableHint">
+        <source>Ensure the AppHost is running with the dashboard enabled.</source>
+        <target state="translated">AppHost'un pano etkin olarak çalıştığından emin olun.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DashboardUrlAndAppHostExclusive">
+        <source>The --dashboard-url and --apphost options cannot be used together. Specify one or the other.</source>
+        <target state="translated">--dashboard-url ve --apphost seçenekleri birlikte kullanılamaz. Yalnızca birini belirtin.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DashboardUrlInvalid">
+        <source>Could not fetch telemetry data from the dashboard. The value '{0}' is not a valid URL.</source>
+        <target state="translated">Panodan telemetri verileri getirilemedi. '{0}' değeri geçerli bir URL değil.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DashboardUrlInvalidHint">
+        <source>Specify an absolute URL like 'http://localhost:18888'.</source>
+        <target state="translated">'http://localhost:18888' gibi mutlak bir URL belirtin.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DashboardUrlNotReachable">
+        <source>Could not fetch telemetry data from the dashboard. The specified URL '{0}' does not appear to be a valid dashboard address.</source>
+        <target state="translated">Panodan telemetri verileri getirilemedi. Belirtilen URL '{0}' geçerli bir pano adresi gibi görünmüyor.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DashboardUrlNotReachableHint">
+        <source>Verify the URL is correct.</source>
+        <target state="translated">URL'nin doğru olduğunu doğrulayın.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DashboardUrlOptionDescription">
+        <source>Base URL of a standalone Aspire Dashboard (e.g. http://localhost:18888). Login URLs are also accepted and automatically normalized.</source>
+        <target state="translated">Tek başına çalışan bir Aspire Panosu'nun taban URL'si (ör. http://localhost:18888). Oturum açma URL'leri de kabul edilir ve otomatik olarak normalleştirilir.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="Description">
+        <source>View OpenTelemetry data (logs, spans, traces) from a running AppHost</source>
+        <target state="translated">Çalışan bir AppHost'tan OpenTelemetry verilerini (günlükler, yayılmalar, izlemeler) görüntüleyin.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FailedToFetchTelemetry">
+        <source>Failed to fetch telemetry: {0}</source>
+        <target state="translated">Telemetri getirilemedi: {0}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FollowOptionDescription">
+        <source>Stream telemetry in real-time as it arrives</source>
+        <target state="translated">Telemetri geldikçe gerçek zamanlı olarak akışla aktarın</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FormatOptionDescription">
+        <source>Output format (Table or Json)</source>
+        <target state="translated">Çıktı biçimi (Tablo veya Json)</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="HasErrorOptionDescription">
+        <source>Filter by error status (true to show only errors, false to exclude errors)</source>
+        <target state="translated">Hata durumuna göre filtreleyin (yalnızca hataları göstermek için true, hataları dışlamak için false)</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="HeaderDuration">
+        <source>Duration</source>
+        <target state="translated">Süre</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="HeaderName">
+        <source>Name</source>
+        <target state="translated">Ad</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="HeaderSpans">
+        <source>Spans</source>
+        <target state="translated">Yayılmalar</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="HeaderStatus">
+        <source>Status</source>
+        <target state="translated">Durum</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="HeaderTimestamp">
+        <source>Timestamp</source>
+        <target state="translated">Zaman damgası</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InvalidDashboardUrlDisplayValue">
+        <source>not an absolute HTTP(S) URL</source>
+        <target state="translated">mutlak bir HTTP(S) URL'si değil</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="LimitMustBePositive">
+        <source>The --limit value must be a positive number.</source>
+        <target state="translated">--limit değeri, pozitif bir sayı olmalıdır.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="LimitOptionDescription">
+        <source>Maximum number of items to return</source>
+        <target state="translated">Döndürülecek maksimum öğe sayısı</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="LogsDescription">
+        <source>View structured logs from the Dashboard telemetry API</source>
+        <target state="translated">Pano telemetri API’sinden yapılandırılmış günlükleri görüntüleyin</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceArgumentDescription">
+        <source>Filter by resource name</source>
+        <target state="translated">Kaynak adına göre filtrele</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SearchOptionDescription">
+        <source>Search and filter telemetry fields such as log messages, attribute values, names, source, and IDs. Supports full-text search and field filters. See https://aka.ms/aspire/cli-search for more details</source>
+        <target state="translated">Günlük iletileri, öznitelik değerleri, adlar, kaynak ve kimlikler gibi telemetri alanlarını arayın ve filtreleyin. Tam metin aramasını ve alan filtrelerini destekler. Daha fazla ayrıntı için https://aka.ms/aspire/cli-search bakın</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SelectAppHostAction">
+        <source>view telemetry for</source>
+        <target state="translated">telemetrisini görüntüle:</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SeverityOptionDescription">
+        <source>Filter logs by minimum severity (Trace, Debug, Information, Warning, Error, Critical)</source>
+        <target state="translated">Günlükleri en düşük önem derecesine göre filtreleyin (İzleme, Hata Ayıklama, Bilgi, Uyarı, Hata, Kritik)</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SpansDescription">
+        <source>View spans from the Dashboard telemetry API</source>
+        <target state="translated">Pano telemetri API’sinden yayılmaları görüntüleyin</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="TraceIdArgumentDescription">
+        <source>The trace ID to view. If not specified, lists all traces.</source>
+        <target state="translated">Görüntülenecek izleme kimliği. Belirtilmezse, tüm izlemeler listelenir.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="TraceIdOptionDescription">
+        <source>Filter by trace ID</source>
+        <target state="translated">İzleme kimliğine göre filtreleyin</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="TraceNotFound">
+        <source>Trace with ID '{0}' was not found.</source>
+        <target state="translated">Kimliği '{0}' olan bir izleme bulunamadı.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="TracesDescription">
+        <source>View traces from the Dashboard telemetry API</source>
+        <target state="translated">Pano telemetri API’sinden izlemeleri görüntüleyin</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="UnexpectedContentType">
+        <source>Dashboard API returned unexpected content type '{0}'. Expected JSON response.</source>
+        <target state="translated">Pano API'si beklenmeyen '{0}' içerik türünü döndürdü. Beklenen JSON yanıtı.</target>
+        <note />
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

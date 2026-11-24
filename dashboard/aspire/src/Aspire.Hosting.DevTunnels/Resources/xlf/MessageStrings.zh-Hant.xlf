@@ -1,0 +1,127 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="zh-Hant" original="../MessageStrings.resx">
+    <body>
+      <trans-unit id="AuthenticationExpiredNotification">
+        <source>Dev tunnels authentication has expired. Restart the dev tunnel resources to re-authenticate.</source>
+        <target state="translated">開發通道驗證已過期。請重新啟動開發通道資源以重新驗證。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="AuthenticationRequiredNotification">
+        <source>Dev tunnels requires authentication to continue:</source>
+        <target state="translated">開發通道需要驗證才能繼續:</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DevTunnelHealthy">
+        <source>Dev tunnel '{0}' is active with {1} host connections and {2} ports.</source>
+        <target state="translated">開發通道 '{0}' 處於作用中，擁有 {1} 個主機連線和 {2} 個連接埠。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DevTunnelHostDisconnected">
+        <source>The local host for dev tunnel '{0}' is disconnected.</source>
+        <target state="translated">開發人員通道 '{0}' 的本地主機已中斷連線。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DevTunnelHostHealthy">
+        <source>Dev tunnel '{0}' is connected and hosting all expected ports.</source>
+        <target state="translated">開發人員通道 '{0}' 已連線，並提供所有預期的連接埠。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DevTunnelHostNotReady">
+        <source>Waiting for dev tunnel '{0}' to connect and expose its ports.</source>
+        <target state="translated">正在等候開發人員通道 '{0}' 連線並公開其連接埠。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DevTunnelPortHealthy">
+        <source>Dev tunnel port '{0}' on dev tunnel '{1}' is active.</source>
+        <target state="translated">開發通道 '{1}' 上的開發通道埠 '{0}' 處於作用中。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DevTunnelPortUnhealthy_Error">
+        <source>Failed to check port '{0}' on dev tunnel '{1}': {2}</source>
+        <target state="translated">無法檢查開發通道 '{1}' 上的連接埠 '{0}': {2}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DevTunnelPortUnhealthy_StatusUnknown">
+        <source>Dev tunnel port '{0}' on dev tunnel '{1}' status is not known.</source>
+        <target state="translated">開發通道 '{1}' 上的開發通道埠 '{0}' 狀態未知。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DevTunnelUnhealthy_Error">
+        <source>Failed to check dev tunnel '{0}': {1}</source>
+        <target state="translated">無法檢查開發通道 '{0}': {1}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DevTunnelUnhealthy_NoActiveHostConnections">
+        <source>Dev tunnel '{0}' has no active host connections.</source>
+        <target state="translated">開發通道 '{0}' 沒有任何有效的主機連線。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DevTunnelUnhealthy_PortInactive">
+        <source>Dev tunnel '{0}' port '{1}' is not active.</source>
+        <target state="translated">開發通道 '{0}' 連接埠 '{1}' 未啟用。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DevtunnelCliVersionNotSupported">
+        <source>The installed devtunnel CLI version {0} is not supported. Version {1} or higher is required.</source>
+        <target state="translated">不支援已安裝的 devtunnel CLI 版本 {0}。需要版本 {1} 或更高版本。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="LoginWithGitHub">
+        <source>Login with GitHub</source>
+        <target state="translated">使用 GitHub 登入</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="LoginWithMicrosoft">
+        <source>Login with Microsoft</source>
+        <target state="translated">使用 Microsoft 登入</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ShowTunnelUrlsCommandClose">
+        <source>Close</source>
+        <target state="translated">關閉</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ShowTunnelUrlsCommandDescription">
+        <source>Opens available public, inspect, and local URLs for the dev tunnel port.</source>
+        <target state="translated">開啟開發人員通道連接埠的可用公用、檢查和本機 URL。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ShowTunnelUrlsCommandDisplayName">
+        <source>Show tunnel URLs</source>
+        <target state="translated">顯示通道 URL</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ShowTunnelUrlsCommandInspectUrlLabel">
+        <source>Inspect URL</source>
+        <target state="translated">檢查 URL</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ShowTunnelUrlsCommandInteractionUnavailable">
+        <source>Dev tunnel URLs can only be shown in an interactive environment.</source>
+        <target state="translated">開發通道 URL 只能在互動式環境中顯示。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ShowTunnelUrlsCommandLocalEndpointUrlLabel">
+        <source>Local endpoint URL</source>
+        <target state="translated">本機端點 URL</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ShowTunnelUrlsCommandResultHeading">
+        <source>Dev tunnel URLs</source>
+        <target state="translated">開發人員通道 URL</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ShowTunnelUrlsCommandTunnelUrlLabel">
+        <source>Tunnel URL</source>
+        <target state="translated">通道 URL</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ShowTunnelUrlsCommandUnavailable">
+        <source>Dev tunnel URLs are not available yet.</source>
+        <target state="translated">開發人員通道 URL 尚無法使用。</target>
+        <note />
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

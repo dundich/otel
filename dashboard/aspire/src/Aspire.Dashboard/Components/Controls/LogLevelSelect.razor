@@ -1,0 +1,35 @@
+@inject IStringLocalizer<Resources.StructuredLogs> Loc
+
+@if (ViewportInformation.IsDesktop)
+{
+    <label for="@_logLevelSelectId">@Loc[nameof(Dashboard.Resources.StructuredLogs.StructuredLogsLevels)]</label>
+
+    <DesktopToolbarDivider />
+
+    <FluentSelect TOption="SelectViewModel<LogLevel?>" TValue="SelectViewModel<LogLevel?>"
+                  Class="toolbar-select"
+                  Id="@_logLevelSelectId"
+                  Items="@LogLevels"
+                  Position="SelectPosition.Below"
+                  OptionText="@(c => c?.Name)"
+                  @bind-Value="@LogLevel"
+                  @bind-Value:after="@HandleSelectedLogLevelChangedInternalAsync"
+                  AriaLabel="@Loc[nameof(Resources.StructuredLogs.StructuredLogsSelectMinimumLogLevel)]"
+                  @attributes="@AdditionalAttributes" />
+}
+else
+{
+    <div>
+        <FluentSelect TOption="SelectViewModel<LogLevel?>" TValue="SelectViewModel<LogLevel?>"
+                      Class="toolbar-select"
+                      Id="@_logLevelSelectId"
+                      Items="@LogLevels"
+                      Position="SelectPosition.Below"
+                      OptionText="@(c => c?.Name)"
+                      Label="@Loc[nameof(Resources.StructuredLogs.StructuredLogsLevels)]"
+                      @bind-Value="@LogLevel"
+                      @bind-Value:after="@HandleSelectedLogLevelChangedInternalAsync"
+                      AriaLabel="@Loc[nameof(Resources.StructuredLogs.StructuredLogsSelectMinimumLogLevel)]"
+                      @attributes="@AdditionalAttributes" />
+    </div>
+}

@@ -1,0 +1,182 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="it" original="../InteractionStrings.resx">
+    <body>
+      <trans-unit id="CommandProgressCancelButtonText">
+        <source>Cancel</source>
+        <target state="translated">Annulla</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ContainerRuntimeDockerAdvice">
+        <source>Ensure that Docker is running and that the Docker daemon is accessible. If Resource Saver mode is enabled, containers may not run.</source>
+        <target state="translated">Assicurati che Docker sia in esecuzione e che il demone Docker sia accessibile. Se la modalità Risparmio risorse è abilitata, i contenitori potrebbero non funzionare.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ContainerRuntimeGenericAdvice">
+        <source>Ensure that the container runtime is running.</source>
+        <target state="translated">Assicurati che il runtime del contenitore sia in esecuzione.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ContainerRuntimeLinkText">
+        <source>Learn more</source>
+        <target state="translated">Altre informazioni</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ContainerRuntimeNotInstalledMessage">
+        <source>Container runtime could not be found. See https://aka.ms/aspire/containers for more details on supported container runtimes.</source>
+        <target state="translated">Non è possibile trovare il runtime del contenitore. Vedere https://aka.ms/aspire/containers per altri dettagli sui runtime del contenitore supportati.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ContainerRuntimeNotInstalledTitle">
+        <source>Container runtime not installed</source>
+        <target state="translated">Runtime del contenitore non installato</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ContainerRuntimePodmanAdvice">
+        <source>Ensure that Podman is running.</source>
+        <target state="translated">Assicurati che Podman sia in esecuzione...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ContainerRuntimeUnhealthyMessage">
+        <source>Container runtime '{0}' was found but appears to be unhealthy. </source>
+        <target state="translated">Il runtime del contenitore '{0}' è stato trovato ma non è integro. </target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ContainerRuntimeUnhealthyTitle">
+        <source>Container runtime unhealthy</source>
+        <target state="translated">Runtime del contenitore non integro</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DeleteParameterMessage">
+        <source>Are you sure you want to delete the value for parameter `{0}`?</source>
+        <target state="translated">Eliminare il valore del parametro `{0}`?</target>
+        <note>Contains markdown. {0} is the parameter name.</note>
+      </trans-unit>
+      <trans-unit id="DeleteParameterPrimaryButtonText">
+        <source>Delete</source>
+        <target state="translated">Elimina</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DeleteParameterTitle">
+        <source>Delete parameter value</source>
+        <target state="translated">Elimina valore parametro</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DeveloperCertificateNotFullyTrustedMessage">
+        <source>The most recent development certificate isn't fully trusted. See https://aka.ms/aspire/devcerts for more information.</source>
+        <target state="translated">Il certificato di sviluppo più recente non è completamente attendibile. Per altre informazioni, vedere https://aka.ms/aspire/devcerts.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DeveloperCertificateNotFullyTrustedTitle">
+        <source>Development certificate not fully trusted</source>
+        <target state="translated">Certificato di sviluppo non completamente attendibile</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="NoDeveloperCertificateTrustedMessage">
+        <source>No trusted development certificate was found. See https://aka.ms/aspire/devcerts for more information.</source>
+        <target state="translated">Nessun certificato di sviluppo attendibile è stato trovato. Per altre informazioni, vedere https://aka.ms/aspire/devcerts.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="NoDeveloperCertificateTrustedTitle">
+        <source>No trusted development certificate</source>
+        <target state="translated">Nessun certificato di sviluppo attendibile</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ParametersBarMessage">
+        <source>There are unresolved parameters that need to be set. Please provide values for them.</source>
+        <target state="translated">Sono presenti parametri non risolti che devono essere impostati. Specifica i valori per questi parametri.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ParametersBarPrimaryButtonText">
+        <source>Enter values</source>
+        <target state="translated">Immetti i valori</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ParametersBarTitle">
+        <source>Unresolved parameters</source>
+        <target state="translated">Parametri non risolti</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ParametersInputsDeleteDescription">
+        <source>Delete a value that is saved in [user secrets](https://aka.ms/aspire/user-secrets).</source>
+        <target state="translated">Elimina un valore salvato in [user secrets](https://aka.ms/aspire/user-secrets).</target>
+        <note>Contains markdown</note>
+      </trans-unit>
+      <trans-unit id="ParametersInputsDeleteLabel">
+        <source>Delete from user secrets</source>
+        <target state="translated">Elimina dai segreti utente</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ParametersInputsMessage">
+        <source>Please provide values for the unresolved parameters. Parameters can be saved to [user secrets](https://aka.ms/aspire/user-secrets) for future use.</source>
+        <target state="translated">Specificare i valori per i parametri non risolti. I parametri possono essere salvati nei [segreti utente](https://aka.ms/aspire/user-secrets) per usi futuri.</target>
+        <note>Contains markdown</note>
+      </trans-unit>
+      <trans-unit id="ParametersInputsMessagePublishMode">
+        <source>Please provide values for the unresolved parameters.</source>
+        <target state="translated">Specifica i valori per i parametri non risolti.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ParametersInputsParameterPlaceholder">
+        <source>Enter value for {0}</source>
+        <target state="translated">Immetti un valore per {0}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ParametersInputsPrimaryButtonText">
+        <source>Save</source>
+        <target state="translated">Salva</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ParametersInputsRememberDescriptionConfigured">
+        <source>Save value to [user secrets](https://aka.ms/aspire/user-secrets) for future use.</source>
+        <target state="translated">Salvare il valore in [user secrets](https://aka.ms/aspire/user-secrets) per un uso futuro.</target>
+        <note>Contains markdown</note>
+      </trans-unit>
+      <trans-unit id="ParametersInputsRememberDescriptionNotConfigured">
+        <source>Requires user secrets to be configured for the AppHost. Run `aspire secret set &lt;key&gt; &lt;value&gt;` to initialize user secrets, or see [user secrets](https://aka.ms/aspire/user-secrets) for more information.</source>
+        <target state="translated">È necessario configurare i segreti utente per AppHost. Eseguire `aspire secret set &lt;key&gt; &lt;value&gt;` per inizializzare i segreti utente oppure consultare [user secrets](https://aka.ms/aspire/user-secrets) per ulteriori informazioni.</target>
+        <note>Contains markdown</note>
+      </trans-unit>
+      <trans-unit id="ParametersInputsRememberLabel">
+        <source>Save to user secrets</source>
+        <target state="translated">Salva nei segreti utente</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ParametersInputsTitle">
+        <source>Set unresolved parameters</source>
+        <target state="translated">Imposta i parametri non risolti</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="VersionCheckLinkText">
+        <source>Upgrade instructions</source>
+        <target state="translated">Istruzioni per l'aggiornamento</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="VersionCheckMessage">
+        <source>Aspire {0} is available.</source>
+        <target state="translated">Aspire {0} è disponibile.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="VersionCheckPrimaryButtonText">
+        <source>Ignore</source>
+        <target state="translated">Ignora</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="VersionCheckTitle">
+        <source>Update now</source>
+        <target state="translated">Aggiorna adesso</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SetParameterMessage">
+        <source>Please provide a value for the parameter. New parameter values may not be used until dependent resources are restarted.</source>
+        <target state="translated">Specificare un valore per il parametro. Non è possibile usare i nuovi valori di parametro fino al riavvio delle risorse dipendenti.</target>
+        <note>Contains markdown</note>
+      </trans-unit>
+      <trans-unit id="SetParameterTitle">
+        <source>Set parameter</source>
+        <target state="translated">Imposta parametro</target>
+        <note />
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

@@ -1,0 +1,38 @@
+﻿@using Aspire.Dashboard.Components.Controls.Chart
+@using Aspire.Dashboard.Resources
+@using Aspire.Dashboard.Components.Controls.Grid
+@using Dialogs = Aspire.Dashboard.Resources.Dialogs
+
+@inject IStringLocalizer<Dialogs> Loc
+
+<FluentDialogBody>
+<div style="max-height: 44vh; overflow-y: auto;">
+    <DisposalSafeFluentDataGrid ItemsProvider="@EnumerableGridItemsProvider.Create(() => MetricView)"
+                    RowSize="DataGridRowSize.Medium"
+                    GridTemplateColumns="2fr 1fr 1fr 1fr"
+                    TGridItem="ChartExemplar">
+        <ChildContent>
+            <AspireTemplateColumn Title="@Loc[nameof(Dialogs.ExemplarsDialogTraceColumnHeader)]" TooltipText="@(context => GetTitle(context))" Tooltip="true">
+                <span style="padding-left:5px; border-left-width: 5px; border-left-style: solid; border-left-color: @(context.Span != null ? ColorGenerator.Instance.GetColorVariableByKey(OtlpResource.GetResourceName(context.Span.Source, Content.Resources)) : "transparent");">
+                    @GetTitle(context)
+                </span>
+            </AspireTemplateColumn>
+            <AspireTemplateColumn Title="@Loc[nameof(Dialogs.ExemplarsDialogTimestampColumnHeader)]" TooltipText="@(context => FormatHelpers.FormatDateTime(TimeProvider, context.Start, MillisecondsDisplay.None, CultureInfo.CurrentCulture))" Tooltip="true">
+                @FormatHelpers.FormatTimeWithOptionalDate(TimeProvider, context.Start, MillisecondsDisplay.Truncated)
+            </AspireTemplateColumn>
+            <AspireTemplateColumn Title="@Loc[nameof(Dialogs.ExemplarsDialogValueColumnHeader)]">
+                @FormatMetricValue(context.Value)
+            </AspireTemplateColumn>
+            <AspireTemplateColumn Title="@Loc[nameof(Dialogs.ExemplarsDialogDetailsColumnHeader)]">
+                <FluentButton Appearance="ButtonAppearance.Transparent" OnClick="@(() => OnViewDetailsAsync(context))">View</FluentButton>
+            </AspireTemplateColumn>
+        </ChildContent>
+        <EmptyContent>
+            <div class="aspire-empty-message">
+                <FluentIcon Icon="Icons.Regular.Size24.ChartMultiple" Color="Color.Primary" />
+                @Loc[nameof(ControlsStrings.MetricTableNoMetricsFound)]
+            </div>
+        </EmptyContent>
+    </DisposalSafeFluentDataGrid>
+</div>
+</FluentDialogBody>

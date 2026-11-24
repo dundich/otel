@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>$(DefaultTargetFramework)</TargetFramework>
+    <IsPackable>true</IsPackable>
+    <PackageTags>aspire integration hosting azure monitoring observability cloud applicationinsights</PackageTags>
+    <Description>Azure Application Insights resource types for Aspire.</Description>
+    <PackageIconFullPath>$(SharedDir)AzureAppInsights_256x.png</PackageIconFullPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Aspire.Hosting.Azure.OperationalInsights\Aspire.Hosting.Azure.OperationalInsights.csproj" />
+    <ProjectReference Include="..\Aspire.Hosting.Azure\Aspire.Hosting.Azure.csproj" />
+    <PackageReference Include="Azure.Provisioning" />
+    <PackageReference Include="Azure.Provisioning.ApplicationInsights" />
+  </ItemGroup>
+
+</Project>

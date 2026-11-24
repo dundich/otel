@@ -1,0 +1,317 @@
+parameters:
+  - name: runAsPublic
+    type: boolean
+    default: false
+  - name: buildScript
+    type: string
+  - name: buildConfig
+    type: string
+  - name: repoArtifactsPath
+    type: string
+  - name: repoLogPath
+    type: string
+  - name: repoTestResultsPath
+    type: string
+  - name: isWindows
+    type: string
+  - name: dotnetScript
+    type: string
+  - name: runHelixTests
+    type: boolean
+    default: false
+  - name: runPipelineTests
+    type: boolean
+    default: false
+  - name: dockerCliVersion
+    type: string
+    default: '28.0.0'
+  - name: packageVSCodeExtensionAsPreRelease
+    type: boolean
+    default: false
+  # Set to false on jobs that do not pack the native Aspire CLI npm tarballs
+  # into the managed Shipping directory (e.g. the perf-restructured Windows
+  # Build job, which builds managed packages with /p:SkipNativeBuild=true and
+  # leaves native pack + npm tgz staging to the downstream Assemble stage).
+  # The signature validation still runs in whichever stage owns staging — see
+  # the equivalent step in azure-pipelines.yml's Assemble job.
+  - name: validateNpmPackageSignatures
+    type: boolean
+    default: true
+  # Set to false on jobs that delegate VS Code extension build / sign / verify
+  # / publish to a separate parallel stage (build_extension). The managed
+  # Windows Build job uses this to keep the extension off its critical path.
+  - name: buildExtension
+    type: boolean
+    default: true
+  # Set to true on jobs that should run Arcade's Publish target inline as part
+  # of the build script (-publish). The official pipeline runs `assemble` as
+  # a downstream stage that owns -publish (so this stays false there); the
+  # unofficial pipeline is monolithic — one Windows job does everything — and
+  # has no downstream assemble stage, so it sets this to true to keep
+  # Publishing.props validations (asset manifest emission, native archive
+  # presence, VSIX inputs, dashboard zips) running on manual `/azp run`
+  # validations of template/script changes.
+  - name: runPublish
+    type: boolean
+    default: false
+
+steps:
+  # Internal pipeline: Build with pack+sign
+  # The managed Windows build runs in parallel with build_sign_native.
+  # We do NOT pass `-publish` here when the caller has a downstream stage
+  # (`assemble`) that owns the unified -publish (which emits the BAR
+  # AssetManifest covering managed + native packages). Monolithic callers
+  # (the unofficial pipeline) set runPublish=true so Arcade's Publish target
+  # — and the Publishing.props validations it triggers — still run inline.
+  - ${{ if and(ne(parameters.runAsPublic, 'true'), eq(parameters.runPublish, true)) }}:
+    - script: ${{ parameters.buildScript }}
+              -restore -build
+              -pack
+              -sign $(_SignArgs)
+              -publish $(_PublishArgs)
+              -configuration ${{ parameters.buildConfig }}
+              /bl:${{ parameters.repoLogPath }}/build.binlog
+              $(_OfficialBuildIdArgs)
+              $(_InternalBuildArgs)
+              /p:SkipNativeBuild=true
+              /p:SkipTestProjects=true
+              /p:SkipPlaygroundProjects=true
+              /p:BuildExtension=${{ lower(eq(parameters.buildExtension, true)) }}
+              /p:PackageVSCodeExtensionAsPreRelease=${{ lower(eq(parameters.packageVSCodeExtensionAsPreRelease, true)) }}
+      displayName: 🟣Build
+
+  - ${{ if and(ne(parameters.runAsPublic, 'true'), ne(parameters.runPublish, true)) }}:
+    - script: ${{ parameters.buildScript }}
+              -restore -build
+              -pack
+              -sign $(_SignArgs)
+              -configuration ${{ parameters.buildConfig }}
+              /bl:${{ parameters.repoLogPath }}/build.binlog
+              $(_OfficialBuildIdArgs)
+              $(_InternalBuildArgs)
+              /p:SkipNativeBuild=true
+              /p:SkipTestProjects=true
+              /p:SkipPlaygroundProjects=true
+              /p:BuildExtension=${{ lower(eq(parameters.buildExtension, true)) }}
+              /p:PackageVSCodeExtensionAsPreRelease=${{ lower(eq(parameters.packageVSCodeExtensionAsPreRelease, true)) }}
+      displayName: 🟣Build
+
+  - ${{ if ne(parameters.runAsPublic, 'true') }}:
+    # All same-build packages must exist before restoring template graphs. Keep the generated
+    # manifest under the existing CG scan root until the job's normal scan has completed.
+    - pwsh: |
+        & "$(Build.SourcesDirectory)/eng/scripts/generate-template-cgmanifest.ps1" `
+          -Configuration '${{ parameters.buildConfig }}'
+      displayName: 🟣Generate template component manifest
+
+    - task: 1ES.PublishPipelineArtifact@1
+      displayName: 🟣Publish template component manifest
+      inputs:
+        path: '$(Build.SourcesDirectory)/artifacts/cg/templates/cgmanifest.json'
+        artifactName: template-component-manifest
+        # Diagnostic inventory, not a shipping payload. 1ES SBOM generation expects an
+        # artifact directory and fails on this single-file path; existing shipping SBOMs remain enabled.
+        sbomEnabled: false
+        isProduction: false
+
+    - ${{ if eq(parameters.validateNpmPackageSignatures, true) }}:
+      - pwsh: |
+          & "$(Build.SourcesDirectory)/eng/scripts/validate-npm-package-signatures.ps1" `
+            -ShippingDir '${{ parameters.repoArtifactsPath }}/packages/${{ parameters.buildConfig }}/Shipping'
+        displayName: 🟣Validate npm package signatures
+        condition: and(succeeded(), eq(variables['_SignType'], 'real'))
+
+    # Log MicroBuild environment for debugging
+    # MicroBuildOutputFolderOverride is set by the MicroBuildSigningPlugin task in eng/common/templates-official/job/onelocbuild.yml
+    # which is installed via the Arcade SDK's install-microbuild.yml template that runs before our build steps.
+    # This environment variable points to where MicroBuild plugins are installed on the build agent.
+    - pwsh: |
+        Write-Host "=== MicroBuild Environment Check ==="
+        Write-Host "MicroBuildOutputFolderOverride: $env:MicroBuildOutputFolderOverride"
+        if ($env:MicroBuildOutputFolderOverride) {
+          $pluginPath = Join-Path $env:MicroBuildOutputFolderOverride "MicroBuild.Plugins.Signing"
+          if (Test-Path $pluginPath) {
+            Write-Host "✅ MicroBuild.Plugins.Signing found at: $pluginPath"
+            Get-ChildItem $pluginPath -Recurse | Select-Object FullName | Format-Table
+          } else {
+            Write-Host "##[warning]MicroBuild.Plugins.Signing NOT found at: $pluginPath"
+            Write-Host "Contents of MicroBuildOutputFolderOverride:"
+            Get-ChildItem $env:MicroBuildOutputFolderOverride -Recurse -ErrorAction SilentlyContinue | Select-Object FullName | Format-Table
+          }
+        } else {
+          Write-Host "##[warning]MicroBuildOutputFolderOverride environment variable is not set!"
+        }
+        Write-Host "=== End MicroBuild Environment Check ==="
+      displayName: 🟣Check MicroBuild environment
+      condition: and(succeeded(), eq(variables['_SignType'], 'real'))
+
+    # Sign the VS Code extension .signature.p7s file using MicroBuild with VSCodePublisher certificate
+    # This must happen after the main build (which creates the manifest) but before publishing
+    # MicroBuild is already installed by the install-microbuild.yml step that runs before our build
+    # Pass MicroBuildOutputFolderOverride as a property to ensure MSBuild can find the signing plugin
+    - ${{ if eq(parameters.buildExtension, true) }}:
+      - script: ${{ parameters.dotnetScript }}
+                build
+                extension/signing/signVsix.proj
+                -c ${{ parameters.buildConfig }}
+                /bl:${{ parameters.repoLogPath }}/signVsix.binlog
+                /p:SignType=$(_SignType)
+                "/p:MicroBuildOutputFolderOverride=%MicroBuildOutputFolderOverride%"
+        displayName: 🟣Sign VS Code extension
+        condition: and(succeeded(), eq(variables['_SignType'], 'real'))
+
+      # Verify the VS Code extension signature using vsce verify-signature
+      - pwsh: |
+          $vsixDir = '${{ parameters.repoArtifactsPath }}/packages/Release/vscode'
+          $vsixFiles = Get-ChildItem -Path "$vsixDir/*.vsix" -ErrorAction SilentlyContinue
+          if ($vsixFiles.Count -eq 0) {
+            Write-Host "##[warning]No .vsix files found - VS Code extension may not have been built"
+            exit 0
+          }
+          foreach ($vsix in $vsixFiles) {
+            $baseName = [System.IO.Path]::GetFileNameWithoutExtension($vsix.FullName)
+            $manifestPath = Join-Path $vsixDir "$baseName.manifest"
+            $signaturePath = Join-Path $vsixDir "$baseName.signature.p7s"
+
+            if (-not (Test-Path $manifestPath)) {
+              Write-Host "##[error]Manifest file not found: $manifestPath"
+              exit 1
+            }
+            if (-not (Test-Path $signaturePath)) {
+              Write-Host "##[error]Signature file not found: $signaturePath"
+              exit 1
+            }
+
+            # First verify the .signature.p7s is in PKCS#7 format (binary)
+            $bytes = [System.IO.File]::ReadAllBytes($signaturePath)
+            if ($bytes.Length -eq 0 -or $bytes[0] -ne 0x30) {
+              $firstByte = if ($bytes.Length -gt 0) { "0x{0:X2}" -f $bytes[0] } else { "empty" }
+              Write-Host "##[error]$baseName.signature.p7s does NOT appear to be signed. First byte: $firstByte (expected 0x30 for PKCS#7)"
+              exit 1
+            }
+
+            Write-Host "Verifying signature for $($vsix.Name)..."
+            npx vsce verify-signature --packagePath $vsix.FullName --manifestPath $manifestPath --signaturePath $signaturePath
+            if ($LASTEXITCODE -ne 0) {
+              Write-Host "##[error]Signature verification failed for $($vsix.Name)"
+              exit 1
+            }
+            Write-Host "✅ $($vsix.Name) signature verified successfully"
+          }
+        displayName: 🟣Verify VS Code extension signature
+        condition: and(succeeded(), eq(variables['_SignType'], 'real'))
+
+      - task: 1ES.PublishBuildArtifacts@1
+        displayName: 🟣Publish vscode extension
+        condition: always()
+        inputs:
+          PathtoPublish: '${{ parameters.repoArtifactsPath }}/packages/Release/vscode'
+          ArtifactName: aspire-vscode-extension
+
+  # Public pipeline - helix tests
+  - ${{ if eq(parameters.runAsPublic, 'true') }}:
+    - script: ${{ parameters.buildScript }}
+              -restore -build
+              -configuration ${{ parameters.buildConfig }}
+              -pack
+              /p:PrepareForHelix=${{ lower(eq(parameters.runHelixTests, 'true')) }}
+              /p:ArchiveTests=${{ lower(eq(parameters.runHelixTests, 'true')) }}
+              /bl:${{ parameters.repoLogPath }}/build.binlog
+              $(_OfficialBuildIdArgs)
+      displayName: Build
+      env:
+        DOTNET_ROOT: "$(Build.SourcesDirectory)/.dotnet"
+
+    - task: DockerInstaller@0
+      inputs:
+        dockerVersion: ${{ parameters.dockerCliVersion }}
+      displayName: Install Docker CLI
+
+  # Non-helix tests are run only on the public pipeline
+  - ${{ if and(eq(parameters.runAsPublic, 'true'), eq(parameters.runPipelineTests, 'true')) }}:
+    # non-helix tests
+    - ${{ if ne(parameters.isWindows, 'true') }}:
+      - script: $(Build.SourcesDirectory)/tests/external-scripts/ubuntu-create-dotnet-devcert.sh
+        displayName: Install devcerts
+
+    - ${{ if eq(parameters.isWindows, 'true') }}:
+      - script: dotnet dev-certs https
+        displayName: Install dev-certs
+
+    - ${{ if ne(parameters.isWindows, 'true') }}:
+      - script: |
+          docker info
+          docker container ls
+          docker volume ls
+          docker network ls
+          docker network prune -f
+        displayName: List Docker containers and networks, and prune networks (Before Tests)
+        condition: always()
+
+    - script: ${{ parameters.dotnetScript }} dotnet-coverage collect
+              --output ${{ parameters.repoTestResultsPath }}/NonHelix.cobertura.xml
+              "${{ parameters.buildScript }} -testnobuild -test -configuration ${{ parameters.buildConfig }} /bl:${{ parameters.repoLogPath }}/tests.binlog /maxcpucount:1 /p:BuildInParallel=false $(_OfficialBuildIdArgs)"
+      env:
+        DOCKER_BUILDKIT: 1
+        # https://github.com/microsoft/aspire/issues/5195#issuecomment-2271687822
+        DOTNET_ASPIRE_DEPENDENCY_CHECK_TIMEOUT: 180
+        ASPIRE__TEST__DCPLOGBASEPATH: $(Build.ArtifactStagingDirectory)/artifacts/log/dcp
+        DOTNET_ROOT: $(Build.SourcesDirectory)/.dotnet
+      displayName: Run non-helix tests
+
+    - ${{ if ne(parameters.isWindows, 'true') }}:
+      - script: |
+          docker info
+          docker container ls
+          docker volume ls
+          docker network ls
+          docker network prune -f
+        displayName: List Docker containers and networks, and prune networks (After Tests always)
+        condition: always()
+
+  # Helix tests are run only on the public pipeline
+  - ${{ if and(eq(parameters.runAsPublic, 'true'), eq(parameters.runHelixTests, 'true')) }}:
+    - script: ${{ parameters.buildScript }}
+              /p:Configuration=${{ parameters.buildConfig }}
+              $(_OfficialBuildIdArgs)
+              /bl:${{ parameters.repoLogPath }}/InstallSdksForTesting.binlog
+              -projects $(Build.SourcesDirectory)/tests/workloads.proj
+      displayName: Install sdk for testing
+
+    # Helix captures code coverage information and, once tests are complete, the code coverage information is
+    # downloaded to <repo root>/artifacts/helixresults folder.
+    - template: /eng/pipelines/templates/send-to-helix.yml
+      parameters:
+        HelixProjectPath: '$(Build.SourcesDirectory)/tests/helix/send-to-helix-ci.proj'
+        # Code coverage on windows is disabled: <issue>
+        HelixProjectArguments: /m /p:ContinuousIntegrationBuild=true /p:Configuration=${{ parameters.buildConfig }} /p:RepoTestResultsPath=${{ parameters.repoTestResultsPath }}
+
+        ${{ if eq(parameters.isWindows, 'true') }}:
+          ${{ if eq(variables['System.TeamProject'], 'public') }}:
+            HelixTargetQueues: Windows.11.Amd64.Client.Open
+          ${{ if eq(variables['System.TeamProject'], 'internal') }}:
+            HelixTargetQueues: Windows.11.Amd64.Client
+        ${{ if ne(parameters.isWindows, 'true') }}:
+          ${{ if eq(variables['System.TeamProject'], 'public') }}:
+            HelixTargetQueues: Ubuntu.2204.Amd64.Open
+          ${{ if eq(variables['System.TeamProject'], 'internal') }}:
+            HelixTargetQueues: Ubuntu.2204.Amd64
+          ${{ if and(ne(parameters.isWindows, 'true'), ne(parameters.dockerCliVersion, '')) }}:
+            DockerCliPath: /opt/hostedtoolcache/docker-stable/${{ parameters.dockerCliVersion }}/x64/
+
+        IsWindows: ${{ parameters.isWindows }}
+        ${{ if eq(variables['System.TeamProject'], 'public') }}:
+          Creator: $(Build.DefinitionName)
+        HelixBuild: $(Build.BuildNumber)
+        HelixAccessToken: $(HelixApiAccessToken)
+
+  - ${{ if eq(parameters.runHelixTests, 'true') }}:
+    - task: CopyFiles@2
+      inputs:
+        Contents: '${{ parameters.repoArtifactsPath }}/helixresults/**/*.trx'
+        TargetFolder: '${{ parameters.repoArtifactsPath }}/log/$(_BuildConfig)/TestResults'
+        flattenFolders: true
+        OverWrite: true
+      displayName: Gather helix trx files
+      continueOnError: true
+      condition: always()

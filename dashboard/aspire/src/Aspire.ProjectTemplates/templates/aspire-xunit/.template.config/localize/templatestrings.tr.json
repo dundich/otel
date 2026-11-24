@@ -1,0 +1,19 @@
+{
+  "author": "Microsoft",
+  "name": "Aspire Test Projesi (xUnit)",
+  "description": "Bir Aspire AppHost projesinin xUnit.net tümleştirme testlerini içeren bir proje.",
+  "symbols/Framework/description": "Projenin hedef çerçevesi.",
+  "symbols/Framework/choices/net10.0/description": "Hedef net10.0",
+  "symbols/Framework/choices/net11.0/description": "Hedef net11.0",
+  "symbols/XUnitVersion/description": "Kullanılacak xUnit.net sürümü.",
+  "symbols/XUnitVersion/displayName": "xUnit.net sürümü",
+  "symbols/XUnitVersion/choices/v2/displayName": "v2",
+  "symbols/XUnitVersion/choices/v2/description": "VSTest özellikli xUnit.net v2'yi belirtin.",
+  "symbols/XUnitVersion/choices/v3/displayName": "v3",
+  "symbols/XUnitVersion/choices/v3/description": "VSTest özellikli xUnit.net v3'ü (Yalnızca Aspire sürüm 9.2 ve üstü) seçer.",
+  "symbols/XUnitVersion/choices/v3mtp/displayName": "Microsoft Test Platformu özellikli v3",
+  "symbols/XUnitVersion/choices/v3mtp/description": "Microsoft Test Platform özellikli xUnit.net v3'ü (Yalnızca Aspire sürüm 9.2 ve üstü) seçer.",
+  "symbols/skipRestore/description": "Belirtilirse, oluşturma sırasında projenin otomatik geri yüklenmesini atlar.",
+  "postActions/restore/description": "Bu projenin gerektirdiği NuGet paketlerini geri yükleyin.",
+  "postActions/restore/manualInstructions/default/text": "'dotnet restore' çalıştır"
+}

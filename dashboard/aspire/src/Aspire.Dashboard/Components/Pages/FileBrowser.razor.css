@@ -1,0 +1,243 @@
+.file-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.file-button {
+    padding: 6px 11px;
+    border: 1px solid var(--colorNeutralStroke1);
+    border-radius: 6px;
+    background: var(--colorNeutralBackground1);
+    color: var(--colorNeutralForeground1);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.file-icon-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    padding: 6px 0;
+}
+
+.file-button:hover {
+    background: var(--colorNeutralBackground1Hover);
+}
+
+.file-button:disabled {
+    opacity: .5;
+    cursor: default;
+}
+
+.file-path {
+    flex: 1 1 220px;
+    min-width: 140px;
+    color: var(--colorNeutralForeground3);
+    font-family: var(--fontFamilyMonospace);
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.file-mask {
+    min-width: 180px;
+    padding: 6px 9px;
+    border: 1px solid var(--colorNeutralStroke1);
+    border-radius: 6px;
+    background: var(--colorNeutralBackground1);
+    color: var(--colorNeutralForeground1);
+    font: inherit;
+    font-size: 13px;
+}
+
+.file-browser {
+    height: 100%;
+    min-height: 0;
+    overflow: auto;
+    padding: 0px 24px 48px;
+    outline: none;
+}
+
+.file-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.file-table th,
+.file-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--colorNeutralStroke2);
+    text-align: left;
+    vertical-align: middle;
+}
+
+.file-table th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--colorNeutralBackground2);
+    color: var(--colorNeutralForeground3);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+
+.file-row-directory:hover,
+.file-row-file:hover {
+    background: var(--colorNeutralBackground1Hover);
+}
+
+.file-icon-column {
+    width: 28px;
+    color: var(--colorNeutralForeground2);
+}
+
+.file-name {
+    min-width: 220px;
+    font-weight: 500;
+}
+
+.file-name-button {
+    color: var(--colorNeutralForeground1);
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+}
+
+.file-name-button:hover {
+    color: var(--colorBrandForeground1);
+    text-decoration: underline;
+}
+
+.file-size,
+.file-date {
+    color: var(--colorNeutralForeground3);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.file-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    white-space: nowrap;
+}
+
+.file-link {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--colorBrandForeground1);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.file-link:hover {
+    text-decoration: underline;
+}
+
+.file-action-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--colorBrandForeground1);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.file-action-icon:hover {
+    background: var(--colorNeutralBackground1Hover);
+    color: var(--colorBrandForeground1Hover);
+}
+
+.file-error {
+    margin-bottom: 12px;
+    padding: 9px 12px;
+    border-left: 3px solid var(--colorPaletteRedBorder1);
+    border-radius: 5px;
+    background: var(--colorPaletteRedBackground1);
+    color: var(--colorPaletteRedForeground1);
+    font-size: 13px;
+}
+
+.file-muted {
+    color: var(--colorNeutralForeground3);
+    font-size: 13px;
+}
+
+.file-preview {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    border: 1px solid var(--colorNeutralStroke2);
+    border-radius: 8px;
+    background: var(--colorNeutralBackground1);
+    overflow: hidden;
+}
+
+.file-preview-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--colorNeutralStroke2);
+    background: var(--colorNeutralBackground2);
+    font-size: 13px;
+}
+
+.file-preview-toolbar strong {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.file-preview-text {
+    flex: 1 1 auto;
+    min-height: 0;
+    margin: 0;
+    padding: 12px;
+    overflow: auto;
+    font-family: var(--fontFamilyMonospace);
+    font-size: 12px;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+@media (max-width: 760px) {
+    .file-browser {
+        padding: 12px 14px 36px;
+    }
+
+    .file-table th:nth-child(3),
+    .file-table td:nth-child(3),
+    .file-table th:nth-child(5),
+    .file-table td:nth-child(5) {
+        display: none;
+    }
+}
+
+/* Toolbar with root/up/search controls sits in the layout's title-toolbar-inline section. */
+::deep .title-toolbar-inline {
+    margin: 8px;
+    padding-left: 17px;
+}

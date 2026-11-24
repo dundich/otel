@@ -1,0 +1,21 @@
+﻿@using Aspire.Dashboard.Resources
+@namespace Aspire.Dashboard.Components
+@inject IStringLocalizer<Columns> Loc
+
+@if (_unviewedCount > 0)
+{
+    var tooltip = _unviewedCount == 1 ? Loc[nameof(Columns.UnreadLogErrorsBadgeOneErrorLog)] : string.Format(Loc[nameof(Columns.UnreadLogErrorsBadgeErrorLogs)], _unviewedCount);
+    <a aria-label="@tooltip"
+                  data-tooltip="@tooltip"
+                  href="@GetResourceErrorStructuredLogsUrl()"
+                  class="unread-logs-errors-link"
+                  @onclick:stopPropagation="true"
+                  @onkeydown:stopPropagation="true">
+        <FluentBadge
+            Appearance="BadgeAppearance.Filled"
+            Circular="true"
+            Color="BadgeColor.Danger">
+            @(_unviewedCount > 9 ? "9+" : _unviewedCount.ToString())
+        </FluentBadge>
+    </a>
+}

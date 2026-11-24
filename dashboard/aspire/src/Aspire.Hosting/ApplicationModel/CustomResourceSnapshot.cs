@@ -1,0 +1,605 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+using System.Collections;
+using System.Collections.Immutable;
+using System.Diagnostics;
+using Aspire.Dashboard.Model;
+using Aspire.Hosting.Dcp.Model;
+using HealthStatus = Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus;
+
+namespace Aspire.Hosting.ApplicationModel;
+
+/// <summary>
+/// An immutable snapshot of the state of a resource.
+/// </summary>
+[DebuggerDisplay("ResourceType = {ResourceType,nq}, State = {State?.Text,nq}, HealthStatus = {HealthStatus?.ToString(),nq}, Properties = {Properties.Length}")]
+public sealed record CustomResourceSnapshot
+{
+    private readonly ImmutableArray<HealthReportSnapshot> _healthReports = [];
+    private readonly ResourceStateSnapshot? _state;
+    private readonly string? _resourceTypeDisplayName;
+
+    /// <summary>
+    /// Monotonically increasing version number for the snapshot.
+    /// </summary>
+    internal long Version { get; init; }
+
+    /// <summary>
+    /// The type of the resource.
+    /// </summary>
+    public required string ResourceType { get; init; }
+
+    /// <summary>
+    /// Gets the human-readable resource type label, falling back to <see cref="ResourceType"/> when not set.
+    /// </summary>
+    /// <remarks>
+    /// This label is presentation metadata and must not be used to identify resource capabilities.
+    /// To change it, override <see cref="Resource.ResourceTypeDisplayName"/> or call
+    /// <see cref="ResourceBuilderExtensions.WithResourceTypeDisplayName{T}"/>.
+    /// </remarks>
+    public string ResourceTypeDisplayName
+    {
+        get => _resourceTypeDisplayName ?? ResourceType;
+        // Only ResourceNotificationService sets this, from the annotation or the resource's virtual
+        // override. Keeping the setter internal means snapshot producers cannot add a third,
+        // competing way to set the label.
+        internal init
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(value);
+            _resourceTypeDisplayName = value;
+        }
+    }
+
+    internal bool HasResourceTypeDisplayName() => _resourceTypeDisplayName is not null;
+
+    /// <summary>
+    /// The properties that should show up in the dashboard for this resource.
+    /// </summary>
+    public required ImmutableArray<ResourcePropertySnapshot> Properties { get; init; }
+
+    /// <summary>
+    /// The creation timestamp of the resource.
+    /// </summary>
+    public DateTime? CreationTimeStamp { get; init; }
+
+    /// <summary>
+    /// The start timestamp of the resource.
+    /// </summary>
+    public DateTime? StartTimeStamp { get; init; }
+
+    /// <summary>
+    /// The stop timestamp of the resource.
+    /// </summary>
+    public DateTime? StopTimeStamp { get; init; }
+
+    /// <summary>
+    /// Represents the state of the resource.
+    /// </summary>
+    public ResourceStateSnapshot? State
+    {
+        get => _state;
+        init
+        {
+            _state = value;
+            HealthStatus = ComputeHealthStatus(_healthReports, value?.Text);
+        }
+    }
+
+    /// <summary>
+    /// The exit code of the resource.
+    /// </summary>
+    public int? ExitCode { get; init; }
+
+    /// <summary>
+    /// A snapshot of the event that indicates the resource is ready.
+    /// </summary>
+    internal EventSnapshot? ResourceReadyEvent { get; init; }
+
+    /// <summary>
+    /// Gets the health status of the resource.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This value is derived from <see cref="HealthReports"/>.
+    /// </para>
+    /// </remarks>
+    public HealthStatus? HealthStatus { get; private set; }
+
+    /// <summary>
+    /// The health reports for this resource.
+    /// </summary>
+    /// <remarks>
+    /// May be zero or more. If there are no health reports, the resource is considered healthy
+    /// so long as no heath checks are registered for the resource.
+    /// </remarks>
+    public ImmutableArray<HealthReportSnapshot> HealthReports
+    {
+        get => _healthReports;
+        internal init
+        {
+            _healthReports = value;
+            HealthStatus = ComputeHealthStatus(value, State?.Text);
+        }
+    }
+
+    /// <summary>
+    /// The environment variables that should show up in the dashboard for this resource.
+    /// </summary>
+    public ImmutableArray<EnvironmentVariableSnapshot> EnvironmentVariables { get; init; } = [];
+
+    /// <summary>
+    /// The URLs that should show up in the dashboard for this resource.
+    /// </summary>
+    public ImmutableArray<UrlSnapshot> Urls { get; init; } = [];
+
+    /// <summary>
+    /// The volumes that should show up in the dashboard for this resource.
+    /// </summary>
+    public ImmutableArray<VolumeSnapshot> Volumes { get; init; } = [];
+
+    /// <summary>
+    /// The commands available in the dashboard for this resource.
+    /// </summary>
+    public ImmutableArray<ResourceCommandSnapshot> Commands { get; init; } = [];
+
+    /// <summary>
+    /// The relationships to other resources.
+    /// </summary>
+    public ImmutableArray<RelationshipSnapshot> Relationships { get; init; } = [];
+
+    /// <summary>
+    /// Whether this resource should be hidden in UI.
+    /// </summary>
+    public bool IsHidden { get; init; }
+
+    /// <summary>
+    /// Whether this resource is a built-in resource and supports usage telemetry.
+    /// </summary>
+    internal bool SupportsDetailedTelemetry { get; init; }
+
+    /// <summary>
+    /// The custom icon name for the resource. This should be a valid FluentUI icon name.
+    /// If not specified, the dashboard will use default icons based on the resource type.
+    /// </summary>
+    public string? IconName { get; init; }
+
+    /// <summary>
+    /// The custom icon variant for the resource.
+    /// </summary>
+    public IconVariant? IconVariant { get; init; }
+
+    internal static HealthStatus? ComputeHealthStatus(ImmutableArray<HealthReportSnapshot> healthReports, string? state)
+    {
+        if (state != KnownResourceStates.Running)
+        {
+            return null;
+        }
+
+        return healthReports.Length == 0
+            // If there are no health reports and the resource is running, assume it's healthy.
+            ? Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Healthy
+            // If there are health reports, the health status is the minimum of the health status of the reports.
+            // If any of the reports is null (first health check has not returned), the health status is unhealthy.
+            : healthReports.MinBy(r => r.Status)?.Status
+                ?? Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy;
+    }
+
+    /// <summary>
+    /// Determines whether this snapshot describes the same resource state as <paramref name="other"/>,
+    /// ignoring <see cref="Version"/>.
+    /// </summary>
+    /// <remarks>
+    /// The generated record equality is not usable for this. Every snapshot rebuilds its collections
+    /// from scratch (see <c>ResourceSnapshotBuilder</c>), and <see cref="ImmutableArray{T}"/> equality
+    /// compares the underlying array <em>reference</em>, so two snapshots describing an identical
+    /// resource practically never compare equal.
+    /// </remarks>
+    internal bool ContentEquals(CustomResourceSnapshot other)
+    {
+        if (ReferenceEquals(this, other))
+        {
+            return true;
+        }
+
+        // Version counts publications rather than describing the resource. HealthStatus is derived
+        // from State and HealthReports, so neither property needs an independent comparison.
+        if (ResourceType != other.ResourceType ||
+            _resourceTypeDisplayName != other._resourceTypeDisplayName ||
+            CreationTimeStamp != other.CreationTimeStamp ||
+            StartTimeStamp != other.StartTimeStamp ||
+            StopTimeStamp != other.StopTimeStamp ||
+            State != other.State ||
+            ExitCode != other.ExitCode ||
+            ResourceReadyEvent != other.ResourceReadyEvent ||
+            IsHidden != other.IsHidden ||
+            SupportsDetailedTelemetry != other.SupportsDetailedTelemetry ||
+            IconName != other.IconName ||
+            IconVariant != other.IconVariant)
+        {
+            return false;
+        }
+
+        return PropertiesContentEqual(Properties, other.Properties) &&
+            EnvironmentVariables.SequenceEqual(other.EnvironmentVariables) &&
+            Urls.SequenceEqual(other.Urls) &&
+            Volumes.SequenceEqual(other.Volumes) &&
+            Commands.SequenceEqual(other.Commands) &&
+            Relationships.SequenceEqual(other.Relationships) &&
+            HealthReports.SequenceEqual(other.HealthReports);
+    }
+
+    private static bool PropertiesContentEqual(ImmutableArray<ResourcePropertySnapshot> x, ImmutableArray<ResourcePropertySnapshot> y)
+    {
+        if (x.Length != y.Length)
+        {
+            return false;
+        }
+
+        for (var i = 0; i < x.Length; i++)
+        {
+            if (!ResourcePropertyContentEquals(x[i], y[i]))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool ResourcePropertyContentEquals(ResourcePropertySnapshot x, ResourcePropertySnapshot y)
+    {
+        return ReferenceEquals(x, y) ||
+            (x.Name == y.Name &&
+             x.DisplayName == y.DisplayName &&
+             x.IsSensitive == y.IsSensitive &&
+             x.IsHighlighted == y.IsHighlighted &&
+             x.SortOrder == y.SortOrder &&
+             PropertyValueContentEquals(x.Value, y.Value));
+    }
+
+    /// <summary>
+    /// Compares two weakly typed property values by content.
+    /// </summary>
+    /// <remarks>
+    /// Property values are frequently collections that are rebuilt for every snapshot - container
+    /// ports as an <see cref="ImmutableArray{T}"/>, container and executable arguments as a
+    /// <see cref="List{T}"/>. None of those compare by value, so they have to be compared element-wise.
+    /// </remarks>
+    private static bool PropertyValueContentEquals(object? x, object? y)
+    {
+        if (ReferenceEquals(x, y))
+        {
+            return true;
+        }
+
+        if (x is null || y is null)
+        {
+            return false;
+        }
+
+        // Arrays and ImmutableArray<T> implement IStructuralEquatable, which compares element-wise and
+        // copes with an uninitialized ImmutableArray.
+        if (x is IStructuralEquatable structuralX && y is IStructuralEquatable)
+        {
+            return structuralX.Equals(y, StructuralComparisons.StructuralEqualityComparer);
+        }
+
+        // Other collections, such as the List<string> used for effective arguments, still compare by
+        // reference. A string is excluded because it is an IEnumerable that already compares by value.
+        if (x is IEnumerable sequenceX and not string && y is IEnumerable sequenceY and not string)
+        {
+            return SequenceContentEquals(sequenceX, sequenceY);
+        }
+
+        return x.Equals(y);
+    }
+
+    private static bool SequenceContentEquals(IEnumerable x, IEnumerable y)
+    {
+        var enumeratorX = x.GetEnumerator();
+        var enumeratorY = y.GetEnumerator();
+
+        try
+        {
+            while (true)
+            {
+                var hasX = enumeratorX.MoveNext();
+                var hasY = enumeratorY.MoveNext();
+
+                if (hasX != hasY)
+                {
+                    return false;
+                }
+
+                if (!hasX)
+                {
+                    return true;
+                }
+
+                // Recurse so nested collections are compared by content too.
+                if (!PropertyValueContentEquals(enumeratorX.Current, enumeratorY.Current))
+                {
+                    return false;
+                }
+            }
+        }
+        finally
+        {
+            (enumeratorX as IDisposable)?.Dispose();
+            (enumeratorY as IDisposable)?.Dispose();
+        }
+    }
+}
+
+/// <summary>
+/// A snapshot of an event.
+/// </summary>
+/// <param name="EventTask">The task the represents the result of executing the event.</param>
+internal record EventSnapshot(Task EventTask);
+
+/// <summary>
+/// A snapshot of the resource state
+/// </summary>
+/// <param name="Text">The text for the state update. See <see cref="KnownResourceStates"/> for expected values.</param>
+/// <param name="Style">The style for the state update. Use <seealso cref="KnownResourceStateStyles"/> for the supported styles.</param>
+[DebuggerDisplay("{Text}")]
+public sealed record ResourceStateSnapshot(string Text, string? Style)
+{
+    /// <summary>
+    /// Convert text to state snapshot. The style will be null by default
+    /// </summary>
+    /// <param name="s"></param>
+    public static implicit operator ResourceStateSnapshot?(string? s) =>
+        s is null ? null : new(Text: s, Style: null);
+}
+
+/// <summary>
+/// A snapshot of an environment variable.
+/// </summary>
+/// <param name="Name">The name of the environment variable.</param>
+/// <param name="Value">The value of the environment variable.</param>
+/// <param name="IsFromSpec">Determines if this environment variable was defined in the resource explicitly or computed (for e.g. inherited from the process hierarchy).</param>
+[DebuggerDisplay("{Value}", Name = "{Name}")]
+public sealed record EnvironmentVariableSnapshot(string Name, string? Value, bool IsFromSpec);
+
+/// <summary>
+/// A snapshot of the URL.
+/// </summary>
+/// <param name="Name">Name of the endpoint associated with the URL.</param>
+/// <param name="Url">The full URL.</param>
+/// <param name="IsInternal">Determines if this URL is internal. Internal URLs are only shown in the details grid for a resource.</param>
+[DebuggerDisplay("{Url}", Name = "{Name}")]
+public sealed record UrlSnapshot(string? Name, string Url, bool IsInternal)
+{
+    /// <summary>
+    /// The UI display properties for the url.
+    /// </summary>
+    public UrlDisplayPropertiesSnapshot DisplayProperties { get; init; } = new();
+
+    /// <summary>
+    /// Whether this URL is inactive or not.
+    /// </summary>
+    /// <remarks>
+    /// Inactive URLs are not displayed in UI.
+    /// </remarks>
+    public bool IsInactive { get; init; }
+
+    internal void Deconstruct(out string? name, out string url, out bool isInternal, out bool isInactive)
+    {
+        name = Name;
+        url = Url;
+        isInternal = IsInternal;
+        isInactive = IsInactive;
+    }
+}
+
+/// <summary>
+/// A snapshot of the display properties for a url.
+/// </summary>
+/// <param name="DisplayName">The display name of the url.</param>
+/// <param name="SortOrder">The order of the url in UI. Higher numbers are displayed first in the UI.</param>
+public sealed record UrlDisplayPropertiesSnapshot(string DisplayName = "", int SortOrder = 0);
+
+/// <summary>
+/// A snapshot of a volume, mounted to a container.
+/// </summary>
+/// <param name="Source">The name of the volume. Can be <see langword="null"/> if the mount is an anonymous volume.</param>
+/// <param name="Target">The target of the mount.</param>
+/// <param name="MountType">Gets the mount type, such as <see cref="VolumeMountType.Bind"/> or <see cref="VolumeMountType.Volume"/></param>
+/// <param name="IsReadOnly">Whether the volume mount is read-only or not.</param>
+[DebuggerDisplay("{Source}", Name = "{Target}")]
+public sealed record VolumeSnapshot(string? Source, string Target, string MountType, bool IsReadOnly);
+
+/// <summary>
+/// A snapshot of a relationship.
+/// </summary>
+/// <param name="ResourceName">The name of the resource the relationship is to.</param>
+/// <param name="Type">The relationship type.</param>
+public sealed record RelationshipSnapshot(string ResourceName, string Type);
+
+/// <summary>
+/// A snapshot of the resource property.
+/// </summary>
+/// <param name="Name">The name of the property.</param>
+/// <param name="Value">The value of the property.</param>
+[DebuggerDisplay("{Value}", Name = "{Name}")]
+public sealed record ResourcePropertySnapshot(string Name, object? Value)
+{
+    /// <summary>
+    /// The display name visible in UI.
+    /// </summary>
+    /// <remarks>
+    /// If not specified, clients may use the <see cref="Name"/> as the display name.
+    /// </remarks>
+    public string? DisplayName { get; init; }
+
+    /// <summary>
+    /// Whether this property is considered sensitive or not.
+    /// </summary>
+    /// <remarks>
+    /// Sensitive properties are masked when displayed in UI and require an explicit user action to reveal.
+    /// </remarks>
+    public bool IsSensitive { get; init; }
+
+    /// <summary>
+    /// A flag indicating whether the property is highlighted in the UI.
+    /// </summary>
+    /// <remarks>
+    /// Highlighted properties are shown by default even if the client does not otherwise recognize the property name.
+    /// </remarks>
+    public bool IsHighlighted { get; init; }
+
+    /// <summary>
+    /// Gets the optional sort order used when displaying the property in UI.
+    /// </summary>
+    /// <remarks>
+    /// Properties with lower values are displayed before properties with higher values.
+    /// </remarks>
+    public int? SortOrder { get; init; }
+
+    internal void Deconstruct(out string name, out object? value, out bool isSensitive)
+    {
+        name = Name;
+        value = Value;
+        isSensitive = IsSensitive;
+    }
+}
+
+/// <summary>
+/// A snapshot of a resource command.
+/// </summary>
+/// <param name="Name">The name of command. The name uniquely identifies the command.</param>
+/// <param name="State">The state of the command.</param>
+/// <param name="DisplayName">The display name visible in UI for the command.</param>
+/// <param name="DisplayDescription">
+/// Optional description of the command, to be shown in the UI.
+/// Could be used as a tooltip. May be localized.
+/// </param>
+/// <param name="Parameter">
+/// Obsolete optional parameter that configures the command in some way.
+/// Clients must return any value provided by the server when invoking the command.
+/// </param>
+/// <param name="ConfirmationMessage">
+/// When a confirmation message is specified, the UI will prompt with an OK/Cancel dialog
+/// and the confirmation message before starting the command.
+/// </param>
+/// <param name="IconName">The icon name for the command. The name should be a valid FluentUI icon name. https://aka.ms/fluentui-system-icons</param>
+/// <param name="IconVariant">The icon variant.</param>
+/// <param name="IsHighlighted">A flag indicating whether the command is highlighted in the UI.</param>
+[DebuggerDisplay(null, Name = "{Name}")]
+public sealed record ResourceCommandSnapshot(string Name, ResourceCommandState State, string DisplayName, string? DisplayDescription, [property: Obsolete("Use Arguments to describe invocation arguments.")] object? Parameter, string? ConfirmationMessage, string? IconName, IconVariant? IconVariant, bool IsHighlighted)
+{
+    /// <summary>
+    /// Gets the invocation arguments accepted by the command.
+    /// </summary>
+    public IReadOnlyList<InteractionInput> Arguments { get; init; } = [];
+
+    /// <summary>
+    /// Gets where the command is visible to users and clients.
+    /// </summary>
+    public ResourceCommandVisibility Visibility { get; init; } = ResourceCommandVisibility.UI | ResourceCommandVisibility.Api;
+}
+
+/// <summary>
+/// A report produced by a health check about a resource.
+/// </summary>
+/// <param name="Name">The name of the health check that produced this report.</param>
+/// <param name="Status">The state of the resource, according to the report, or <see langword="null"/> if a health report has not yet been received for this health check.</param>
+/// <param name="Description">An optional description of the report, for display.</param>
+/// <param name="ExceptionText">An optional string containing exception details.</param>
+[DebuggerDisplay("{Status}", Name = "{Name}")]
+public sealed record HealthReportSnapshot(string Name, HealthStatus? Status, string? Description, string? ExceptionText)
+{
+    /// <summary>
+    /// The timestamp when this health check was last executed, or <see langword="null"/> if not available.
+    /// </summary>
+    public DateTime? LastRunAt { get; init; }
+}
+
+/// <summary>
+/// The state of a resource command.
+/// </summary>
+public enum ResourceCommandState
+{
+    /// <summary>
+    /// Command is visible and enabled for use.
+    /// </summary>
+    Enabled,
+    /// <summary>
+    /// Command is visible and disabled for use.
+    /// </summary>
+    Disabled,
+    /// <summary>
+    /// Command is hidden.
+    /// </summary>
+    Hidden
+}
+
+/// <summary>
+/// Describes where a resource command is visible.
+/// </summary>
+[Flags]
+public enum ResourceCommandVisibility
+{
+    /// <summary>
+    /// The command is not visible to any clients.
+    /// </summary>
+    None = 0,
+
+    /// <summary>
+    /// The command is displayed in UI clients.
+    /// </summary>
+    UI = 1 << 0,
+
+    /// <summary>
+    /// The command is exposed through resource command API discovery.
+    /// </summary>
+    Api = 1 << 1
+}
+
+/// <summary>
+/// The set of well known resource states.
+/// </summary>
+public static class KnownResourceStateStyles
+{
+    /// <summary>
+    /// The success state
+    /// </summary>
+    public static readonly string Success = "success";
+
+    /// <summary>
+    /// The error state. Useful for error messages.
+    /// </summary>
+    public static readonly string Error = "error";
+
+    /// <summary>
+    /// The info state. Useful for informational messages.
+    /// </summary>
+    public static readonly string Info = "info";
+
+    /// <summary>
+    /// The warning state. Useful for showing warnings.
+    /// </summary>
+    public static readonly string Warn = "warning";
+}
+
+internal static class ResourceSnapshotBuilder
+{
+    public static ImmutableArray<RelationshipSnapshot> BuildRelationships(IResource resource)
+    {
+        var relationships = ImmutableArray.CreateBuilder<RelationshipSnapshot>();
+
+        if (resource is IResourceWithParent resourceWithParent)
+        {
+            relationships.Add(new(resourceWithParent.Parent.Name, KnownRelationshipTypes.Parent));
+        }
+
+        foreach (var annotation in resource.Annotations.OfType<ResourceRelationshipAnnotation>())
+        {
+            relationships.Add(new(annotation.Resource.Name, annotation.Type));
+        }
+
+        return relationships.ToImmutable();
+    }
+}

@@ -1,0 +1,152 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="tr" original="../MessageStrings.resx">
+    <body>
+      <trans-unit id="ContainerMountAnonymousVolumesReadOnlyExceptionMessage">
+        <source>Anonymous volumes cannot be read-only.</source>
+        <target state="translated">Anonim birimler salt okunur olamaz.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ContainerMountBindMountsRequireRootedPaths">
+        <source>Bind mounts must specify an absolute path.</source>
+        <target state="translated">Bağlama işlemlerinde mutlak bir yol belirtilmelidir.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ContainerMountBindMountsRequireSourceExceptionMessage">
+        <source>Bind mounts must specify a source path.</source>
+        <target state="translated">Bağlama işlemlerinde bir kaynak yolu belirtilmelidir.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DcpDependencyCheckFailedMessage">
+        <source>Application orchestrator dependency check returned an error: {0}</source>
+        <target state="translated">Uygulama düzenleyicisi bağımlılık denetimi bir hata döndürdü: {0}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DcpVersionCheckTooLowMessage">
+        <source>Newer version of the Aspire.Hosting.AppHost package is required to run the application. Ensure you are referencing at least version '{0}'.</source>
+        <target state="translated">Uygulamayı çalıştırmak için Aspire.Hosting.AppHost paketinin daha yeni bir sürümü gereklidir. En az '{0}' sürümüne referans verdiğinizden emin olun.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InstallationInstructions">
+        <source>Installation instructions</source>
+        <target state="translated">Yükleme yönergeleri</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="MissingCommandNotificationTitle">
+        <source>Missing command</source>
+        <target state="translated">Eksik komut</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="PersistentContainerWithoutUserSecrets">
+        <source>Resource '{0}' has a persistent lifetime but the AppHost project does not have user secrets configured. Generated parameter values (such as passwords) may change on each restart, causing persistent containers to be recreated. Run 'aspire secret set' to initialize user secrets.</source>
+        <target state="translated">'{0}' kaynağının yaşam süresi kalıcı ancak AppHost projesinin yapılandırılmış kullanıcı gizli dizileri yok. Oluşturulan parametre değerleri (parolalar gibi) her yeniden başlatmada değişebilir ve bu da kalıcı kapsayıcıların yeniden oluşturulmasına yol açabilir. Kullanıcı gizli dizilerini başlatmak için 'aspire secret set' komutunu çalıştırın.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="PublishModeNotSupportedByRunCommand">
+        <source>The AppHost is in publish mode and cannot be started with 'aspire run'. Use 'aspire publish' instead.</source>
+        <target state="translated">AppHost yayımlama modunda ve 'aspire run' ile başlatılamaz. Bunun yerine 'aspire publish' kullanın.</target>
+        <note>Do not translate the command names 'aspire run' and 'aspire publish'.</note>
+      </trans-unit>
+      <trans-unit id="RequiredCommandNotFound">
+        <source>Required command '{0}' was not found on PATH or at the specified location.</source>
+        <target state="translated">Gerekli '{0}' komutu PATH'de veya belirtilen konumda bulunamadı.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="RequiredCommandNotFoundWithLink">
+        <source>Required command '{0}' was not found on PATH or at the specified location. For installation instructions, see: {1}</source>
+        <target state="translated">Gerekli '{0}' komutu PATH'de veya belirtilen konumda bulunamadı. Yükleme yönergeleri için bkz. {1}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="RequiredCommandValidationFailed">
+        <source>Command '{0}' validation failed: {1}</source>
+        <target state="translated">'{0}' komutu doğrulanamadı: {1}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="RequiredCommandValidationFailedWithLink">
+        <source>Command '{0}' validation failed: {1}. For installation instructions, see: {2}</source>
+        <target state="translated">'{0}' komutu doğrulanamadı: {1}. Yükleme yönergeleri için bkz. {2}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceMayFailToStart">
+        <source>Resource '{0}' may fail to start: {1}</source>
+        <target state="translated">'{0}' kaynağı başlatılamayabilir: {1}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyContainerArgumentsDisplayName">
+        <source>Container arguments</source>
+        <target state="translated">Kapsayıcı bağımsız değişkenleri</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyContainerCommandDisplayName">
+        <source>Container command</source>
+        <target state="translated">Kapsayıcı komutu</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyContainerIdDisplayName">
+        <source>Container ID</source>
+        <target state="translated">Kapsayıcı Kimliği</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyContainerImageDisplayName">
+        <source>Container image</source>
+        <target state="translated">Kapsayıcı görüntüsü</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyContainerLifetimeDisplayName">
+        <source>Container lifetime</source>
+        <target state="translated">Kapsayıcı ömrü</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyContainerPortsDisplayName">
+        <source>Container ports</source>
+        <target state="translated">Kapsayıcı bağlantı noktaları</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyExecutableArgumentsDisplayName">
+        <source>Executable arguments</source>
+        <target state="translated">Yürütülebilir bağımsız değişkenler</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyExecutablePathDisplayName">
+        <source>Executable path</source>
+        <target state="translated">Yürütülebilir yol</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyExecutableProcessIdDisplayName">
+        <source>Process ID</source>
+        <target state="translated">İşlem Kimliği</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyExecutableWorkingDirectoryDisplayName">
+        <source>Working directory</source>
+        <target state="translated">Çalışma dizini</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyParameterValueDisplayName">
+        <source>Value</source>
+        <target state="translated">Değer</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyProjectLaunchProfileDisplayName">
+        <source>Launch profile</source>
+        <target state="translated">Profili başlat</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyProjectPathDisplayName">
+        <source>Project path</source>
+        <target state="translated">Proje yolu</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyToolPackageDisplayName">
+        <source>Tool package</source>
+        <target state="translated">Araç paketi</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyToolVersionDisplayName">
+        <source>Tool version</source>
+        <target state="translated">Araç sürümü</target>
+        <note />
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

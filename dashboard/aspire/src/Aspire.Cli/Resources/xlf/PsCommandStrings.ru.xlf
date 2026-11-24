@@ -1,0 +1,72 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="ru" original="../PsCommandStrings.resx">
+    <body>
+      <trans-unit id="Description">
+        <source>List running AppHosts</source>
+        <target state="translated">Перечислить работающие узлы приложений</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FollowOptionDescription">
+        <source>Keep running and emit updates as running AppHosts change. JSON output uses newline-delimited changed AppHost records by default, or full snapshots with --output snapshot.</source>
+        <target state="translated">Продолжать работу и выдавать обновления при изменении запущенных AppHost. Вывод JSON по умолчанию содержит записи об измененных AppHost, разделенные символами новой строки, или полные моментальные снимки при использовании --output snapshot.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FollowRequiresJson">
+        <source>The --follow option only supports JSON output. Use --format json.</source>
+        <target state="translated">Параметр --follow поддерживает только вывод JSON. Используйте --format json.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="HeaderCliPid">
+        <source>CLI PID</source>
+        <target state="translated">PID CLI</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="HeaderDashboard">
+        <source>Dashboard</source>
+        <target state="translated">Панель мониторинга</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="HeaderPath">
+        <source>Path</source>
+        <target state="translated">Путь</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="HeaderPid">
+        <source>PID</source>
+        <target state="translated">PID</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="HeaderSdk">
+        <source>SDK</source>
+        <target state="translated">Пакет SDK</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InvalidOutputMode">
+        <source>The --output option must be default or snapshot.</source>
+        <target state="translated">Параметр --output должен принимать значение default или snapshot.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="JsonOptionDescription">
+        <source>Output format (Table or Json)</source>
+        <target state="translated">Формат вывода (таблица или JSON)</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="OutputOptionDescription">
+        <source>Output mode: default preserves the standard AppHost output; snapshot emits full AppHost snapshots with resource health, heartbeats, and errors. Snapshot requires --follow --format json.</source>
+        <target state="translated">Режим вывода: default сохраняет стандартный вывод AppHost, snapshot выдает полные моментальные снимки AppHost со сведениями о работоспособности ресурсов, сигналах пульса и ошибках. Для Snapshot необходимо использовать --follow --format json.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SnapshotRequiresFollowJson">
+        <source>The --output snapshot option requires --follow --format json.</source>
+        <target state="translated">Для параметра --output snapshot необходимо использовать --follow --format json.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="UnknownPath">
+        <source>Unknown</source>
+        <target state="translated">Неизвестно</target>
+        <note />
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

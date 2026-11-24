@@ -1,0 +1,52 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="cs" original="../PublishCommandStrings.resx">
+    <body>
+      <trans-unit id="Description">
+        <source>Generate deployment artifacts for an AppHost</source>
+        <target state="translated">Vygenerovat artefakty nasazení pro AppHost</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GeneratingArtifacts">
+        <source>Generating artifacts...</source>
+        <target state="translated">Generování artefaktů...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InputPromptLoading">
+        <source>Loading...</source>
+        <target state="translated">Probíhá načítání...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="NoBuildArgumentDescription">
+        <source>Do not build or restore the project before running</source>
+        <target state="translated">Před spuštěním nevytvářejte ani neobnovujte projekt.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="OperationCompletedPrefix">
+        <source>PUBLISHING COMPLETED</source>
+        <target state="translated">PUBLIKOVÁNÍ DOKONČENO</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="OperationFailedPrefix">
+        <source>PUBLISHING FAILED</source>
+        <target state="translated">PUBLIKOVÁNÍ SE NEZDAŘILO.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="OutputPathArgumentDescription">
+        <source>The output path for the generated artifacts. Defaults to the AppHost directory's 'aspire-output' folder if not specified.</source>
+        <target state="translated">Výstupní cesta pro vygenerované artefakty. Pokud cestu nezadáte, použije se složka aspire-output v adresáři AppHostu.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ProjectArgumentDescription">
+        <source>The path to the Aspire AppHost project file or a directory to search</source>
+        <target state="translated">Cesta k souboru projektu Aspire AppHost nebo k adresáři, který se má prohledat</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SelectAPublisher">
+        <source>Select a publisher:</source>
+        <target state="translated">Vyberte vydavatele:</target>
+        <note />
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

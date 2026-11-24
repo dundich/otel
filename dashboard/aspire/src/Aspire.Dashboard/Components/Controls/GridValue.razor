@@ -1,0 +1,78 @@
+﻿@using Aspire.Dashboard.Resources
+@inject IStringLocalizer<ControlsStrings> Loc
+@inject IStringLocalizer<Dialogs> DialogsLoc
+
+<div class="@GetContainerClass()" style="width: inherit;">
+
+    @* Value area *@
+
+    @if (EnableMasking && IsMasked)
+    {
+        <span class="grid-value masked" id="@_cellTextId">
+            @DashboardUIHelpers.GetMaskingText(length: 8).MarkupString
+        </span>
+    }
+    else
+    {
+        <span class="grid-value" data-tooltip="@(ShowToolTip ? ToolTip ?? Value : null)" id="@_cellTextId" @onkeydown:stopPropagation="true">
+            @if (ContentBeforeValue == null && ContentAfterValue == null && string.IsNullOrEmpty(Value))
+            {
+                <span class="empty-data"></span>
+            }
+            else
+            {
+                @ContentBeforeValue
+                if (ComponentMetadata is not null)
+                {
+                    <DynamicComponent Type="@ComponentMetadata.Type"
+                                      Parameters="@BuildComponentParameters()" />
+                }
+                else if (ValueTemplate is not null)
+                {
+                    @ValueTemplate(Value)
+                }
+                else if (EnableHighlighting && !string.IsNullOrEmpty(HighlightText))
+                {
+                    <FluentHighlighter HighlightedText="@HighlightText" Text="@Value" />
+                }
+                else if (_formattedValue != null)
+                {
+                    @((MarkupString)_formattedValue)
+                }
+                @ContentAfterValue
+            }
+        </span>
+    }
+
+    @* Button area *@
+
+    <div @onclick:stopPropagation="true" @onkeydown:stopPropagation="true" class="button-container">
+
+        <span class="defaultHidden">
+            <FluentButton Appearance="ButtonAppearance.Transparent"
+                          IconOnly="true"
+                          Disabled="@(ValueToVisualize is null && Value is null)"
+                          OnClick="OpenTextVisualizerAsync"
+                          aria-label="@DialogsLoc[nameof(Dialogs.OpenInTextVisualizer)]">
+                <FluentIcon Icon="Icons.Regular.Size16.SlideSearch" Color="Color.Primary" />
+            </FluentButton>
+        </span>
+
+        @if (ContentInButtonArea is not null)
+        {
+            @ContentInButtonArea
+        }
+
+        @if (EnableMasking)
+        {
+            <FluentButton Appearance="ButtonAppearance.Transparent"
+                          IconOnly="true"
+                          IconEnd="@(IsMasked ? _unmaskIcon : _maskIcon)"
+                          data-tooltip="@(IsMasked ? Loc[nameof(ControlsStrings.GridValueMaskShowValue)] : Loc[nameof(ControlsStrings.GridValueMaskHideValue)])"
+                          OnClick="ToggleMaskStateAsync"
+                          aria-label="@(IsMasked ? Loc[nameof(ControlsStrings.GridValueMaskShowValue)] : Loc[nameof(ControlsStrings.GridValueMaskHideValue)])"
+                          Class="grid-value-mask-button" />
+        }
+
+    </div>
+</div>

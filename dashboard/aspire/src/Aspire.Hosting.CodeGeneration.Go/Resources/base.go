@@ -1,0 +1,1095 @@
+// Package aspire provides base types and utilities for Aspire Go SDK.
+package aspire
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"reflect"
+	"strings"
+	"sync"
+)
+
+// ── handleWrapperBase ─────────────────────────────────────────────────────────
+//
+// Sequential execution model. Every capability invocation in the generated
+// SDK runs synchronously. The wrapper carries:
+//   - handle: the server-side handle (nil if construction failed)
+//   - err:    the first error encountered along this wrapper's chain
+//   - client: the client used for follow-up RPCs
+//
+// Fluent methods short-circuit when err is non-nil and propagate the existing
+// error to subsequent calls. Add* / property getters that return a new child
+// pre-populate the child's err if the parent already failed, so chains
+// short-circuit cleanly without panicking.
+//
+// Callers retrieve the chain's error with Err() at any logical boundary
+// (typically once at the end of a builder chain or before using the result of
+// a value-returning method). Every wrapper also reports the error it owns to
+// the client, and the builder's Err() and Build() combine the errors from all
+// failed handles, so failed children that were never checked still stop Build().
+//
+// Callbacks run on separate goroutines and can capture a wrapper also used by
+// the builder chain. The sticky error and lazy collection accessors are
+// synchronized; concurrent capability calls still run independently.
+
+type handleWrapperBase struct {
+	handle       *handle
+	errMu        sync.RWMutex
+	err          error
+	client       *client
+	collectionMu sync.Mutex
+}
+
+func newHandleWrapperBase(h *handle, c *client) *handleWrapperBase {
+	return &handleWrapperBase{handle: h, client: c}
+}
+
+func newErroredHandleWrapperBase(err error, c *client) *handleWrapperBase {
+	c.recordErr(err)
+	return &handleWrapperBase{err: err, client: c}
+}
+
+func newPropagatedErroredHandleWrapperBase(err error, c *client) *handleWrapperBase {
+	return &handleWrapperBase{err: err, client: c}
+}
+
+// getHandle implements handleReference. Returns nil if the wrapper failed
+// to construct; callers should consult Err() before serializing a wrapper
+// with this handle.
+func (h *handleWrapperBase) getHandle() *handle { return h.handle }
+
+// getClient returns the client used for follow-up RPCs.
+func (h *handleWrapperBase) getClient() *client { return h.client }
+
+// Err returns the first error recorded on this wrapper. Returns nil if the
+// wrapper resolved successfully and no chained operation has failed.
+func (h *handleWrapperBase) Err() error {
+	h.errMu.RLock()
+	defer h.errMu.RUnlock()
+	return h.err
+}
+
+// setErr records an error owned by this wrapper and reports it to the client.
+// The first non-nil error wins; later errors are dropped to keep failure
+// causality clear in chains.
+func (h *handleWrapperBase) setErr(err error) {
+	if err == nil {
+		return
+	}
+	h.errMu.Lock()
+	if h.err != nil {
+		h.errMu.Unlock()
+		return
+	}
+	h.err = err
+	h.errMu.Unlock()
+	h.client.recordErr(err)
+}
+
+// setPropagatedErr short-circuits this wrapper with an error already owned by
+// another handle without reporting the same failure to the client again.
+func (h *handleWrapperBase) setPropagatedErr(err error) {
+	if err == nil {
+		return
+	}
+	h.errMu.Lock()
+	if h.err == nil {
+		h.err = err
+	}
+	h.errMu.Unlock()
+}
+
+// ── resourceBuilderBase ───────────────────────────────────────────────────────
+
+type resourceBuilderBase struct {
+	*handleWrapperBase
+}
+
+func newResourceBuilderBase(h *handle, c *client) *resourceBuilderBase {
+	return &resourceBuilderBase{handleWrapperBase: newHandleWrapperBase(h, c)}
+}
+
+func newErroredResourceBuilder(err error, c *client) *resourceBuilderBase {
+	return &resourceBuilderBase{handleWrapperBase: newErroredHandleWrapperBase(err, c)}
+}
+
+func newPropagatedErroredResourceBuilder(err error, c *client) *resourceBuilderBase {
+	return &resourceBuilderBase{handleWrapperBase: newPropagatedErroredHandleWrapperBase(err, c)}
+}
+
+// ── ReferenceExpression ───────────────────────────────────────────────────────
+
+// ReferenceExpression represents a reference expression that can be passed to capabilities.
+// Supports value mode (Format + ValueProviders) and conditional mode (Condition + WhenTrue + WhenFalse).
+type ReferenceExpression struct {
+	Format         string
+	ValueProviders []any
+
+	// Conditional mode fields
+	Condition  any
+	WhenTrue   *ReferenceExpression
+	WhenFalse  *ReferenceExpression
+	MatchValue string
+
+	// Handle mode fields (for server-returned expressions)
+	handle *handle
+	client *client
+}
+
+func newHandleBackedReferenceExpression(h *handle, c *client) *ReferenceExpression {
+	return &ReferenceExpression{handle: h, client: c}
+}
+
+// RefExpr is a Go-idiomatic constructor for value-mode reference expressions.
+// The format string uses fmt.Sprintf-style verbs (%v, %s, %d, %f, etc.),
+// one per value provider, in order. Each verb is translated to an Aspire {N}
+// indexed placeholder before the expression is sent to the server.
+// Use %% to emit a literal percent sign (no placeholder consumed).
+//
+//	Expr("Host=%v;Port=%v", host, port)
+//	→ ReferenceExpression{Format: "Host={0};Port={1}", ValueProviders: [host, port]}
+func RefExpr(format string, valueProviders ...any) *ReferenceExpression {
+	return &ReferenceExpression{Format: fmtToAspireFormat(format), ValueProviders: valueProviders}
+}
+
+// fmtToAspireFormat converts a fmt.Sprintf-style format string to the Aspire
+// {N} indexed format expected by the server.
+func fmtToAspireFormat(format string) string {
+	out := make([]byte, 0, len(format))
+	n := 0
+	i := 0
+	for i < len(format) {
+		if format[i] != '%' {
+			out = append(out, format[i])
+			i++
+			continue
+		}
+		i++ // consume '%'
+		if i >= len(format) {
+			out = append(out, '%')
+			break
+		}
+		if format[i] == '%' {
+			out = append(out, '%')
+			i++
+			continue
+		}
+		// skip optional flags, width, and precision before the verb letter
+		for i < len(format) && !isVerbByte(format[i]) {
+			i++
+		}
+		if i < len(format) {
+			out = append(out, fmt.Sprintf("{%d}", n)...)
+			n++
+			i++ // consume verb letter
+		}
+	}
+	return string(out)
+}
+
+func isVerbByte(b byte) bool {
+	return (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z')
+}
+
+// ConditionalRefExpr is a convenience constructor for conditional reference expressions.
+func ConditionalRefExpr(condition any, matchValue string, whenTrue *ReferenceExpression, whenFalse *ReferenceExpression) *ReferenceExpression {
+	if matchValue == "" {
+		matchValue = "True"
+	}
+	return &ReferenceExpression{
+		Condition:  condition,
+		WhenTrue:   whenTrue,
+		WhenFalse:  whenFalse,
+		MatchValue: matchValue,
+	}
+}
+
+// getHandle satisfies handleReference for handle-backed expressions.
+func (r *ReferenceExpression) getHandle() *handle { return r.handle }
+
+// Err always returns nil for in-memory ReferenceExpression instances. Provided
+// to satisfy handleReference; handle-backed expressions originating from the
+// server have already been validated by wrapIfHandle when the wrapper is
+// returned.
+func (r *ReferenceExpression) Err() error { return nil }
+
+// ToJSON returns the reference expression as a JSON-serializable map.
+func (r *ReferenceExpression) ToJSON() map[string]any {
+	if r.handle != nil {
+		h := r.handle.ToJSON()
+		return map[string]any{"$handle": h["$handle"], "$type": h["$type"]}
+	}
+	if r.Condition != nil {
+		return map[string]any{
+			"$expr": map[string]any{
+				"condition":  serializeValue(r.Condition),
+				"whenTrue":   r.WhenTrue.ToJSON(),
+				"whenFalse":  r.WhenFalse.ToJSON(),
+				"matchValue": r.MatchValue,
+			},
+		}
+	}
+	return map[string]any{
+		"$expr": map[string]any{
+			"format":         r.Format,
+			"valueProviders": r.ValueProviders,
+		},
+	}
+}
+
+// GetValue resolves the expression to its string value on the server.
+// Only available on server-returned ReferenceExpression instances (handle mode).
+func (r *ReferenceExpression) GetValue(token *CancellationToken) (string, error) {
+	if r.handle == nil || r.client == nil {
+		return "", errors.New("aspire: GetValue is only available on server-returned ReferenceExpression instances")
+	}
+
+	args := map[string]any{
+		"context": r.handle.ToJSON(),
+	}
+	ctx := context.Background()
+	if token != nil {
+		ctx = token.Context()
+		if id := r.client.registerCancellation(token); id != "" {
+			args["cancellationToken"] = id
+		}
+	}
+
+	result, err := r.client.invokeCapability(ctx, "Aspire.Hosting.ApplicationModel/getValue", args)
+	if err != nil {
+		return "", err
+	}
+	if s, ok := result.(string); ok {
+		return s, nil
+	}
+	return "", nil
+}
+
+// ── List ──────────────────────────────────────────────────────────────────────
+//
+// List[T] is a handle-backed list with lazy resolution of the list handle
+// itself (the getter capability is only invoked on first access). Mutating
+// methods are now synchronous and return errors directly.
+
+type List[T any] struct {
+	parent             *handleWrapperBase
+	getterCapabilityID string
+
+	handleMu       sync.Mutex
+	resolvedHandle *handle
+}
+
+func newList[T any](h *handle, c *client) *List[T] {
+	return &List[T]{
+		parent:         newHandleWrapperBase(h, c),
+		resolvedHandle: h,
+	}
+}
+
+func newListWithGetter[T any](parent *handleWrapperBase, getterCapabilityID string) *List[T] {
+	return &List[T]{parent: parent, getterCapabilityID: getterCapabilityID}
+}
+
+func (l *List[T]) resolveListHandle(ctx context.Context) (*handle, error) {
+	if err := l.parent.Err(); err != nil {
+		return nil, err
+	}
+	l.handleMu.Lock()
+	cached := l.resolvedHandle
+	l.handleMu.Unlock()
+	if cached != nil {
+		return cached, nil
+	}
+	if l.getterCapabilityID == "" {
+		return l.parent.handle, nil
+	}
+	result, err := l.parent.client.invokeCapability(ctx, l.getterCapabilityID, map[string]any{
+		"context": l.parent.handle.ToJSON(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	h, ok := result.(handleReference)
+	if !ok {
+		return nil, fmt.Errorf("aspire: list getter %q returned unexpected type %T", l.getterCapabilityID, result)
+	}
+	listHandle := h.getHandle()
+	l.handleMu.Lock()
+	l.resolvedHandle = listHandle
+	l.handleMu.Unlock()
+	return listHandle, nil
+}
+
+// Err returns the first error on the list's parent, including handle resolution
+// failures recorded by ToJSON.
+func (l *List[T]) Err() error { return l.parent.Err() }
+
+// ToJSON returns the list handle as a JSON-serializable map, or nil on failure.
+// Consult Err before using the result.
+func (l *List[T]) ToJSON() map[string]any {
+	h, err := l.resolveListHandle(context.Background())
+	if err != nil {
+		l.parent.setErr(err)
+		return nil
+	}
+	if h == nil {
+		l.parent.setErr(errors.New("aspire: list getter returned a nil handle"))
+		return nil
+	}
+	out := h.ToJSON()
+	return map[string]any{"$handle": out["$handle"], "$type": out["$type"]}
+}
+
+func (l *List[T]) Count() (int, error) {
+	ctx := context.Background()
+	h, err := l.resolveListHandle(ctx)
+	if err != nil {
+		return 0, err
+	}
+	result, err := l.parent.client.invokeCapability(ctx, "Aspire.Hosting/List.length", map[string]any{
+		"list": h.ToJSON(),
+	})
+	if err != nil {
+		return 0, err
+	}
+	return decodeAs[int](result)
+}
+
+func (l *List[T]) Get(index int) (T, error) {
+	var zero T
+	ctx := context.Background()
+	h, err := l.resolveListHandle(ctx)
+	if err != nil {
+		return zero, err
+	}
+	result, err := l.parent.client.invokeCapability(ctx, "Aspire.Hosting/List.get", map[string]any{
+		"list":  h.ToJSON(),
+		"index": index,
+	})
+	if err != nil {
+		return zero, err
+	}
+	return decodeAs[T](result)
+}
+
+func (l *List[T]) ToArray() ([]T, error) {
+	ctx := context.Background()
+	h, err := l.resolveListHandle(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result, err := l.parent.client.invokeCapability(ctx, "Aspire.Hosting/List.toArray", map[string]any{
+		"list": h.ToJSON(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	arr, ok := result.([]any)
+	if !ok {
+		return nil, nil
+	}
+	items := make([]T, 0, len(arr))
+	for _, raw := range arr {
+		v, err := decodeAs[T](raw)
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, v)
+	}
+	return items, nil
+}
+
+func (l *List[T]) Add(item T) error {
+	ctx := context.Background()
+	h, err := l.resolveListHandle(ctx)
+	if err != nil {
+		return err
+	}
+	_, err = l.parent.client.invokeCapability(ctx, "Aspire.Hosting/List.add", map[string]any{
+		"list": h.ToJSON(),
+		"item": serializeValue(item),
+	})
+	return err
+}
+
+func (l *List[T]) RemoveAt(index int) error {
+	ctx := context.Background()
+	h, err := l.resolveListHandle(ctx)
+	if err != nil {
+		return err
+	}
+	_, err = l.parent.client.invokeCapability(ctx, "Aspire.Hosting/List.removeAt", map[string]any{
+		"list":  h.ToJSON(),
+		"index": index,
+	})
+	return err
+}
+
+func (l *List[T]) Clear() error {
+	ctx := context.Background()
+	h, err := l.resolveListHandle(ctx)
+	if err != nil {
+		return err
+	}
+	_, err = l.parent.client.invokeCapability(ctx, "Aspire.Hosting/List.clear", map[string]any{
+		"list": h.ToJSON(),
+	})
+	return err
+}
+
+// ── Dict ──────────────────────────────────────────────────────────────────────
+
+type Dict[K comparable, V any] struct {
+	parent             *handleWrapperBase
+	getterCapabilityID string
+
+	handleMu       sync.Mutex
+	resolvedHandle *handle
+}
+
+func newDict[K comparable, V any](h *handle, c *client) *Dict[K, V] {
+	return &Dict[K, V]{
+		parent:         newHandleWrapperBase(h, c),
+		resolvedHandle: h,
+	}
+}
+
+func newDictWithGetter[K comparable, V any](parent *handleWrapperBase, getterCapabilityID string) *Dict[K, V] {
+	return &Dict[K, V]{parent: parent, getterCapabilityID: getterCapabilityID}
+}
+
+func (d *Dict[K, V]) resolveDictHandle(ctx context.Context) (*handle, error) {
+	if err := d.parent.Err(); err != nil {
+		return nil, err
+	}
+	d.handleMu.Lock()
+	cached := d.resolvedHandle
+	d.handleMu.Unlock()
+	if cached != nil {
+		return cached, nil
+	}
+	if d.getterCapabilityID == "" {
+		return d.parent.handle, nil
+	}
+	result, err := d.parent.client.invokeCapability(ctx, d.getterCapabilityID, map[string]any{
+		"context": d.parent.handle.ToJSON(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	h, ok := result.(handleReference)
+	if !ok {
+		return nil, fmt.Errorf("aspire: dict getter %q returned unexpected type %T", d.getterCapabilityID, result)
+	}
+	dictHandle := h.getHandle()
+	d.handleMu.Lock()
+	d.resolvedHandle = dictHandle
+	d.handleMu.Unlock()
+	return dictHandle, nil
+}
+
+// Err returns the first error on the dictionary's parent, including handle
+// resolution failures recorded by ToJSON.
+func (d *Dict[K, V]) Err() error { return d.parent.Err() }
+
+// ToJSON returns the dictionary handle as a JSON-serializable map, or nil on
+// failure. Consult Err before using the result.
+func (d *Dict[K, V]) ToJSON() map[string]any {
+	h, err := d.resolveDictHandle(context.Background())
+	if err != nil {
+		d.parent.setErr(err)
+		return nil
+	}
+	if h == nil {
+		d.parent.setErr(errors.New("aspire: dictionary getter returned a nil handle"))
+		return nil
+	}
+	out := h.ToJSON()
+	return map[string]any{"$handle": out["$handle"], "$type": out["$type"]}
+}
+
+func (d *Dict[K, V]) Count() (int, error) {
+	ctx := context.Background()
+	h, err := d.resolveDictHandle(ctx)
+	if err != nil {
+		return 0, err
+	}
+	result, err := d.parent.client.invokeCapability(ctx, "Aspire.Hosting/Dict.count", map[string]any{
+		"dict": h.ToJSON(),
+	})
+	if err != nil {
+		return 0, err
+	}
+	return decodeAs[int](result)
+}
+
+func (d *Dict[K, V]) Get(key K) (V, error) {
+	var zero V
+	ctx := context.Background()
+	h, err := d.resolveDictHandle(ctx)
+	if err != nil {
+		return zero, err
+	}
+	result, err := d.parent.client.invokeCapability(ctx, "Aspire.Hosting/Dict.get", map[string]any{
+		"dict": h.ToJSON(),
+		"key":  serializeValue(key),
+	})
+	if err != nil {
+		return zero, err
+	}
+	return decodeAs[V](result)
+}
+
+func (d *Dict[K, V]) Has(key K) (bool, error) {
+	ctx := context.Background()
+	h, err := d.resolveDictHandle(ctx)
+	if err != nil {
+		return false, err
+	}
+	result, err := d.parent.client.invokeCapability(ctx, "Aspire.Hosting/Dict.has", map[string]any{
+		"dict": h.ToJSON(),
+		"key":  serializeValue(key),
+	})
+	if err != nil {
+		return false, err
+	}
+	if b, ok := result.(bool); ok {
+		return b, nil
+	}
+	return false, nil
+}
+
+func (d *Dict[K, V]) Keys() ([]K, error) {
+	ctx := context.Background()
+	h, err := d.resolveDictHandle(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result, err := d.parent.client.invokeCapability(ctx, "Aspire.Hosting/Dict.keys", map[string]any{
+		"dict": h.ToJSON(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	arr, ok := result.([]any)
+	if !ok {
+		return nil, nil
+	}
+	keys := make([]K, 0, len(arr))
+	for _, raw := range arr {
+		k, err := decodeAs[K](raw)
+		if err != nil {
+			return nil, err
+		}
+		keys = append(keys, k)
+	}
+	return keys, nil
+}
+
+func (d *Dict[K, V]) Values() ([]V, error) {
+	ctx := context.Background()
+	h, err := d.resolveDictHandle(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result, err := d.parent.client.invokeCapability(ctx, "Aspire.Hosting/Dict.values", map[string]any{
+		"dict": h.ToJSON(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	arr, ok := result.([]any)
+	if !ok {
+		return nil, nil
+	}
+	vals := make([]V, 0, len(arr))
+	for _, raw := range arr {
+		v, err := decodeAs[V](raw)
+		if err != nil {
+			return nil, err
+		}
+		vals = append(vals, v)
+	}
+	return vals, nil
+}
+
+func (d *Dict[K, V]) ToObject() (map[string]V, error) {
+	ctx := context.Background()
+	h, err := d.resolveDictHandle(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result, err := d.parent.client.invokeCapability(ctx, "Aspire.Hosting/Dict.toObject", map[string]any{
+		"dict": h.ToJSON(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	m, ok := result.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("aspire: dict.toObject: unexpected result type %T", result)
+	}
+	obj := make(map[string]V, len(m))
+	for k, raw := range m {
+		v, err := decodeAs[V](raw)
+		if err != nil {
+			return nil, err
+		}
+		obj[k] = v
+	}
+	return obj, nil
+}
+
+func (d *Dict[K, V]) Set(key K, value V) error {
+	ctx := context.Background()
+	h, err := d.resolveDictHandle(ctx)
+	if err != nil {
+		return err
+	}
+	_, err = d.parent.client.invokeCapability(ctx, "Aspire.Hosting/Dict.set", map[string]any{
+		"dict":  h.ToJSON(),
+		"key":   serializeValue(key),
+		"value": serializeValue(value),
+	})
+	return err
+}
+
+func (d *Dict[K, V]) Remove(key K) error {
+	ctx := context.Background()
+	h, err := d.resolveDictHandle(ctx)
+	if err != nil {
+		return err
+	}
+	_, err = d.parent.client.invokeCapability(ctx, "Aspire.Hosting/Dict.remove", map[string]any{
+		"dict": h.ToJSON(),
+		"key":  serializeValue(key),
+	})
+	return err
+}
+
+func (d *Dict[K, V]) Clear() error {
+	ctx := context.Background()
+	h, err := d.resolveDictHandle(ctx)
+	if err != nil {
+		return err
+	}
+	_, err = d.parent.client.invokeCapability(ctx, "Aspire.Hosting/Dict.clear", map[string]any{
+		"dict": h.ToJSON(),
+	})
+	return err
+}
+
+// ── Pointer helpers ───────────────────────────────────────────────────────────
+
+func StringPtr(s string) *string    { return &s }
+func IntPtr(i int) *int             { return &i }
+func Int64Ptr(i int64) *int64       { return &i }
+func BoolPtr(b bool) *bool          { return &b }
+func Float64Ptr(f float64) *float64 { return &f }
+
+// ── SerializeValue ────────────────────────────────────────────────────────────
+
+// serializeValue converts a value to its JSON-serializable representation.
+//
+// Dispatch priority:
+//  1. *handle                                      → handle.ToJSON()
+//  2. *ReferenceExpression                         → r.ToJSON()
+//  3. handleReference (every wrapper impl)         → getHandle().ToJSON()
+//  4. interface{ ToMap() map[string]any }          → recurse into the map
+//  5. []any / map[string]any                       → recurse element-wise
+//  6. any slice/array/map                          → recurse element-wise
+//  7. fmt.Stringer (compatibility)                 → v.String()
+//  8. default                                      → pass through
+func serializeValue(value any) any {
+	if isNil(value) {
+		return nil
+	}
+
+	switch v := value.(type) {
+	case json.Number:
+		return v
+	case *handle:
+		return v.ToJSON()
+	case *ReferenceExpression:
+		return v.ToJSON()
+	case handleReference:
+		h := v.getHandle()
+		if h == nil {
+			return nil
+		}
+		return h.ToJSON()
+	case interface{ ToMap() map[string]any }:
+		return serializeValue(v.ToMap())
+	case []any:
+		result := make([]any, len(v))
+		for i, item := range v {
+			result[i] = serializeValue(item)
+		}
+		return result
+	case map[string]any:
+		result := make(map[string]any, len(v))
+		for k, val := range v {
+			result[k] = serializeValue(val)
+		}
+		return result
+	default:
+		if result, ok := serializeReflectedCollection(value); ok {
+			return result
+		}
+		if stringer, ok := value.(fmt.Stringer); ok {
+			return stringer.String()
+		}
+		return value
+	}
+}
+
+// isNil recognizes typed nil values after they have been boxed into any. A direct comparison with nil
+// cannot see values such as any((*ReferenceExpression)(nil)), and dispatching those through ToJSON or
+// ToMap would dereference a nil receiver.
+func isNil(value any) bool {
+	if value == nil {
+		return true
+	}
+
+	reflectedValue := reflect.ValueOf(value)
+	switch reflectedValue.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
+		return reflectedValue.IsNil()
+	default:
+		return false
+	}
+}
+
+func isValidJSONNumber(value json.Number) bool {
+	_, err := json.Marshal(value)
+	return err == nil
+}
+
+func serializeReflectedCollection(value any) (any, bool) {
+	reflectedValue := reflect.ValueOf(value)
+	switch reflectedValue.Kind() {
+	case reflect.Array, reflect.Slice:
+		if reflectedValue.Kind() == reflect.Slice && reflectedValue.IsNil() {
+			return nil, true
+		}
+
+		result := make([]any, reflectedValue.Len())
+		for i := range reflectedValue.Len() {
+			result[i] = serializeValue(reflectedValue.Index(i).Interface())
+		}
+
+		return result, true
+	case reflect.Map:
+		if reflectedValue.IsNil() {
+			return nil, true
+		}
+
+		result := make(map[string]any, reflectedValue.Len())
+		iter := reflectedValue.MapRange()
+		for iter.Next() {
+			key := iter.Key().Interface()
+			result[fmt.Sprint(serializeValue(key))] = serializeValue(iter.Value().Interface())
+		}
+
+		return result, true
+	default:
+		return nil, false
+	}
+}
+
+// callbackArg fetches a positional argument from the slice and decodes it
+// to T. Invalid arguments panic with a private error that the callback
+// dispatcher translates into a JSON-RPC invalid-params response, before the
+// user's typed callback can run with a silently substituted zero value.
+func callbackArg[T any](args []any, idx int) T {
+	if idx < 0 || idx >= len(args) {
+		panic(&callbackArgumentError{fmt.Errorf("aspire: callback argument %d is missing", idx)})
+	}
+	v, err := decodeAs[T](args[idx])
+	if err != nil {
+		panic(&callbackArgumentError{fmt.Errorf("aspire: callback argument %d: %w", idx, err)})
+	}
+
+	return v
+}
+
+// callbackCancellationTokenArg handles the callback wire representation for
+// CancellationToken. The host sends a token ID for cancellable tokens and omits
+// the positional argument for CancellationToken.None.
+func callbackCancellationTokenArg(c *client, args []any, idx int) *CancellationToken {
+	if idx < 0 || idx >= len(args) || args[idx] == nil {
+		return nil
+	}
+	if token, ok := args[idx].(*CancellationToken); ok {
+		return token
+	}
+	if id, ok := args[idx].(string); ok && id != "" {
+		return newRemoteCancellationToken(c, id)
+	}
+	panic(&callbackArgumentError{fmt.Errorf("aspire: callback argument %d: expected a cancellation token ID", idx)})
+}
+
+type callbackArgumentError struct{ error }
+
+// decodeAs converts an arbitrary RPC result into a typed value via JSON
+// round-trip. Used by typed read methods on List/Dict and by value-returning
+// capabilities. Slices and maps are decoded element by element, see decodeInto.
+func decodeAs[T any](raw any) (T, error) {
+	var zero T
+	if raw == nil {
+		return zero, nil
+	}
+	if v, ok := raw.(T); ok {
+		return v, nil
+	}
+	if kind := reflect.TypeFor[T]().Kind(); kind == reflect.Slice || kind == reflect.Map {
+		var out T
+		if err := decodeInto(reflect.ValueOf(&out).Elem(), raw); err != nil {
+			return zero, err
+		}
+		return out, nil
+	}
+	bytes, err := json.Marshal(raw)
+	if err != nil {
+		return zero, err
+	}
+	var out T
+	if err := json.Unmarshal(bytes, &out); err != nil {
+		if decoded, ok := decodeStructFields[T](raw); ok {
+			return decoded, nil
+		}
+		return zero, err
+	}
+	return out, nil
+}
+
+// decodeInto decodes raw into dst, which must be addressable and hold its zero
+// value. wrapIfHandle replaces the handle envelopes inside a []any or
+// map[string]any with wrapper values, and encoding/json cannot decode those into
+// an interface element type such as []Resource. So a list or a string-keyed map
+// is decoded one element at a time: an element that is already assignable to the
+// element type, like a handle wrapper, is stored as is, and only the others take
+// a JSON round trip.
+func decodeInto(dst reflect.Value, raw any) error {
+	if raw == nil {
+		return nil
+	}
+	if v := reflect.ValueOf(raw); v.Type().AssignableTo(dst.Type()) {
+		dst.Set(v)
+		return nil
+	}
+	switch src := raw.(type) {
+	case []any:
+		if dst.Kind() == reflect.Slice {
+			dst.Set(reflect.MakeSlice(dst.Type(), len(src), len(src)))
+			for i, item := range src {
+				if err := decodeInto(dst.Index(i), item); err != nil {
+					return fmt.Errorf("aspire: cannot decode element %d of %v: %w", i, dst.Type(), err)
+				}
+			}
+			return nil
+		}
+	case map[string]any:
+		if dst.Kind() == reflect.Map && dst.Type().Key().Kind() == reflect.String {
+			dst.Set(reflect.MakeMapWithSize(dst.Type(), len(src)))
+			for key, item := range src {
+				// Map values are not addressable, so decode into a fresh value and store a copy.
+				elem := reflect.New(dst.Type().Elem()).Elem()
+				if err := decodeInto(elem, item); err != nil {
+					return fmt.Errorf("aspire: cannot decode entry %q of %v: %w", key, dst.Type(), err)
+				}
+				dst.SetMapIndex(reflect.ValueOf(key).Convert(dst.Type().Key()), elem)
+			}
+			return nil
+		}
+	}
+	bytes, err := json.Marshal(raw)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(bytes, dst.Addr().Interface())
+}
+
+func decodeStructFields[T any](raw any) (T, bool) {
+	var zero T
+	rawMap, ok := raw.(map[string]any)
+	if !ok {
+		return zero, false
+	}
+
+	targetType := reflect.TypeOf((*T)(nil)).Elem()
+	isPointer := targetType.Kind() == reflect.Ptr
+	if isPointer {
+		targetType = targetType.Elem()
+	}
+	if targetType.Kind() != reflect.Struct {
+		return zero, false
+	}
+
+	targetValue := reflect.New(targetType)
+	structValue := targetValue.Elem()
+	for i := 0; i < targetType.NumField(); i++ {
+		fieldInfo := targetType.Field(i)
+		fieldValue := structValue.Field(i)
+		if !fieldValue.CanSet() {
+			continue
+		}
+
+		fieldName := fieldInfo.Name
+		if tag := fieldInfo.Tag.Get("json"); tag != "" {
+			name, _, _ := strings.Cut(tag, ",")
+			if name == "-" {
+				continue
+			}
+			if name != "" {
+				fieldName = name
+			}
+		}
+
+		rawFieldValue, ok := rawMap[fieldName]
+		if !ok {
+			continue
+		}
+		// Callback IDs cannot become Go func values. Other fields must decode
+		// successfully; a malformed DTO must not reach user code as zero values.
+		if fieldValue.Kind() == reflect.Func {
+			continue
+		}
+		if err := decodeInto(fieldValue, rawFieldValue); err != nil {
+			return zero, false
+		}
+	}
+
+	if isPointer {
+		return targetValue.Interface().(T), true
+	}
+
+	return structValue.Interface().(T), true
+}
+
+// callbackHandleArg fetches a positional callback argument that is a handle
+// and returns it as the callback's declared wrapper type T, built with wrap
+// when the transport delivered a raw *handle. The host tags each handle
+// argument with the callback's declared parameter type. For a resource builder
+// that is a closed generic type id (IResourceBuilder<T>) that has no registered
+// wrapper, so wrapIfHandle leaves the *handle unwrapped and callbackArg alone
+// would hand the user's callback a nil interface. Arguments that are already
+// wrapped, nil or missing fall through to callbackArg.
+func callbackHandleArg[T any](c *client, args []any, idx int, wrap func(*handle, *client) T) T {
+	if idx < len(args) {
+		if h, ok := args[idx].(*handle); ok {
+			return wrap(h, c)
+		}
+	}
+	return callbackArg[T](args, idx)
+}
+
+// ── deepUpdate ───────────────────────────────────────────────────────────────
+//
+// Used by generated code to merge variadic Options structs:
+//
+//	merged := &AddRedisOptions{}
+//	for _, opt := range options {
+//	    if opt != nil { merged = deepUpdate(merged, opt) }
+//	}
+//
+// Neither argument is modified. Fields are merged by reflection rather than
+// through a JSON round trip because Options structs hold values encoding/json
+// cannot represent: callbacks (every func field fails to marshal, even a nil
+// one), *CancellationToken and handle wrappers.
+//
+// Struct fields and map entries present on both sides are merged recursively.
+// Any other value, including nil, is taken from src. A struct with unexported
+// fields (such as *CancellationToken) is opaque and is taken from src whole.
+func deepUpdate[T any](dst, src T) T {
+	dstType := reflect.TypeOf(dst)
+	srcType := reflect.TypeOf(src)
+
+	if dstType != srcType {
+		panic(fmt.Sprintf("aspire: merge type mismatch: cannot merge %v into %v", srcType, dstType))
+	}
+
+	var nilT T
+	if reflect.DeepEqual(src, nilT) {
+		return dst
+	}
+	if reflect.DeepEqual(dst, nilT) {
+		return src
+	}
+
+	return mergeValues(reflect.ValueOf(dst), reflect.ValueOf(src), 0).Interface().(T)
+}
+
+func mergeValues(dst, src reflect.Value, depth int) reflect.Value {
+	const depthLimit = 32
+	if depth > depthLimit {
+		panic("aspire: deep update recursion limit of '32' exceeded")
+	}
+
+	// Interface-typed fields (any, handles) are merged by their dynamic type.
+	if dst.Kind() == reflect.Interface && src.Kind() == reflect.Interface && !dst.IsNil() && !src.IsNil() {
+		dst, src = dst.Elem(), src.Elem()
+	}
+	if dst.Type() != src.Type() {
+		return src
+	}
+
+	switch src.Kind() {
+	case reflect.Pointer:
+		if dst.IsNil() || src.IsNil() || !isPlainStruct(src.Type().Elem()) {
+			return src
+		}
+		merged := reflect.New(src.Type().Elem())
+		merged.Elem().Set(mergeValues(dst.Elem(), src.Elem(), depth))
+		return merged
+
+	case reflect.Struct:
+		if !isPlainStruct(src.Type()) {
+			return src
+		}
+		merged := reflect.New(src.Type()).Elem()
+		for i := 0; i < merged.NumField(); i++ {
+			merged.Field(i).Set(mergeValues(dst.Field(i), src.Field(i), depth+1))
+		}
+		return merged
+
+	case reflect.Map:
+		if dst.IsNil() {
+			return src
+		}
+		if src.IsNil() {
+			return dst
+		}
+		merged := reflect.MakeMapWithSize(src.Type(), dst.Len()+src.Len())
+		for it := dst.MapRange(); it.Next(); {
+			merged.SetMapIndex(it.Key(), it.Value())
+		}
+		for it := src.MapRange(); it.Next(); {
+			value := it.Value()
+			if existing := merged.MapIndex(it.Key()); existing.IsValid() {
+				value = mergeValues(existing, value, depth+1)
+			}
+			merged.SetMapIndex(it.Key(), value)
+		}
+		return merged
+
+	default:
+		return src
+	}
+}
+
+// isPlainStruct reports whether every field of t is exported, which is what
+// lets reflection build a merged copy of it.
+func isPlainStruct(t reflect.Type) bool {
+	if t.Kind() != reflect.Struct {
+		return false
+	}
+	for i := 0; i < t.NumField(); i++ {
+		if !t.Field(i).IsExported() {
+			return false
+		}
+	}
+	return true
+}

@@ -1,0 +1,15 @@
+<img src="/img/logo-purple.png"
+     width="@Width"
+     height="@Height"
+     alt=""
+     aria-hidden="true"
+     style="width: @(Width)px; height: @(Height)px; object-fit: contain;" />
+
+@code
+{
+    [Parameter]
+    public int Height { get; set; } = 24;
+
+    [Parameter]
+    public int Width { get; set; } = 56;
+}

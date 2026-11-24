@@ -1,0 +1,52 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="ru" original="../DoCommandStrings.resx">
+    <body>
+      <trans-unit id="Description">
+        <source>Execute a specific pipeline step and its dependencies</source>
+        <target state="translated">Выполнение определенного шага конвейера и его зависимостей</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GeneratingArtifacts">
+        <source>Executing pipeline...</source>
+        <target state="translated">Выполнение конвейера...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ListStepsRequiresStep">
+        <source>The 'step' argument is required when using --list-steps. Example: 'aspire do deploy --list-steps'. Common starting steps are 'build', 'publish' and 'deploy'. See https://aspire.dev/reference/cli/commands/aspire-do/ for the full list of pipeline steps.</source>
+        <target state="translated">Аргумент "step" необходим при использовании --list-steps. Пример: "aspire do deploy --list-steps". Распространенные начальные шаги: "build", "publish" и "deploy". См. https://aspire.dev/reference/cli/commands/aspire-do/ для получения полного списка шагов конвейера.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="OperationCanceled">
+        <source>The operation was canceled.</source>
+        <target state="translated">Операция была отменена.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="OperationCompletedPrefix">
+        <source>OPERATION COMPLETED</source>
+        <target state="translated">ОПЕРАЦИЯ ЗАВЕРШЕНА</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="OperationFailedPrefix">
+        <source>OPERATION FAILED</source>
+        <target state="translated">СБОЙ ОПЕРАЦИИ</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="OutputPathArgumentDescription">
+        <source>The optional output path for artifacts</source>
+        <target state="translated">Необязательный выходной путь для артефактов</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="StepArgumentDescription">
+        <source>The name of the step to execute</source>
+        <target state="translated">Наименование шага, который нужно выполнить</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="StepArgumentRequired">
+        <source>The 'step' argument is required.</source>
+        <target state="translated">Аргумент "step" необходим.</target>
+        <note />
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>$(DefaultTargetFramework)</TargetFramework>
+    <IsPackable>true</IsPackable>
+    <PackageTags>aspire integration hosting azure postgresql database data cloud</PackageTags>
+    <Description>Azure PostgreSql Flexible Server resource types for Aspire.</Description>
+    <PackageIconFullPath>$(SharedDir)AzurePostgreSQL_256x.png</PackageIconFullPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Aspire.Hosting.Azure.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="$(SharedDir)StringComparers.cs" Link="Utils\StringComparers.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Aspire.Hosting.Azure\Aspire.Hosting.Azure.csproj" />
+    <ProjectReference Include="..\Aspire.Hosting.PostgreSQL\Aspire.Hosting.PostgreSQL.csproj" />
+    <ProjectReference Include="..\Aspire.Hosting.Azure.KeyVault\Aspire.Hosting.Azure.KeyVault.csproj" />
+    <PackageReference Include="Azure.Provisioning" />
+    <PackageReference Include="Azure.Provisioning.PostgreSql" />
+  </ItemGroup>
+
+</Project>

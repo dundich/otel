@@ -1,0 +1,178 @@
+{
+  "definitions": {
+    "logLevel": {
+      "properties": {
+        "Seq": {
+          "$ref": "#/definitions/logLevelThreshold"
+        }
+      }
+    }
+  },
+  "type": "object",
+  "properties": {
+    "Aspire": {
+      "type": "object",
+      "properties": {
+        "Seq": {
+          "type": "object",
+          "properties": {
+            "ApiKey": {
+              "type": "string",
+              "description": "Gets or sets a Seq API key that authenticates the client to the Seq server."
+            },
+            "DisableHealthChecks": {
+              "type": "boolean",
+              "description": "Gets or sets a boolean value that indicates whether the Seq server health check is disabled or not.",
+              "default": false
+            },
+            "Logs": {
+              "type": "object",
+              "properties": {
+                "BatchExportProcessorOptions": {
+                  "type": "object",
+                  "properties": {
+                    "ExporterTimeoutMilliseconds": {
+                      "type": "integer"
+                    },
+                    "MaxExportBatchSize": {
+                      "type": "integer"
+                    },
+                    "MaxQueueSize": {
+                      "type": "integer"
+                    },
+                    "ScheduledDelayMilliseconds": {
+                      "type": "integer"
+                    }
+                  },
+                  "description": "Gets or sets the BatchExportProcessor options. Ignored unless ExportProcessorType is Batch."
+                },
+                "Compression": {
+                  "enum": [
+                    "None",
+                    "GZip"
+                  ],
+                  "description": "Gets or sets the compression method to use when sending telemetry."
+                },
+                "Endpoint": {
+                  "type": "string",
+                  "format": "uri",
+                  "description": "Gets or sets the target to which the exporter is going to send telemetry."
+                },
+                "ExportProcessorType": {
+                  "enum": [
+                    "Simple",
+                    "Batch"
+                  ],
+                  "description": "Gets or sets the export processor type to be used with the OpenTelemetry Protocol Exporter. The default value is 'OpenTelemetry.ExportProcessorType.Batch'."
+                },
+                "Headers": {
+                  "type": "string",
+                  "description": "Gets or sets optional headers for the connection."
+                },
+                "MaxRequestSizeBytes": {
+                  "type": "integer",
+                  "description": "Gets or sets the maximum size, in bytes, of a request message the exporter will send. Default value: 67108864 (64 MiB)."
+                },
+                "MaxResponseSizeBytes": {
+                  "type": "integer",
+                  "description": "Gets or sets the maximum size, in bytes, of a response message the exporter will accept. Default value: 4194304 (4 MiB)."
+                },
+                "Protocol": {
+                  "enum": [
+                    "Grpc",
+                    "HttpProtobuf"
+                  ],
+                  "description": "Gets or sets the OTLP transport protocol."
+                },
+                "TimeoutMilliseconds": {
+                  "type": "integer",
+                  "description": "Gets or sets the max waiting time (in milliseconds) for the backend to process each batch. Default value: 10000."
+                },
+                "UserAgentProductIdentifier": {
+                  "type": "string",
+                  "description": "Gets or sets a custom user agent identifier. This will be prepended to the default user agent string."
+                }
+              },
+              "description": "Gets OTLP exporter options for logs."
+            },
+            "ServerUrl": {
+              "type": "string",
+              "description": "Gets or sets the base URL of the Seq server (including protocol and port). E.g. \"https://example.seq.com:6789. Overrides endpoints set on Logs and Traces.\""
+            },
+            "Traces": {
+              "type": "object",
+              "properties": {
+                "BatchExportProcessorOptions": {
+                  "type": "object",
+                  "properties": {
+                    "ExporterTimeoutMilliseconds": {
+                      "type": "integer"
+                    },
+                    "MaxExportBatchSize": {
+                      "type": "integer"
+                    },
+                    "MaxQueueSize": {
+                      "type": "integer"
+                    },
+                    "ScheduledDelayMilliseconds": {
+                      "type": "integer"
+                    }
+                  },
+                  "description": "Gets or sets the BatchExportProcessor options. Ignored unless ExportProcessorType is Batch."
+                },
+                "Compression": {
+                  "enum": [
+                    "None",
+                    "GZip"
+                  ],
+                  "description": "Gets or sets the compression method to use when sending telemetry."
+                },
+                "Endpoint": {
+                  "type": "string",
+                  "format": "uri",
+                  "description": "Gets or sets the target to which the exporter is going to send telemetry."
+                },
+                "ExportProcessorType": {
+                  "enum": [
+                    "Simple",
+                    "Batch"
+                  ],
+                  "description": "Gets or sets the export processor type to be used with the OpenTelemetry Protocol Exporter. The default value is 'OpenTelemetry.ExportProcessorType.Batch'."
+                },
+                "Headers": {
+                  "type": "string",
+                  "description": "Gets or sets optional headers for the connection."
+                },
+                "MaxRequestSizeBytes": {
+                  "type": "integer",
+                  "description": "Gets or sets the maximum size, in bytes, of a request message the exporter will send. Default value: 67108864 (64 MiB)."
+                },
+                "MaxResponseSizeBytes": {
+                  "type": "integer",
+                  "description": "Gets or sets the maximum size, in bytes, of a response message the exporter will accept. Default value: 4194304 (4 MiB)."
+                },
+                "Protocol": {
+                  "enum": [
+                    "Grpc",
+                    "HttpProtobuf"
+                  ],
+                  "description": "Gets or sets the OTLP transport protocol."
+                },
+                "TimeoutMilliseconds": {
+                  "type": "integer",
+                  "description": "Gets or sets the max waiting time (in milliseconds) for the backend to process each batch. Default value: 10000."
+                },
+                "UserAgentProductIdentifier": {
+                  "type": "string",
+                  "description": "Gets or sets a custom user agent identifier. This will be prepended to the default user agent string."
+                }
+              },
+              "description": "Gets OTLP exporter options for traces."
+            }
+          },
+          "description": "Provides the client configuration settings for connecting telemetry to a Seq server."
+        }
+      }
+    }
+  }
+}

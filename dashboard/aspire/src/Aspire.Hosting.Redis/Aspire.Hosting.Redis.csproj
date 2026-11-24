@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>$(DefaultTargetFramework)</TargetFramework>
+    <IsPackable>true</IsPackable>
+    <PackageTags>aspire integration hosting redis cache caching</PackageTags>
+    <Description>Redis® support for Aspire.</Description>
+    <PackageIconFullPath>$(SharedDir)redis-cube-red_white-rgb.png</PackageIconFullPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="$(SharedDir)ContainerReplCommand.cs" Link="Utils\ContainerReplCommand.cs" />
+    <Compile Include="$(SharedDir)StringComparers.cs" Link="Utils\StringComparers.cs" />
+    <Compile Include="$(SharedDir)/Model/KnownRelationshipTypes.cs" LinkBase="Shared" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AspNetCore.HealthChecks.Redis" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Aspire.Hosting\Aspire.Hosting.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Aspire.Hosting.Redis.Tests"/>
+  </ItemGroup>
+  
+</Project>

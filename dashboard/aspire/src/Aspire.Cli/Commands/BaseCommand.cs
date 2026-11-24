@@ -1,0 +1,373 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+using System.CommandLine;
+using System.CommandLine.Help;
+using System.Globalization;
+using Aspire.Cli.Interaction;
+using Aspire.Cli.Configuration;
+using Aspire.Cli.NuGet;
+using Aspire.Cli.Projects;
+using Aspire.Cli.Resources;
+using Aspire.Cli.Secrets;
+using Aspire.Cli.Telemetry;
+using Aspire.Cli.Utils;
+using Microsoft.Extensions.Logging;
+using Spectre.Console;
+
+namespace Aspire.Cli.Commands;
+
+internal abstract class BaseCommand : Command
+{
+    private static readonly int[] s_suppressErrorLogsMessageExitCodes = [CliExitCodes.Cancelled, CliExitCodes.MissingRequiredArgument];
+    private static readonly TimeSpan s_extensionInteractionFlushTimeout = TimeSpan.FromSeconds(10);
+
+    protected virtual bool UpdateNotificationsEnabled { get; }
+
+    // Commands that only conditionally emit telemetry can defer provider creation and enrichment
+    // until they have work to report, rather than paying that startup cost on every invocation.
+    internal virtual bool InitializeTelemetryOnStartup => true;
+
+    internal virtual bool PrefetchesTemplatePackageMetadata => false;
+
+    internal bool PrefetchesTemplatePackageMetadataForInvocation
+        => _prefetchesTemplatePackageMetadataForInvocation ?? PrefetchesTemplatePackageMetadata;
+
+    // Machine-readable output cannot display update notifications, so apply this invocation-level gate outside
+    // the overridable command policy to prevent metadata-only consumers from bypassing it.
+    internal bool PrefetchesCliPackageMetadata => (UpdateNotificationsEnabled || RequiresCliPackageMetadata) && !_isMachineReadableFormatRequested;
+
+    internal virtual bool RequiresCliPackageMetadata => false;
+
+    internal bool ShouldPrefetchCliPackageMetadata(bool updateNotificationsEnabled)
+        => PrefetchesCliPackageMetadata && (updateNotificationsEnabled || RequiresCliPackageMetadata);
+
+    /// <summary>
+    /// Gets the help group for this command.
+    /// When null, the command appears in the "Other Commands:" catch-all section.
+    /// </summary>
+    internal virtual HelpGroup HelpGroup => HelpGroup.None;
+
+    /// <summary>
+    /// The graceful-shutdown budget this command grants its child processes before shutdown ladders
+    /// escalate to forceful termination. <see cref="BaseCommand"/> reads this and configures the
+    /// shared <see cref="ConsoleCancellationManager"/> centrally before invoking <see cref="ExecuteAsync"/>.
+    /// The default of zero preserves force-kill-on-cancel behavior for every command that does not opt in;
+    /// <c>aspire run</c> overrides it to give the AppHost a real cooperative-shutdown window.
+    /// </summary>
+    protected virtual TimeSpan GracefulShutdownBudget => TimeSpan.Zero;
+
+    private readonly CliExecutionContext _executionContext;
+    private bool _isMachineReadableFormatRequested;
+    private bool? _prefetchesTemplatePackageMetadataForInvocation;
+
+    protected CliExecutionContext ExecutionContext => _executionContext;
+
+    protected IInteractionService InteractionService { get; }
+
+    protected AspireCliTelemetry Telemetry { get; }
+    protected ConfigSourceService ConfigSources { get; }
+
+    // Commands that start an AppHost or dashboard provide their own stopping message.
+    // Other commands report a neutral cancellation.
+    protected virtual string? CancellationMessage => null;
+
+    private void DisplayCancellationMessage(ConsoleOutput? consoleOverride = null)
+    {
+        InteractionService.DisplayCancellationMessage(CancellationMessage, consoleOverride);
+    }
+
+    protected BaseCommand(string name, string description, CommonCommandServices services) : base(name, description)
+    {
+        _executionContext = services.ExecutionContext;
+        InteractionService = services.InteractionService;
+        Telemetry = services.Telemetry;
+        ConfigSources = services.ConfigSources;
+        SetAction((Func<ParseResult, CancellationToken, Task<int>>)(async (parseResult, cancellationToken) =>
+        {
+            _executionContext.ResetSourceTrustWarning();
+            SelectForExecution(parseResult);
+
+            // Route human-readable output to stderr when a machine-readable format is requested so
+            // that only machine-readable data appears on stdout.
+            if (_isMachineReadableFormatRequested)
+            {
+                InteractionService.Console = ConsoleOutput.Error;
+            }
+
+            try
+            {
+                return await HandleCommandAsync(parseResult, cancellationToken, services).ConfigureAwait(false);
+            }
+            finally
+            {
+                await ConfigSources.StopChecksAsync().ConfigureAwait(false);
+                await FlushExtensionInteractionServiceAsync(InteractionService).ConfigureAwait(false);
+            }
+        }));
+    }
+
+    internal void SelectForExecution(ParseResult parseResult)
+    {
+        _isMachineReadableFormatRequested = IsMachineReadableFormatRequested(parseResult);
+        _prefetchesTemplatePackageMetadataForInvocation = PrefetchesTemplatePackageMetadata;
+        PrepareForExecution(parseResult);
+        _executionContext.Command = this;
+    }
+
+    protected void DisableTemplatePackageMetadataPrefetchingForInvocation()
+    {
+        _prefetchesTemplatePackageMetadataForInvocation = false;
+    }
+
+    internal virtual void PrepareForExecution(ParseResult parseResult)
+    {
+    }
+
+    private async Task<int> HandleCommandAsync(ParseResult parseResult, CancellationToken cancellationToken, CommonCommandServices services)
+    {
+        // Check for miscased options that would be silently ignored as unmatched tokens
+        // when TreatUnmatchedTokensAsErrors is false (e.g. --AppHost instead of --apphost).
+        // This intentionally also applies to resource command: users who want to pass arguments
+        // that collide with CLI option names to the resource command's second-pass parser should
+        // use the "--" separator (e.g. "aspire resource mydb cmd -- --AppHost primary").
+        var miscasedOptionError = ParseResultHelper.CheckForMiscasedOptions(this, parseResult);
+        if (miscasedOptionError is not null)
+        {
+            InteractionService.DisplayError(miscasedOptionError);
+            return CliExitCodes.InvalidCommand;
+        }
+
+        CommandResult result;
+        var stoppingMessageShown = false;
+        try
+        {
+            // Configure the shared shutdown manager with this command's graceful-shutdown budget
+            // before the handler starts spawning child processes, so every per-child shutdown
+            // ladder observes the correct window from the first user signal. Commands that don't
+            // override GracefulShutdownBudget get the zero default (force-kill on cancel).
+            services.CancellationManager.ConfigureForCommand(GracefulShutdownBudget);
+
+            var handlerTask = ExecuteAsync(parseResult, cancellationToken);
+            services.CancellationManager.SetStartedHandler(handlerTask);
+
+            // Wait for either the handler to complete or a termination signal to trigger cancellation and timeout.
+            var terminationTask = services.CancellationManager.ProcessTerminationCompletionSource.Task;
+
+            // After cancellation is triggered, show the command's cancellation message after
+            // 200ms if the handler hasn't completed yet, so the user knows shutdown is in progress.
+            var stoppingMessageTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            using var stoppingMessageRegistration = cancellationToken.Register(() =>
+                Task.Delay(200).ContinueWith(_ => stoppingMessageTcs.TrySetResult(), TaskScheduler.Default));
+
+            var tasksToAwait = new List<Task> { handlerTask, terminationTask, stoppingMessageTcs.Task };
+            while (true)
+            {
+                var firstCompletedTask = await Task.WhenAny(tasksToAwait);
+                if (firstCompletedTask == handlerTask)
+                {
+                    result = await handlerTask;
+                    break;
+                }
+                else if (firstCompletedTask == terminationTask)
+                {
+                    // ProcessTerminationCompletionSource was signaled — either the graceful-shutdown
+                    // timeout elapsed, or a second signal forced immediate termination.
+                    // handlerTask is not awaited because the process is shutting down and we assume the task is hung.
+                    services.LoggerFactory.CreateLogger<BaseCommand>().LogWarning("Termination signal forced process exit.");
+                    var exitCode = await terminationTask;
+                    result = CommandResult.FromExitCode(exitCode);
+                    break;
+                }
+                else
+                {
+                    // 200ms elapsed after cancellation — show stopping message and continue waiting.
+                    stoppingMessageShown = true;
+                    DisplayCancellationMessage();
+                    tasksToAwait.Remove(stoppingMessageTcs.Task);
+                }
+            }
+        }
+        catch (InvalidSecretsFileException ex)
+        {
+            result = CommandResult.Failure(CliExitCodes.InvalidCommand, ex.Message);
+        }
+        catch (ConfigSourceException ex)
+        {
+            ConfigSourceService.DisplayGitOutput(InteractionService, ex.GitOutput);
+            var errorMessage = ex.Message;
+            if (ex.ReadmeUrl is { } readmeUrl)
+            {
+                errorMessage = ex.Message.EscapeMarkup() + Environment.NewLine
+                    + string.Format(CultureInfo.CurrentCulture, ConfigSourceStrings.AccessHelp,
+                        MarkupHelpers.SafeLink(InteractionService, readmeUrl));
+            }
+            result = CommandResult.Failure(CliExitCodes.InvalidCommand, errorMessage, errorMessageHasMarkup: ex.ReadmeUrl is not null);
+        }
+        catch (NonInteractiveException)
+        {
+            // Error messages have already been displayed by the interaction service.
+            result = CommandResult.Failure(CliExitCodes.MissingRequiredArgument);
+        }
+        catch (OperationCanceledException ex) when (cancellationToken.IsCancellationRequested || ex is ExtensionOperationCanceledException)
+        {
+            result = CommandResult.Cancelled();
+        }
+        catch (PackageMetadataPrefetchingValidationException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            var errorMessage = string.Format(CultureInfo.CurrentCulture, InteractionServiceStrings.UnexpectedErrorOccurred, ex.Message);
+            Telemetry.RecordError(errorMessage, ex);
+            result = CommandResult.Failure(CliExitCodes.InvalidCommand, errorMessage);
+        }
+
+        var isErrorExitCode = result.ExitCode != CliExitCodes.Success;
+        var shouldDisplayDiagnosticLogs = isErrorExitCode
+            && !result.ShouldDisplayHelp
+            && !s_suppressErrorLogsMessageExitCodes.Contains(result.ExitCode);
+        var displayedActionableFailure = shouldDisplayDiagnosticLogs
+            && ExtensionHelper.IsExtensionHost(InteractionService, out var extensionInteractionService, out _)
+            && await extensionInteractionService.TryDisplayCommandFailureAsync(
+                result.ErrorMessage,
+                _executionContext.LogFilePath,
+                ExecutionContext.AppHostCliLogFilePath,
+                result.ErrorMessageHasMarkup,
+                CancellationToken.None).ConfigureAwait(false);
+
+        if (!displayedActionableFailure && result.ErrorMessage is not null)
+        {
+            InteractionService.DisplayError(result.ErrorMessage, allowMarkup: result.ErrorMessageHasMarkup);
+        }
+
+        if (result.ShouldDisplayHelp)
+        {
+            new HelpAction().Invoke(parseResult);
+            return result.ExitCode;
+        }
+
+        if (result.ShouldDisplayCancellationMessage && !stoppingMessageShown)
+        {
+            DisplayCancellationMessage(isErrorExitCode ? ConsoleOutput.Error : null);
+        }
+
+        // Display the CLI log file path on non-zero exit codes so the user knows
+        // where to find diagnostic details. Suppress for user-input errors where
+        // the log wouldn't contain useful context (e.g., missing required arguments).
+        if (!displayedActionableFailure && shouldDisplayDiagnosticLogs)
+        {
+            InteractionService.DisplayMessage(
+                KnownEmojis.PageFacingUp,
+                string.Format(CultureInfo.CurrentCulture, InteractionServiceStrings.SeeLogsAt, MarkupHelpers.SafeFileLink(InteractionService, _executionContext.LogFilePath)),
+                allowMarkup: true,
+                consoleOverride: ConsoleOutput.Error);
+
+            // If we connected to a running app host, also display the log file path of
+            // the CLI process that launched it so users can diagnose issues in both processes.
+            if (ExecutionContext.AppHostCliLogFilePath is not null)
+            {
+                InteractionService.DisplayMessage(
+                    KnownEmojis.MagnifyingGlassTiltedLeft,
+                    string.Format(CultureInfo.CurrentCulture, InteractionServiceStrings.SeeAppHostLogsAt, MarkupHelpers.SafeFileLink(InteractionService, ExecutionContext.AppHostCliLogFilePath)),
+                    allowMarkup: true,
+                    consoleOverride: ConsoleOutput.Error);
+            }
+        }
+
+        await ConfigSources.StopChecksAsync().ConfigureAwait(false);
+
+        if (UpdateNotificationsEnabled && !_isMachineReadableFormatRequested && services.Features.IsFeatureEnabled(KnownFeatures.UpdateNotificationsEnabled, true))
+        {
+            try
+            {
+                services.UpdateNotifier.NotifyIfUpdateAvailable();
+            }
+            catch (PackageMetadataPrefetchingValidationException)
+            {
+                throw;
+            }
+            catch
+            {
+                // Ignore any errors during update check to avoid impacting the main command
+            }
+        }
+
+        if (!_isMachineReadableFormatRequested)
+        {
+            ConfigSources.NotifyIfUpdateAvailable();
+        }
+
+        return result.ExitCode;
+    }
+
+    protected abstract Task<CommandResult> ExecuteAsync(ParseResult parseResult, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Checks whether this command requests output that must not be mixed with human-readable messages.
+    /// </summary>
+    protected virtual bool IsMachineReadableFormatRequested(ParseResult parseResult) => IsJsonFormatRequested(parseResult);
+
+    /// <summary>
+    /// Checks whether this command has a --format option whose parsed value is <see cref="OutputFormat.Json"/>.
+    /// </summary>
+    protected virtual bool IsJsonFormatRequested(ParseResult parseResult)
+    {
+        foreach (var option in Options)
+        {
+            if (option.Name == "--format" && option is Option<OutputFormat> formatOption)
+            {
+                return parseResult.GetValue(formatOption) == OutputFormat.Json;
+            }
+        }
+
+        return false;
+    }
+
+    private static async Task FlushExtensionInteractionServiceAsync(IInteractionService interactionService)
+    {
+        if (interactionService is not IExtensionInteractionService extensionInteractionService)
+        {
+            return;
+        }
+
+        // Command cancellation has already been translated into CommandResult; using a canceled
+        // token here would skip the final debug-console drain or throw after the command selected
+        // its exit code. Bound the drain separately so a broken extension cannot hang CLI exit.
+        using var flushCancellationTokenSource = new CancellationTokenSource(s_extensionInteractionFlushTimeout);
+        try
+        {
+            await extensionInteractionService.FlushAsync(flushCancellationTokenSource.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (flushCancellationTokenSource.IsCancellationRequested)
+        {
+            // Prefer returning the command's chosen exit code over hanging indefinitely when
+            // VS Code has already gone away or stopped responding to backchannel requests.
+        }
+    }
+
+    internal static CommandResult HandleProjectLocatorException(ProjectLocatorException ex, IInteractionService InteractionService, AspireCliTelemetry telemetry)
+    {
+        ArgumentNullException.ThrowIfNull(ex);
+        ArgumentNullException.ThrowIfNull(InteractionService);
+
+        var (exitCode, errorMessage) = ProjectLocatorErrorHelper.GetExitCodeAndMessage(ex);
+
+        telemetry.RecordError(errorMessage, ex);
+        return CommandResult.Failure(exitCode, errorMessage);
+    }
+
+    internal static void AddNonInteractiveRequiresYesValidator(Command command, Option<bool> yesOption)
+    {
+        command.Validators.Add(result =>
+        {
+            var nonInteractive = result.GetValue(RootCommand.NonInteractiveOption);
+            var yes = result.GetValue(yesOption);
+            if (nonInteractive && !yes)
+            {
+                result.AddError(string.Format(CultureInfo.CurrentCulture, SharedCommandStrings.NonInteractiveRequiresYesFormat, command.Name));
+            }
+        });
+    }
+}

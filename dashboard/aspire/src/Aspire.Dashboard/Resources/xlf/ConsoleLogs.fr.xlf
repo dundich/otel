@@ -1,0 +1,132 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="fr" original="../ConsoleLogs.resx">
+    <body>
+      <trans-unit id="ConsoleLogsErrorWatchingLogs">
+        <source>Error watching logs</source>
+        <target state="translated">Erreur lors de la consultation des journaux</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsFinishedWatchingLogs">
+        <source>Finished watching logs</source>
+        <target state="translated">Fin de la surveillance des journaux</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsHeader">
+        <source>Console logs</source>
+        <target state="translated">Journaux de console</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsLoadingResources">
+        <source>Loading resources ...</source>
+        <target state="translated">Chargement en cours des ressources... Merci de patienter.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsLogsNotYetAvailable">
+        <source>Logs not yet available</source>
+        <target state="translated">Journaux non disponibles pour le moment</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsNoLogsFound">
+        <source>No logs found</source>
+        <target state="translated">Aucun journal trouvé</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsNoLogsMatchFilter">
+        <source>No logs match the filter</source>
+        <target state="translated">Aucun journal ne correspond au filtre</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsNoResourceSelected">
+        <source>No resource selected</source>
+        <target state="translated">Aucune ressource sélectionnée</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsNoWrapLogs">
+        <source>Don't wrap log lines</source>
+        <target state="translated">Ne pas envelopper les lignes de journal</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsNotCapturedForRun">
+        <source>Console logs weren't captured for this run. Console logs are only captured if this page is visited while the AppHost is running.</source>
+        <target state="translated">Les journaux de la console n’ont pas été capturés pour cette exécution. Les journaux de la console ne sont capturés que si cette page est consultée alors que l'AppHost est en cours d'exécution.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsPageTitle">
+        <source>{0} console logs</source>
+        <target state="translated">Journaux de console {0}</target>
+        <note>{0} is an application name</note>
+      </trans-unit>
+      <trans-unit id="ConsoleLogsPauseActive">
+        <source>&lt;Log capture paused at {0}, {1} log(s) filtered out&gt;</source>
+        <target state="translated">&lt;Capture de journal suspendue à {0}, {1} journal(aux) est(sont) filtré(s)&gt;</target>
+        <note>{0} is a date, {1} is a number</note>
+      </trans-unit>
+      <trans-unit id="ConsoleLogsPauseDetails">
+        <source>&lt;Log capture paused between {0} and {1}, {2} log(s) filtered out&gt;</source>
+        <target state="translated">&lt;Capture de journal suspendue entre le ou les journaux {0} et {1}, {2} filtrés&gt;</target>
+        <note>{0} is a date, {1} is a date, {2} is a number.</note>
+      </trans-unit>
+      <trans-unit id="ConsoleLogsSelectResourceToolbar">
+        <source>Select resource</source>
+        <target state="translated">Sélectionner une ressource</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsSettings">
+        <source>Settings</source>
+        <target state="translated">Paramètres</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsTextFilter">
+        <source>Console logs filter</source>
+        <target state="translated">Filtre des journaux de la console</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsTimestampHide">
+        <source>Hide timestamps</source>
+        <target state="translated">Masquer les horodatages</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsTimestampShow">
+        <source>Show timestamps</source>
+        <target state="translated">Afficher les horodatages</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsTimestampShowUtc">
+        <source>UTC timestamps</source>
+        <target state="translated">Horodateurs UTC</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsUnknownState">
+        <source>Unknown state</source>
+        <target state="translated">État inconnu</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsWatchingLogs">
+        <source>Watching logs...</source>
+        <target state="translated">Surveillance en cours des journaux... Merci de patienter.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsWrapLogs">
+        <source>Wrap log lines</source>
+        <target state="translated">Envelopper les lignes de journal</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DownloadLogs">
+        <source>Download logs</source>
+        <target state="translated">Télécharger les journaux</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="LogStatusLabel">
+        <source>Service log status</source>
+        <target state="translated">État du journal de service</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="PauseInProgressText">
+        <source>Console logs capture paused at {0}</source>
+        <target state="translated">La capture des journaux de la console est suspendue à {0}</target>
+        <note>{0} is a time</note>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>$(DefaultTargetFramework)</TargetFramework>
+    <IsPackable>true</IsPackable>
+    <PackageTags>aspire hosting devtunnels</PackageTags>
+    <Description>DevTunnels support for Aspire.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="$(SharedDir)CoalescingAsyncOperation.cs" LinkBase="Shared" />
+    <Compile Include="$(SharedDir)ConsoleLogs\TimestampParser.cs" LinkBase="Shared" />
+    <Compile Include="$(SharedDir)StringComparers.cs" LinkBase="Shared" />
+    <Compile Include="$(SharedDir)ResourceNameComparer.cs" LinkBase="Shared" />
+    <Compile Include="$(SharedDir)EnvironmentVariableNameEncoder.cs" LinkBase="Shared" />
+    <Compile Include="$(SharedDir)/Model/KnownRelationshipTypes.cs" LinkBase="Shared" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Aspire.Hosting\Aspire.Hosting.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Aspire.Hosting.DevTunnels.Tests" />
+  </ItemGroup>
+
+</Project>

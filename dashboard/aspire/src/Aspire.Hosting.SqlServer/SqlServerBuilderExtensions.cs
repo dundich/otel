@@ -1,0 +1,470 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+using System.Globalization;
+using System.Text.RegularExpressions;
+using System.Text;
+using Aspire.Hosting;
+using Aspire.Hosting.ApplicationModel;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+
+#pragma warning disable ASPIRETERMINAL001
+
+namespace Aspire.Hosting;
+
+/// <summary>
+/// Provides extension methods for adding SQL Server resources to the application model.
+/// </summary>
+public static partial class SqlServerBuilderExtensions
+{
+    // GO delimiter format: {spaces?}GO{spaces?}{repeat?}{comment?}
+    // https://learn.microsoft.com/sql/t-sql/language-elements/sql-server-utilities-statements-go
+    [GeneratedRegex(@"^\s*GO(?<repeat>\s+\d{1,6})?(\s*\-{2,}.*)?\s*$", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase)]
+    internal static partial Regex GoStatements();
+
+    /// <summary>
+    /// Adds a SQL Server resource to the application model. A container is used for local development.
+    /// </summary>
+    /// <remarks>
+    /// This version of the package defaults to the <inheritdoc cref="SqlServerContainerImageTags.Tag"/> tag of the <inheritdoc cref="SqlServerContainerImageTags.Registry"/>/<inheritdoc cref="SqlServerContainerImageTags.Image"/> container image.
+    /// </remarks>
+    /// <param name="builder">The <see cref="IDistributedApplicationBuilder"/>.</param>
+    /// <param name="name">The name of the resource. This name will be used as the connection string name when referenced in a dependency.</param>
+    /// <param name="password">The parameter used to provide the administrator password for the SQL Server resource. If <see langword="null"/> a random password will be generated.</param>
+    /// <param name="port">The host port for the SQL Server.</param>
+    /// <returns>A reference to the <see cref="IResourceBuilder{T}"/>.</returns>
+    /// <ats-returns>The resource builder.</ats-returns>
+    [AspireExport]
+    public static IResourceBuilder<SqlServerServerResource> AddSqlServer(this IDistributedApplicationBuilder builder, [ResourceName] string name, IResourceBuilder<ParameterResource>? password = null, int? port = null)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentException.ThrowIfNullOrEmpty(name);
+
+        // The password must be at least 8 characters long and contain characters from three of the following four sets: Uppercase letters, Lowercase letters, Base 10 digits, and Symbols
+        var passwordParameter = password?.Resource ?? ParameterResourceBuilderExtensions.CreateDefaultPasswordParameter(builder, $"{name}-password", minLower: 1, minUpper: 1, minNumeric: 1);
+
+        var sqlServer = new SqlServerServerResource(name, passwordParameter);
+
+        string? connectionString = null;
+        string? healthCheckConnectionString = null;
+
+        var healthCheckKey = $"{name}_check";
+        builder.Services.AddHealthChecks().AddSqlServer(sp => healthCheckConnectionString ?? throw new InvalidOperationException("Connection string is unavailable"), name: healthCheckKey);
+
+        return builder.AddResource(sqlServer)
+                      .WithEndpoint(port: port, targetPort: 1433, name: SqlServerServerResource.PrimaryEndpointName)
+                      .WithImage(SqlServerContainerImageTags.Image, SqlServerContainerImageTags.Tag)
+                      .WithImageRegistry(SqlServerContainerImageTags.Registry)
+                      .WithIconName("DatabaseMultiple")
+                      .WithEnvironment("ACCEPT_EULA", "Y")
+                      .WithEnvironment(context =>
+                      {
+                          context.EnvironmentVariables["MSSQL_SA_PASSWORD"] = sqlServer.PasswordParameter;
+                      })
+                      .WithHealthCheck(healthCheckKey)
+                      .OnConnectionStringAvailable(async (sqlServer, @event, ct) =>
+                      {
+                          connectionString = await sqlServer.GetConnectionStringAsync(ct).ConfigureAwait(false);
+
+                          if (connectionString == null)
+                          {
+                              throw new DistributedApplicationException($"ConnectionStringAvailableEvent was published for the '{sqlServer.Name}' resource but the connection string was null.");
+                          }
+
+                          healthCheckConnectionString = CreateHealthCheckConnectionString(connectionString);
+                      })
+                      .OnResourceReady(async (sqlServer, @event, ct) =>
+                      {
+                          if (connectionString is null)
+                          {
+                              throw new DistributedApplicationException($"ResourceReadyEvent was published for the '{sqlServer.Name}' resource but the connection string was null.");
+                          }
+
+                          using var sqlConnection = new SqlConnection(connectionString);
+                          await sqlConnection.OpenAsync(ct).ConfigureAwait(false);
+
+                          if (sqlConnection.State != System.Data.ConnectionState.Open)
+                          {
+                              throw new InvalidOperationException($"Could not open connection to '{sqlServer.Name}'");
+                          }
+
+                          foreach (var sqlDatabase in sqlServer.DatabaseResources)
+                          {
+                              await CreateDatabaseAsync(sqlConnection, sqlDatabase, @event.Services, ct).ConfigureAwait(false);
+                          }
+                      });
+    }
+
+    /// <summary>
+    /// Creates the connection string used by the SQL Server health checks.
+    /// </summary>
+    /// <remarks>
+    /// The default <see cref="PoolBlockingPeriod.Auto"/> caches a failed open for up to a minute and replays it to every
+    /// caller on the same pool without contacting the server. A health check should report the server's current state,
+    /// so it disables the blocking period. The distinct connection string also gives the health check its own pool, so its
+    /// transient failures cannot affect other connections in the process that use the resource's connection string.
+    /// </remarks>
+    internal static string CreateHealthCheckConnectionString(string connectionString)
+        => new SqlConnectionStringBuilder(connectionString) { PoolBlockingPeriod = PoolBlockingPeriod.NeverBlock }.ConnectionString;
+
+    /// <summary>
+    /// Adds a REPL command that opens an authenticated SQL Server shell in the dashboard terminal dock.
+    /// </summary>
+    /// <param name="builder">The SQL Server resource builder.</param>
+    /// <returns>The resource builder for chaining.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="builder"/> is null.</exception>
+    /// <remarks>
+    /// This command is opt-in and available only in run mode. Dashboard users who can execute resource commands
+    /// can run commands as <c>sa</c>, including server-side operating system commands when enabled.
+    /// Enable it only for trusted dashboard users, especially when sharing the dashboard through a tunnel
+    /// or remote development environment.
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// builder.AddSqlServer("sqlserver").WithRepl();
+    /// </code>
+    /// </example>
+    [AspireExportIgnore(Reason = "Polyglot AppHosts use the WithRepl overload with an optional configuration callback.")]
+    public static IResourceBuilder<SqlServerServerResource> WithRepl(this IResourceBuilder<SqlServerServerResource> builder)
+        => builder.WithRepl(configure: null);
+
+    /// <summary>
+    /// Adds a REPL command that opens an authenticated SQL Server shell with the configured client tools.
+    /// </summary>
+    /// <param name="builder">The SQL Server resource builder.</param>
+    /// <param name="configure">An optional callback to configure the SQL Server REPL.</param>
+    /// <returns>The resource builder for chaining.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="builder"/> or the configured command is null.</exception>
+    /// <exception cref="ArgumentException">The configured command is empty or whitespace.</exception>
+    /// <remarks>
+    /// <para>
+    /// This command is opt-in and available only in run mode. Dashboard users who can execute resource commands
+    /// can run commands as <c>sa</c>, including server-side operating system commands when enabled.
+    /// Enable it only for trusted dashboard users.
+    /// </para>
+    /// <para>
+    /// The default sqlcmd executable path matches the integration's default container image.
+    /// When using an older or custom image, select the executable path installed in that image.
+    /// The callback runs once during configuration in run mode, and the selected client is captured.
+    /// </para>
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// builder.AddSqlServer("sqlserver")
+    ///     .WithRepl(options => options.Command = SqlServerReplCommand.Version17);
+    /// </code>
+    /// </example>
+    [AspireExport(RunSyncOnBackgroundThread = true)]
+    public static IResourceBuilder<SqlServerServerResource> WithRepl(this IResourceBuilder<SqlServerServerResource> builder, Action<SqlServerReplOptions>? configure = null)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        if (!builder.ApplicationBuilder.ExecutionContext.IsRunMode)
+        {
+            return builder;
+        }
+
+        var options = new SqlServerReplOptions();
+        configure?.Invoke(options);
+        ArgumentException.ThrowIfNullOrWhiteSpace(options.Command, nameof(options.Command));
+        var executablePath = options.Command;
+
+        return builder.WithReplCommand(ct => CreateReplOptionsAsync(builder.Resource, executablePath, ct));
+    }
+
+    /// <summary>
+    /// Creates authenticated sqlcmd launch options for the running container.
+    /// </summary>
+    internal static async Task<TerminalLaunchOptions> CreateReplOptionsAsync(SqlServerServerResource resource, string executablePath, CancellationToken cancellationToken)
+    {
+        var password = await resource.PasswordParameter.GetValueAsync(cancellationToken).ConfigureAwait(false);
+        if (string.IsNullOrEmpty(password))
+        {
+            throw new DistributedApplicationException("The SQL Server REPL password is not available.");
+        }
+
+        var port = resource.PrimaryEndpoint.TargetPort ?? throw new DistributedApplicationException("The SQL Server REPL port is not available.");
+
+        return new TerminalLaunchOptions
+        {
+            Title = $"sqlcmd ({resource.Name})",
+            // Invoke sqlcmd directly, avoiding shell parsing and checkout-dependent script line endings.
+            // https://github.com/microsoft/aspire/issues/20645
+            Executable = executablePath,
+            // The client connects over container loopback and trusts the local server's
+            // self-signed certificate, matching the integration's connection string.
+            Arguments = ["-S", $"127.0.0.1,{port.ToString(CultureInfo.InvariantCulture)}", "-U", "sa", "-d", "master", "-C"],
+            EnvironmentVariables = { ["SQLCMDPASSWORD"] = password }
+        };
+    }
+
+    /// <summary>
+    /// Adds a SQL Server database to the application model. This is a child resource of a <see cref="SqlServerServerResource"/>.
+    /// </summary>
+    /// <ats-summary>Adds a SQL Server database resource</ats-summary>
+    /// <param name="builder">The SQL Server resource builders.</param>
+    /// <param name="name">The name of the resource. This name will be used as the connection string name when referenced in a dependency.</param>
+    /// <param name="databaseName">The name of the database. If not provided, this defaults to the same value as <paramref name="name"/>.</param>
+    /// <returns>A reference to the <see cref="IResourceBuilder{T}"/>.</returns>
+    /// <ats-returns>The resource builder.</ats-returns>
+    /// <remarks>
+    /// <para>
+    /// When adding a <see cref="SqlServerDatabaseResource"/> to your application model the resource can then
+    /// be referenced by other resources using the resource name. When the dependent resource is using
+    /// the extension method <see cref="ResourceBuilderExtensions.WaitFor{T}(IResourceBuilder{T}, IResourceBuilder{IResource})"/>
+    /// then the dependent resource will wait until the SQL Server database is available.
+    /// </para>
+    /// <para>
+    /// Note that calling <see cref="AddDatabase(IResourceBuilder{SqlServerServerResource}, string, string?)"/>
+    /// will result in the database being created on the SQL Server when the server becomes ready.
+    /// The database creation happens automatically as part of the resource lifecycle.
+    /// </para>
+    /// </remarks>
+    /// <ats-remarks />
+    [AspireExport]
+    public static IResourceBuilder<SqlServerDatabaseResource> AddDatabase(this IResourceBuilder<SqlServerServerResource> builder, [ResourceName] string name, string? databaseName = null)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentException.ThrowIfNullOrEmpty(name);
+
+        // Use the resource name as the database name if it's not provided
+        databaseName ??= name;
+
+        var sqlServerDatabase = new SqlServerDatabaseResource(name, databaseName, builder.Resource);
+
+        builder.Resource.AddDatabase(sqlServerDatabase);
+
+        string? healthCheckConnectionString = null;
+
+        var healthCheckKey = $"{name}_check";
+        builder.ApplicationBuilder.Services.AddHealthChecks().AddSqlServer(sp => healthCheckConnectionString ?? throw new InvalidOperationException("Connection string is unavailable"), name: healthCheckKey);
+
+        return builder.ApplicationBuilder
+            .AddResource(sqlServerDatabase)
+            .WithIconName("Database")
+            .WithHealthCheck(healthCheckKey)
+            .OnConnectionStringAvailable(async (sqlServerDatabase, @event, ct) =>
+            {
+                var connectionString = await sqlServerDatabase.ConnectionStringExpression.GetValueAsync(ct).ConfigureAwait(false);
+
+                if (connectionString == null)
+                {
+                    throw new DistributedApplicationException($"ConnectionStringAvailableEvent was published for the '{name}' resource but the connection string was null.");
+                }
+
+                healthCheckConnectionString = CreateHealthCheckConnectionString(connectionString);
+            });
+    }
+
+    /// <summary>
+    /// Adds a named volume for the data folder to a SQL Server resource.
+    /// </summary>
+    /// <param name="builder">The resource builder.</param>
+    /// <param name="name">The name of the volume. Defaults to an auto-generated name based on the application and resource names.</param>
+    /// <param name="isReadOnly">A flag that indicates if this is a read-only volume.</param>
+    /// <returns>The <see cref="IResourceBuilder{T}"/>.</returns>
+    /// <ats-returns>The resource builder.</ats-returns>
+    [AspireExport]
+    public static IResourceBuilder<SqlServerServerResource> WithDataVolume(this IResourceBuilder<SqlServerServerResource> builder, string? name = null, bool isReadOnly = false)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        return builder.WithVolume(name ?? VolumeNameGenerator.Generate(builder, "data"), "/var/opt/mssql", isReadOnly);
+    }
+
+    /// <summary>
+    /// Adds a bind mount for the data folder to a SQL Server resource.
+    /// </summary>
+    /// <param name="builder">The resource builder.</param>
+    /// <param name="source">The source directory on the host to mount into the container.</param>
+    /// <param name="isReadOnly">A flag that indicates if this is a read-only mount.</param>
+    /// <returns>The <see cref="IResourceBuilder{T}"/>.</returns>
+    /// <ats-returns>The resource builder.</ats-returns>
+    /// <remarks>
+    /// The container starts up as non-root and the <paramref name="source"/> directory must be readable by the user that the container runs as.
+    /// https://learn.microsoft.com/sql/linux/sql-server-linux-docker-container-configure?view=sql-server-ver16&amp;pivots=cs1-bash#mount-a-host-directory-as-data-volume
+    /// </remarks>
+    [AspireExport]
+    public static IResourceBuilder<SqlServerServerResource> WithDataBindMount(this IResourceBuilder<SqlServerServerResource> builder, string source, bool isReadOnly = false)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentException.ThrowIfNullOrEmpty(source);
+
+        if (!OperatingSystem.IsWindows())
+        {
+            return builder.WithBindMount(source, "/var/opt/mssql", isReadOnly);
+        }
+        else
+        {
+            // c.f. https://learn.microsoft.com/sql/linux/sql-server-linux-docker-container-configure?view=sql-server-ver15&pivots=cs1-bash#mount-a-host-directory-as-data-volume
+
+            foreach (var dir in new string[] { "data", "log", "secrets" })
+            {
+                var path = Path.Combine(source, dir);
+
+                Directory.CreateDirectory(path);
+
+                builder.WithBindMount(path, $"/var/opt/mssql/{dir}", isReadOnly);
+            }
+
+            return builder;
+        }
+    }
+
+    /// <summary>
+    /// Defines the SQL script used to create the database.
+    /// </summary>
+    /// <param name="builder">The builder for the <see cref="SqlServerDatabaseResource"/>.</param>
+    /// <param name="script">The SQL script used to create the database.</param>
+    /// <returns>A reference to the <see cref="IResourceBuilder{T}"/>.</returns>
+    /// <ats-returns>The resource builder.</ats-returns>
+    /// <remarks>
+    /// <value>Default script is <code>IF ( NOT EXISTS ( SELECT 1 FROM sys.databases WHERE name = @DatabaseName ) ) CREATE DATABASE [&lt;QUOTED_DATABASE_NAME%gt;];</code></value>
+    /// </remarks>
+    [AspireExport]
+    public static IResourceBuilder<SqlServerDatabaseResource> WithCreationScript(this IResourceBuilder<SqlServerDatabaseResource> builder, string script)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentNullException.ThrowIfNull(script);
+
+        builder.WithAnnotation(new SqlServerCreateDatabaseScriptAnnotation(script));
+
+        return builder;
+    }
+
+    /// <summary>
+    /// Configures the password that the SqlServer resource is used.
+    /// </summary>
+    /// <param name="builder">The resource builder.</param>
+    /// <param name="password">The parameter used to provide the password for the SqlServer resource.</param>
+    /// <returns>The <see cref="IResourceBuilder{T}"/>.</returns>
+    /// <ats-returns>The resource builder.</ats-returns>
+    [AspireExport]
+    public static IResourceBuilder<SqlServerServerResource> WithPassword(this IResourceBuilder<SqlServerServerResource> builder, IResourceBuilder<ParameterResource> password)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentNullException.ThrowIfNull(password);
+
+        builder.Resource.SetPassword(password.Resource);
+        return builder;
+    }
+
+    /// <summary>
+    /// Configures the host port that the SqlServer resource is exposed on instead of using randomly assigned port.
+    /// </summary>
+    /// <param name="builder">The resource builder.</param>
+    /// <param name="port">The port to bind on the host. If <see langword="null"/> is used random port will be assigned.</param>
+    /// <returns>The <see cref="IResourceBuilder{T}"/>.</returns>
+    /// <ats-returns>The resource builder.</ats-returns>
+    [AspireExport]
+    public static IResourceBuilder<SqlServerServerResource> WithHostPort(this IResourceBuilder<SqlServerServerResource> builder, int? port)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        return builder.WithEndpoint(SqlServerServerResource.PrimaryEndpointName, endpoint =>
+        {
+            endpoint.Port = port;
+        });
+    }
+
+    private static async Task CreateDatabaseAsync(SqlConnection sqlConnection, SqlServerDatabaseResource sqlDatabase, IServiceProvider serviceProvider, CancellationToken ct)
+    {
+        var logger = serviceProvider.GetRequiredService<ResourceLoggerService>().GetLogger(sqlDatabase.Parent);
+
+        logger.LogDebug("Creating database '{DatabaseName}'", sqlDatabase.DatabaseName);
+
+        try
+        {
+            var scriptAnnotation = sqlDatabase.Annotations.OfType<SqlServerCreateDatabaseScriptAnnotation>().LastOrDefault();
+
+            if (scriptAnnotation?.Script == null)
+            {
+                var quotedDatabaseIdentifier = new SqlCommandBuilder().QuoteIdentifier(sqlDatabase.DatabaseName);
+                using var command = sqlConnection.CreateCommand();
+                command.CommandText = $"IF ( NOT EXISTS ( SELECT 1 FROM sys.databases WHERE name = @DatabaseName ) ) CREATE DATABASE {quotedDatabaseIdentifier};";
+                command.Parameters.Add(new SqlParameter("@DatabaseName", sqlDatabase.DatabaseName));
+                await command.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+            }
+            else
+            {
+                logger.LogInformation("Executing custom creation script for database '{DatabaseName}'", sqlDatabase.DatabaseName);
+                using var reader = new StringReader(scriptAnnotation.Script);
+                var batchBuilder = new StringBuilder();
+                var batchNumber = 0;
+
+                while (reader.ReadLine() is { } line)
+                {
+                    var matchGo = GoStatements().Match(line);
+
+                    if (matchGo.Success)
+                    {
+                        var count = matchGo.Groups["repeat"].Success ? int.Parse(matchGo.Groups["repeat"].Value, CultureInfo.InvariantCulture) : 1;
+                        var batch = batchBuilder.ToString();
+
+                        if (!string.IsNullOrWhiteSpace(batch))
+                        {
+                            batchNumber++;
+                            await ExecuteBatchAsync(batch, batchNumber, count, ct).ConfigureAwait(false);
+                        }
+
+                        batchBuilder.Clear();
+                    }
+                    else
+                    {
+                        // Prevent batches with only whitespace
+                        if (!string.IsNullOrWhiteSpace(line))
+                        {
+                            batchBuilder.AppendLine(line);
+                        }
+                    }
+                }
+
+                // Process the remaining batch lines
+                if (batchBuilder.Length > 0)
+                {
+                    var batch = batchBuilder.ToString();
+                    if (!string.IsNullOrWhiteSpace(batch))
+                    {
+                        batchNumber++;
+                        await ExecuteBatchAsync(batch, batchNumber, 1, ct).ConfigureAwait(false);
+                    }
+                }
+
+                if (batchNumber > 0)
+                {
+                    logger.LogInformation("Completed custom creation script for database '{DatabaseName}'", sqlDatabase.DatabaseName);
+                }
+            }
+
+            logger.LogDebug("Database '{DatabaseName}' created successfully", sqlDatabase.DatabaseName);
+        }
+        catch (Exception e)
+        {
+            logger.LogError(e, "Failed to create database '{DatabaseName}'", sqlDatabase.DatabaseName);
+        }
+
+        async Task ExecuteBatchAsync(string batch, int batchNumber, int executionCount, CancellationToken cancellationToken)
+        {
+            logger.LogInformation("Executing custom creation script batch {BatchNumber} for database '{DatabaseName}'", batchNumber, sqlDatabase.DatabaseName);
+
+            for (var i = 0; i < executionCount; i++)
+            {
+                using var command = sqlConnection.CreateCommand();
+                command.CommandText = batch;
+                var rowsAffected = await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+
+                // ADO.NET returns -1 for DDL statements (CREATE DATABASE, USE, etc.) because they don't affect data rows.
+                // Only include the rows-affected count when it carries meaningful information.
+                if (rowsAffected >= 0)
+                {
+                    logger.LogInformation("Completed custom creation script batch {BatchNumber} execution {ExecutionNumber}/{ExecutionCount} for database '{DatabaseName}' ({RowsAffected} rows affected)", batchNumber, i + 1, executionCount, sqlDatabase.DatabaseName, rowsAffected);
+                }
+                else
+                {
+                    logger.LogInformation("Completed custom creation script batch {BatchNumber} execution {ExecutionNumber}/{ExecutionCount} for database '{DatabaseName}'", batchNumber, i + 1, executionCount, sqlDatabase.DatabaseName);
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,72 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="fr" original="../PsCommandStrings.resx">
+    <body>
+      <trans-unit id="Description">
+        <source>List running AppHosts</source>
+        <target state="translated">Répertorier les AppHosts en cours d’exécution</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FollowOptionDescription">
+        <source>Keep running and emit updates as running AppHosts change. JSON output uses newline-delimited changed AppHost records by default, or full snapshots with --output snapshot.</source>
+        <target state="translated">Continuez l’exécution et émettez des mises à jour à mesure que les AppHosts en cours d’exécution évoluent. Par défaut, la sortie JSON utilise des enregistrements AppHost modifiés, séparés par des sauts de ligne, ou des captures instantanées complètes avec --output snapshot.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FollowRequiresJson">
+        <source>The --follow option only supports JSON output. Use --format json.</source>
+        <target state="translated">L’option --follow prend uniquement en charge la sortie JSON. Utilisez --format json.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="HeaderCliPid">
+        <source>CLI PID</source>
+        <target state="translated">CLI PID</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="HeaderDashboard">
+        <source>Dashboard</source>
+        <target state="translated">Tableau de bord</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="HeaderPath">
+        <source>Path</source>
+        <target state="translated">Chemin d’accès</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="HeaderPid">
+        <source>PID</source>
+        <target state="translated">PID</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="HeaderSdk">
+        <source>SDK</source>
+        <target state="translated">Kit de développement logiciel (SDK)</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InvalidOutputMode">
+        <source>The --output option must be default or snapshot.</source>
+        <target state="translated">L’option --output doit être « default » ou « snapshot ».</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="JsonOptionDescription">
+        <source>Output format (Table or Json)</source>
+        <target state="translated">Format de sortie (Table ou JSON)</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="OutputOptionDescription">
+        <source>Output mode: default preserves the standard AppHost output; snapshot emits full AppHost snapshots with resource health, heartbeats, and errors. Snapshot requires --follow --format json.</source>
+        <target state="translated">Mode de sortie : le mode par défaut conserve la sortie AppHost standard, le mode snapshot émet des captures instantanées AppHost complètes incluant l’intégrité des ressources, les pulsations et les erreurs. Le mode snapshot nécessite --follow --format json.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SnapshotRequiresFollowJson">
+        <source>The --output snapshot option requires --follow --format json.</source>
+        <target state="translated">L’option --output snapshot nécessite --follow --format json.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="UnknownPath">
+        <source>Unknown</source>
+        <target state="translated">Inconnu</target>
+        <note />
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

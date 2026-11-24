@@ -1,0 +1,77 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="ja" original="../ExportCommandStrings.resx">
+    <body>
+      <trans-unit id="DashboardNotAvailable">
+        <source>Dashboard is not available. Telemetry data (structured logs, traces) will not be included in the export.</source>
+        <target state="translated">ダッシュボードは使用できません。テレメトリ データ (構造化ログ、トレース) はエクスポートに含まれません。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="Description">
+        <source>Export telemetry and resource data to a zip file</source>
+        <target state="translated">テレメトリとリソース データを ZIP ファイルにエクスポートする</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ExportComplete">
+        <source>Export saved to {0}</source>
+        <target state="translated">エクスポートを {0} に保存しました</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FailedToExport">
+        <source>Failed to export resource and telemetry data: {0}</source>
+        <target state="translated">リソースとテレメトリ データをエクスポートできませんでした: {0}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GatheringConsoleLogs">
+        <source>Gathering console logs...</source>
+        <target state="translated">コンソール ログを収集しています...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GatheringResources">
+        <source>Gathering resource data...</source>
+        <target state="translated">リソース データを収集しています...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GatheringStructuredLogs">
+        <source>Gathering structured logs...</source>
+        <target state="translated">構造化ログを収集しています...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GatheringTraces">
+        <source>Gathering traces...</source>
+        <target state="translated">トレースを収集しています...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="IncludeHiddenOptionDescription">
+        <source>Include hidden resources in the output</source>
+        <target state="translated">出力に非表示のリソースを含める</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="NoResourcesFound">
+        <source>No resources found.</source>
+        <target state="translated">リソースが見つかりませんでした。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="OutputOptionDescription">
+        <source>The output file path for the export zip file</source>
+        <target state="translated">エクスポート ZIP ファイルの出力ファイル パス</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceNotFound">
+        <source>Resource '{0}' not found.</source>
+        <target state="translated">リソース '{0}' が見つかりません。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceOptionDescription">
+        <source>Export data only for the specified resource</source>
+        <target state="translated">指定したリソースのデータのみをエクスポートする</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SelectAppHostAction">
+        <source>export data from</source>
+        <target state="translated">データのエクスポート元</target>
+        <note />
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

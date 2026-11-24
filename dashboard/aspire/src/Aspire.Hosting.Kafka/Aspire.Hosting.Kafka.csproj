@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+  <TargetFramework>$(DefaultTargetFramework)</TargetFramework>
+  <IsPackable>true</IsPackable>
+  <PackageTags>aspire integration hosting kafka messaging eventing</PackageTags>
+  <Description>Kafka support for Aspire.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="$(SharedDir)/Model/KnownRelationshipTypes.cs" LinkBase="Shared" />
+    <PackageReference Include="AspNetCore.HealthChecks.Kafka" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Aspire.Hosting\Aspire.Hosting.csproj" />
+  </ItemGroup>
+
+</Project>

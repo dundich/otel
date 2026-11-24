@@ -1,0 +1,541 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="NotificationTitle" xml:space="preserve">
+    <value>Azure provisioning</value>
+  </data>
+  <data name="NotificationMessage" xml:space="preserve">
+    <value>The model contains Azure resources that require an Azure Subscription.</value>
+  </data>
+  <data name="NotificationPrimaryButtonText" xml:space="preserve">
+    <value>Configure</value>
+  </data>
+  <data name="InputsTitle" xml:space="preserve">
+    <value>Configure Azure context</value>
+  </data>
+  <data name="InputsMessage" xml:space="preserve">
+    <value>Select the Azure tenant, subscription, resource group, and location Aspire should use for provisioning.
+
+To learn more, see the [Azure provisioning docs](https://aka.ms/aspire/azure/provisioning).</value>
+    <comment>Contains markdown</comment>
+  </data>
+  <data name="InputsPrimaryButtonText" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="InputsSecondaryButtonText" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="LocationLabel" xml:space="preserve">
+    <value>Location</value>
+  </data>
+  <data name="LocationPlaceholder" xml:space="preserve">
+    <value>Select location</value>
+  </data>
+  <data name="SubscriptionIdLabel" xml:space="preserve">
+    <value>Subscription ID</value>
+  </data>
+  <data name="SubscriptionIdPlaceholder" xml:space="preserve">
+    <value>Select subscription ID</value>
+  </data>
+  <data name="ResourceGroupLabel" xml:space="preserve">
+    <value>Resource group</value>
+  </data>
+  <data name="TenantResourceSuffixLabel" xml:space="preserve">
+    <value>Tenant-scoped resource suffix</value>
+  </data>
+  <data name="TenantResourceSuffixDescription" xml:space="preserve">
+    <value>Optional. Appended to the names of tenant-wide resources created by this AppHost. Leave empty to use the names from AppHost code unchanged. Changing the suffix targets different resources; previous resources are not renamed or deleted.</value>
+  </data>
+  <data name="TenantResourceSuffixSelectionMessage" xml:space="preserve">
+    <value>Add a suffix to tenant-wide resources created by this AppHost (optional).</value>
+  </data>
+  <data name="ValidationSubscriptionIdInvalid" xml:space="preserve">
+    <value>Subscription ID must be a valid GUID.</value>
+  </data>
+  <data name="ValidationResourceGroupNameInvalid" xml:space="preserve">
+    <value>Resource group name must be a valid Azure resource group name.</value>
+  </data>
+  <data name="SubscriptionDialogTitle" xml:space="preserve">
+    <value>Azure subscription</value>
+  </data>
+  <data name="SubscriptionSelectionMessage" xml:space="preserve">
+    <value>Select your Azure subscription:</value>
+  </data>
+  <data name="SubscriptionManualEntryMessage" xml:space="preserve">
+    <value>Enter your Azure subscription ID:</value>
+  </data>
+  <data name="LocationDialogTitle" xml:space="preserve">
+    <value>Azure location and resource group</value>
+  </data>
+  <data name="LocationSelectionMessage" xml:space="preserve">
+    <value>Select your Azure location and specify resource group:</value>
+  </data>
+  <data name="TenantDialogTitle" xml:space="preserve">
+    <value>Azure tenant</value>
+  </data>
+  <data name="TenantSelectionMessage" xml:space="preserve">
+    <value>Select your Azure tenant:</value>
+  </data>
+  <data name="TenantManualEntryMessage" xml:space="preserve">
+    <value>Enter your Azure tenant ID:</value>
+  </data>
+  <data name="TenantLabel" xml:space="preserve">
+    <value>Tenant ID</value>
+  </data>
+  <data name="TenantPlaceholder" xml:space="preserve">
+    <value>Select tenant ID</value>
+  </data>
+  <data name="ValidationTenantIdInvalid" xml:space="preserve">
+    <value>Tenant ID must be a valid GUID.</value>
+  </data>
+  <data name="ResourceGroupPlaceholder" xml:space="preserve">
+    <value>Select or enter resource group</value>
+  </data>
+  <data name="ResourceGroupDialogTitle" xml:space="preserve">
+    <value>Azure resource group</value>
+  </data>
+  <data name="ResourceGroupSelectionMessage" xml:space="preserve">
+    <value>Select your Azure resource group or enter a new name:</value>
+  </data>
+  <data name="ResetProvisioningStateCommandName" xml:space="preserve">
+    <value>Reset provisioning state</value>
+  </data>
+  <data name="ResetProvisioningStateCommandDescription" xml:space="preserve">
+    <value>Clears the cached Azure context and deployment state for this AppHost. This does not delete live Azure resources and may leave them orphaned.</value>
+  </data>
+  <data name="ResetProvisioningStateCommandConfirmation" xml:space="preserve">
+    <value>This only clears the cached Azure tenant, subscription, resource group, location, and deployment state stored for this AppHost. Live Azure resources are not deleted and may be left orphaned. Do you want to continue?</value>
+  </data>
+  <data name="ResetProvisioningStateCommandSuccess" xml:space="preserve">
+    <value>Azure provisioning state reset.</value>
+  </data>
+  <data name="ChangeAzureContextCommandName" xml:space="preserve">
+    <value>Change Azure context</value>
+  </data>
+  <data name="ChangeAzureContextCommandDescription" xml:space="preserve">
+    <value>Updates the Azure tenant, subscription, resource group, or location for this AppHost and reprovisions all Azure resources.</value>
+  </data>
+  <data name="ChangeAzureContextCommandConfirmation" xml:space="preserve">
+    <value>This updates the Azure context for this AppHost and reprovisions all Azure resources using the values you enter next.</value>
+  </data>
+  <data name="ChangeAzureContextCommandSuccess" xml:space="preserve">
+    <value>Azure context updated and resources reprovisioned.</value>
+  </data>
+  <data name="ForgetStateCommandName" xml:space="preserve">
+    <value>Forget state</value>
+  </data>
+  <data name="ForgetStateCommandDescription" xml:space="preserve">
+    <value>Clears the cached Azure deployment state for this resource so it can be provisioned again using the current Azure context.</value>
+  </data>
+  <data name="ForgetStateCommandConfirmation" xml:space="preserve">
+    <value>This clears the cached Azure deployment state for this resource and resets its provisioning snapshot.</value>
+  </data>
+  <data name="ForgetStateCommandSuccess" xml:space="preserve">
+    <value>Azure resource provisioning state reset.</value>
+  </data>
+  <data name="ChangeResourceLocationCommandName" xml:space="preserve">
+    <value>Change location</value>
+  </data>
+  <data name="ChangeResourceLocationCommandDescription" xml:space="preserve">
+    <value>Changes the Azure location for this resource. If Aspire must delete and recreate the existing Azure resource, any data in it may be permanently lost.</value>
+  </data>
+  <data name="ChangeResourceLocationConfirmDeleteLabel" xml:space="preserve">
+    <value>Allow deletion and possible permanent data loss</value>
+  </data>
+  <data name="ChangeResourceLocationConfirmDeleteDescription" xml:space="preserve">
+    <value>Allow Aspire to delete and recreate the existing Azure resource when changing its location. Any data in the deleted resource may be permanently lost.</value>
+  </data>
+  <data name="ChangeResourceLocationDeleteConfirmationRequiredFormat" xml:space="preserve">
+    <value>Changing the location of Azure resource '{0}' requires deleting and recreating it. Any data in the deleted resource may be permanently lost. Set the '{1}' command argument to true to continue.</value>
+  </data>
+  <data name="ChangeResourceLocationCommandSuccess" xml:space="preserve">
+    <value>Azure resource location updated and reprovisioning completed.</value>
+  </data>
+  <data name="ChangeResourceLocationKeyVaultUnsupported" xml:space="preserve">
+    <value>Azure Key Vault resources cannot change location because soft-deleted vault names remain reserved globally. Use delete, reprovision, or forget state to recover this resource.</value>
+  </data>
+  <data name="GetAzureResourceCommandName" xml:space="preserve">
+    <value>Get Azure resource</value>
+  </data>
+  <data name="GetAzureResourceCommandDescription" xml:space="preserve">
+    <value>Returns cached deployment state and live Azure existence information for this resource.</value>
+  </data>
+  <data name="GetAzureResourceCommandSuccess" xml:space="preserve">
+    <value>Azure resource information retrieved.</value>
+  </data>
+  <data name="CancelCommandName" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="CancelCommandDescription" xml:space="preserve">
+    <value>Requests cancellation of the active Azure operation or deployment for this resource.</value>
+  </data>
+  <data name="CancelCommandConfirmation" xml:space="preserve">
+    <value>This requests cancellation of the active Azure operation that includes this resource, or the active Azure deployment for this resource. If the operation includes other Azure resources, they will be canceled too. Azure may continue work that cannot be canceled immediately, and resources already created are not deleted. Do you want to continue?</value>
+  </data>
+  <data name="CancelCommandSuccess" xml:space="preserve">
+    <value>Azure cancellation requested.</value>
+  </data>
+  <data name="DeleteAzureResourceCommandName" xml:space="preserve">
+    <value>Delete Azure resource</value>
+  </data>
+  <data name="DeleteAzureResourceCommandDescription" xml:space="preserve">
+    <value>Cancels the cached Azure deployment, deletes Azure resources targeted by the deployment, purges recoverable Key Vaults so their names can be reused, and clears cached deployment state for this resource.</value>
+  </data>
+  <data name="DeleteAzureResourceCommandConfirmation" xml:space="preserve">
+    <value>This cancels the cached Azure deployment, deletes Azure resources targeted by this resource's deployment, purges recoverable Key Vaults so their names can be reused, and clears cached deployment state. Do you want to continue?</value>
+  </data>
+  <data name="DeleteAzureResourceCommandSuccess" xml:space="preserve">
+    <value>Azure resources deleted and provisioning state reset.</value>
+  </data>
+  <data name="ChangeResourceLocationPromptTitle" xml:space="preserve">
+    <value>Change Azure resource location</value>
+  </data>
+  <data name="ChangeResourceLocationPromptMessage" xml:space="preserve">
+    <value>Select or enter a new Azure location for '{0}'. If Aspire must delete and recreate the existing Azure resource, any data in it may be permanently lost.</value>
+  </data>
+  <data name="ReprovisionResourceCommandName" xml:space="preserve">
+    <value>Reprovision</value>
+  </data>
+  <data name="ReprovisionResourceCommandDescription" xml:space="preserve">
+    <value>Clears the cached Azure deployment state for this resource and provisions it again using the current Azure context.</value>
+  </data>
+  <data name="ReprovisionResourceCommandConfirmation" xml:space="preserve">
+    <value>This clears the cached Azure deployment state for this resource and reprovisions it again using the current Azure tenant, subscription, resource group, and location.</value>
+  </data>
+  <data name="ReprovisionResourceCommandSuccess" xml:space="preserve">
+    <value>Azure resource reprovisioning completed.</value>
+  </data>
+  <data name="OperationAlreadyRunningOrQueued" xml:space="preserve">
+    <value>Azure operation '{0}' is already running or queued for the same resource scope. Wait for it to finish or run '{2}' before starting '{1}'.</value>
+  </data>
+  <data name="ReprovisionAllCommandName" xml:space="preserve">
+    <value>Reprovision all</value>
+  </data>
+  <data name="ReprovisionAllCommandDescription" xml:space="preserve">
+    <value>Clears the cached Azure deployment state for this AppHost and provisions all Azure resources again using the current Azure context.</value>
+  </data>
+  <data name="ReprovisionAllCommandConfirmation" xml:space="preserve">
+    <value>This clears the cached Azure deployment state for this AppHost and reprovisions all Azure resources again using the current Azure tenant, subscription, resource group, and location.</value>
+  </data>
+  <data name="ReprovisionAllCommandSuccess" xml:space="preserve">
+    <value>Azure reprovisioning completed.</value>
+  </data>
+  <data name="DeleteAzureResourcesCommandName" xml:space="preserve">
+    <value>Delete Azure resources</value>
+  </data>
+  <data name="DeleteAzureResourcesCommandDescription" xml:space="preserve">
+    <value>Deletes the current Azure resource group for this AppHost, clears cached deployment state, and leaves the Azure context intact for reprovisioning.</value>
+  </data>
+  <data name="DeleteAzureResourcesCommandConfirmation" xml:space="preserve">
+    <value>This deletes the current Azure resource group and every Azure resource inside it for this AppHost, then clears the cached deployment state. Do you want to continue?</value>
+  </data>
+  <data name="DeleteAzureResourcesCommandSuccess" xml:space="preserve">
+    <value>Azure resources deleted and provisioning state reset.</value>
+  </data>
+  <data name="DeleteAzureResourcesRemainingResourcesFormat" xml:space="preserve">
+    <value>Resource-group deletion completed. These resources were not deleted: {0}.</value>
+    <comment>{0} is a list of resource names, provider types, and object IDs.</comment>
+  </data>
+  <data name="DeleteAzureResourcesRemainingResourcesWarning" xml:space="preserve">
+    <value>The listed resources were not deleted because they exist outside the resource group. Delete them separately using their service's portal or API.</value>
+  </data>
+  <data name="ContextPropertyLocationDisplayName" xml:space="preserve">
+    <value>Azure location</value>
+  </data>
+  <data name="ContextPropertyResourceGroupDisplayName" xml:space="preserve">
+    <value>Azure resource group</value>
+  </data>
+  <data name="ContextPropertySubscriptionIdDisplayName" xml:space="preserve">
+    <value>Azure subscription ID</value>
+  </data>
+  <data name="ContextPropertyTenantDomainDisplayName" xml:space="preserve">
+    <value>Azure tenant domain</value>
+  </data>
+  <data name="ContextPropertyTenantIdDisplayName" xml:space="preserve">
+    <value>Azure tenant ID</value>
+  </data>
+  <data name="DeploymentOperationSummaryDisplayName" xml:space="preserve">
+    <value>Azure deployment diagnostics</value>
+  </data>
+  <data name="DeploymentOperationFailedResourcesFormat" xml:space="preserve">
+    <value>Failed Azure resources: {0}</value>
+  </data>
+  <data name="DeploymentOperationCanceledResourcesFormat" xml:space="preserve">
+    <value>Canceled Azure resources: {0}</value>
+  </data>
+  <data name="DeploymentOperationRunningResourcesFormat" xml:space="preserve">
+    <value>Provisioning Azure resources: {0}</value>
+  </data>
+  <data name="OperationPropertyNameDisplayName" xml:space="preserve">
+    <value>Azure operation</value>
+  </data>
+  <data name="OperationPropertyPhaseDisplayName" xml:space="preserve">
+    <value>Azure operation phase</value>
+  </data>
+  <data name="OperationPropertyStatusDisplayName" xml:space="preserve">
+    <value>Azure operation status</value>
+  </data>
+  <data name="OperationPropertyTargetLocationDisplayName" xml:space="preserve">
+    <value>Azure operation target location</value>
+  </data>
+  <data name="OperationPropertyStartedAtDisplayName" xml:space="preserve">
+    <value>Azure operation started</value>
+  </data>
+  <data name="FailurePropertyCodeDisplayName" xml:space="preserve">
+    <value>Azure error code</value>
+  </data>
+  <data name="FailurePropertyCorrelationIdDisplayName" xml:space="preserve">
+    <value>Azure correlation ID</value>
+  </data>
+  <data name="FailurePropertyCurrentLocationDisplayName" xml:space="preserve">
+    <value>Azure current location</value>
+  </data>
+  <data name="FailurePropertyFailedResourcesDisplayName" xml:space="preserve">
+    <value>Failed Azure resources</value>
+  </data>
+  <data name="FailurePropertyHttpStatusDisplayName" xml:space="preserve">
+    <value>Azure HTTP status</value>
+  </data>
+  <data name="FailurePropertyMessageDisplayName" xml:space="preserve">
+    <value>Azure error message</value>
+  </data>
+  <data name="FailurePropertyOperationDisplayName" xml:space="preserve">
+    <value>Azure operation</value>
+  </data>
+  <data name="FailurePropertyProviderDisplayName" xml:space="preserve">
+    <value>Azure provider</value>
+  </data>
+  <data name="FailurePropertyRecommendedActionsDisplayName" xml:space="preserve">
+    <value>Azure recommended actions</value>
+  </data>
+  <data name="FailurePropertyRequestIdDisplayName" xml:space="preserve">
+    <value>Azure request ID</value>
+  </data>
+  <data name="FailurePropertyResourceNameDisplayName" xml:space="preserve">
+    <value>Azure resource name</value>
+  </data>
+  <data name="FailurePropertyResourceTypeDisplayName" xml:space="preserve">
+    <value>Azure resource type</value>
+  </data>
+  <data name="FailurePropertySupportedLocationsDisplayName" xml:space="preserve">
+    <value>Azure supported locations</value>
+  </data>
+  <data name="FailurePropertyTargetResourceIdDisplayName" xml:space="preserve">
+    <value>Azure target resource ID</value>
+  </data>
+  <data name="ResourceStateMissingInAzure" xml:space="preserve">
+    <value>Missing in Azure</value>
+  </data>
+  <data name="ResourceStateMissingSubscriptionConfiguration" xml:space="preserve">
+    <value>Missing subscription configuration</value>
+  </data>
+  <data name="ResourceStateDrifted" xml:space="preserve">
+    <value>Drifted</value>
+  </data>
+  <data name="ResourceStateStarting" xml:space="preserve">
+    <value>Starting</value>
+  </data>
+  <data name="ResourceStateCompilingArmTemplate" xml:space="preserve">
+    <value>Compiling ARM template</value>
+  </data>
+  <data name="ResourceStateCreatingArmDeployment" xml:space="preserve">
+    <value>Creating ARM Deployment</value>
+  </data>
+  <data name="ResourceStateWaitingForDeployment" xml:space="preserve">
+    <value>Waiting for Deployment</value>
+  </data>
+  <data name="ResourceStateChangingLocation" xml:space="preserve">
+    <value>Changing location</value>
+  </data>
+  <data name="ResourceStateDeleting" xml:space="preserve">
+    <value>Deleting</value>
+  </data>
+  <data name="ResourceStateCanceling" xml:space="preserve">
+    <value>Canceling</value>
+  </data>
+  <data name="ResourceStateCanceled" xml:space="preserve">
+    <value>Canceled</value>
+  </data>
+  <data name="ResourceStateProvisioned" xml:space="preserve">
+    <value>Provisioned</value>
+  </data>
+  <data name="ResourceStateFailedToProvision" xml:space="preserve">
+    <value>Failed to Provision</value>
+  </data>
+  <data name="ResourceStateFailedToDelete" xml:space="preserve">
+    <value>Failed to Delete</value>
+  </data>
+  <data name="ResourceStateAzureDeploymentFailed" xml:space="preserve">
+    <value>Azure deployment failed</value>
+  </data>
+  <data name="ResourceStateAzureDeploymentCanceled" xml:space="preserve">
+    <value>Azure deployment canceled</value>
+  </data>
+  <data name="ResourceStateProvisioningPrefix" xml:space="preserve">
+    <value>Provisioning </value>
+  </data>
+  <data name="ResourceStateProvisioningResourceFormat" xml:space="preserve">
+    <value>Provisioning {0}</value>
+  </data>
+  <data name="ResourceStateProvisioningMultipleAzureResourcesFormat" xml:space="preserve">
+    <value>Provisioning {0} Azure resources</value>
+  </data>
+  <data name="ResourceStateProvisionedMultipleAzureResourcesFormat" xml:space="preserve">
+    <value>Provisioned {0} Azure resources</value>
+  </data>
+  <data name="OperationPhaseResettingProvisioningState" xml:space="preserve">
+    <value>Resetting provisioning state</value>
+  </data>
+  <data name="OperationPhaseChangingAzureContext" xml:space="preserve">
+    <value>Changing Azure context</value>
+  </data>
+  <data name="OperationPhaseApplyingAzureContext" xml:space="preserve">
+    <value>Applying Azure context</value>
+  </data>
+  <data name="OperationPhaseProvisioningAzureResources" xml:space="preserve">
+    <value>Provisioning Azure resources</value>
+  </data>
+  <data name="OperationPhaseReprovisioningAzureResources" xml:space="preserve">
+    <value>Reprovisioning Azure resources</value>
+  </data>
+  <data name="OperationPhaseDeletingAzureResources" xml:space="preserve">
+    <value>Deleting Azure resources</value>
+  </data>
+  <data name="OperationPhaseDeletingAzureResource" xml:space="preserve">
+    <value>Deleting Azure resource</value>
+  </data>
+  <data name="OperationPhaseChangingLocationToFormat" xml:space="preserve">
+    <value>Changing location to {0}</value>
+  </data>
+  <data name="OperationPhaseDeletingExistingAzureResourceBeforeChangingLocationFormat" xml:space="preserve">
+    <value>Deleting existing Azure resource before changing location to {0}</value>
+  </data>
+  <data name="OperationPhaseReprovisioning" xml:space="preserve">
+    <value>Reprovisioning</value>
+  </data>
+  <data name="OperationPhaseReprovisioningInLocationFormat" xml:space="preserve">
+    <value>Reprovisioning in {0}</value>
+  </data>
+  <data name="OperationPhasePurgingDeletedKeyVault" xml:space="preserve">
+    <value>Purging deleted Key Vault</value>
+  </data>
+  <data name="OperationPhasePurgingRecoverableKeyVaultFormat" xml:space="preserve">
+    <value>Purging recoverable Key Vault {0}</value>
+  </data>
+</root>

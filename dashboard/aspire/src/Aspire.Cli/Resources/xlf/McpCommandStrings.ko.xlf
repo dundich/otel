@@ -1,0 +1,107 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="ko" original="../McpCommandStrings.resx">
+    <body>
+      <trans-unit id="CallCommand_Description">
+        <source>Call an MCP tool on a running resource</source>
+        <target state="translated">실행 중인 리소스에서 MCP 도구 호출</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="CallCommand_InputOptionDescription">
+        <source>JSON input to pass to the tool</source>
+        <target state="translated">도구에 전달할 JSON 입력</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="CallCommand_ResourceArgumentDescription">
+        <source>The name of the resource that exposes the MCP tool</source>
+        <target state="translated">MCP 도구를 제공하는 리소스 이름</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="CallCommand_ToolArgumentDescription">
+        <source>The name of the MCP tool to call</source>
+        <target state="translated">호출할 MCP 도구 이름</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DeprecatedCommandWarning">
+        <source>Warning: 'aspire mcp' commands are deprecated and will be removed in a future release. Please use 'aspire agent' instead.</source>
+        <target state="translated">경고: 'aspire mcp' 명령은 더 이상 사용되지 않으며 향후 릴리스에서 제거될 예정입니다. 대신 'aspire agent'를 사용하세요.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="Description">
+        <source>Interact with MCP (Model Context Protocol) tools exposed by Aspire resources</source>
+        <target state="translated">Aspire 리소스에서 제공하는 MCP(모델 컨텍스트 프로토콜) 도구와 상호 작용하세요</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InitCommand_AdditionalOptionsSelectPrompt">
+        <source>Which additional options do you want to enable?</source>
+        <target state="translated">어떤 추가 옵션을 사용하도록 설정하시겠습니까?</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InitCommand_AgentConfigurationSelectPrompt">
+        <source>Which agent environments do you want to configure?</source>
+        <target state="translated">어떤 에이전트 환경을 구성하시겠습니까?</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InitCommand_ConfigurationComplete">
+        <source>Agent environment configuration complete.</source>
+        <target state="translated">에이전트 환경 구성이 완료되었습니다.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InitCommand_ConfigurePlaywrightPrompt">
+        <source>Install Playwright CLI for browser automation?</source>
+        <target state="translated">브라우저 자동화를 위해 Playwright CLI를 설치하시겠나요?</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InitCommand_CreateAgentInstructionsPrompt">
+        <source>Create agent environment specific instruction files?</source>
+        <target state="translated">에이전트 환경별 지침 파일을 만드시겠어요?</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InitCommand_Description">
+        <source>Initialize MCP server configuration for detected agent environments (deprecated, use 'agent init')</source>
+        <target state="translated">검색된 에이전트 환경에 대한 MCP 서버 구성 초기화(사용되지 않음, 'agent init' 사용)</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InitCommand_DetectingAgentEnvironments">
+        <source>Detecting agent environments...</source>
+        <target state="translated">에이전트 환경을 검색하는 중...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InitCommand_NoAgentEnvironmentsDetected">
+        <source>No agent environments were detected.</source>
+        <target state="translated">에이전트 환경이 검색되지 않았습니다.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InitCommand_WorkspaceRootNotFound">
+        <source>Directory not found: {0}</source>
+        <target state="translated">디렉터리가 없습니다. {0}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InitCommand_WorkspaceRootPrompt">
+        <source>Enter the path to the root of your workspace:</source>
+        <target state="translated">작업 영역의 루트 경로를 입력합니다.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InitCommand_WorkspaceRootRequired">
+        <source>Workspace root path is required.</source>
+        <target state="translated">작업 영역 루트 경로가 필요합니다.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="StartCommand_Description">
+        <source>Start the MCP (Model Context Protocol) server (deprecated, use 'agent mcp')</source>
+        <target state="translated">MCP(모델 컨텍스트 프로토콜) 서버를 시작합니다 (더 이상 사용되지 않음, 'agent mcp' 사용)</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ToolsCommand_Description">
+        <source>List MCP tools exposed by running resources</source>
+        <target state="translated">리소스를 실행하여 노출되는 MCP 도구 나열</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ToolsCommand_FormatOptionDescription">
+        <source>Output format (Table or Json)</source>
+        <target state="translated">출력 형식(테이블 또는 Json)</target>
+        <note />
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

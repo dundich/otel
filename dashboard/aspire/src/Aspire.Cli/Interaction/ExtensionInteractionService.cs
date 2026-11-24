@@ -1,0 +1,742 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+using System.Diagnostics;
+using System.Globalization;
+using System.Threading.Channels;
+using Aspire.Cli.Backchannel;
+using Aspire.Cli.Resources;
+using Aspire.Cli.Utils;
+using Microsoft.Extensions.Logging;
+using Spectre.Console;
+using Spectre.Console.Rendering;
+
+namespace Aspire.Cli.Interaction;
+
+internal interface IExtensionInteractionService : IInteractionService
+{
+    IExtensionBackchannel Backchannel { get; }
+    Task FlushAsync(CancellationToken cancellationToken = default);
+    Task<bool> TryDisplayCommandFailureAsync(string? errorMessage, string cliLogFilePath, string? appHostCliLogFilePath, bool allowMarkup, CancellationToken cancellationToken);
+    void DisplayError(string errorMessage, IReadOnlyList<InteractionMessageAction> actions, bool allowMarkup = false);
+    void DisplayMessage(KnownEmoji emoji, string message, IReadOnlyList<InteractionMessageAction> actions, bool allowMarkup = false, ConsoleOutput? consoleOverride = null);
+    void OpenEditor(string projectPath);
+    void LogMessage(LogLevel logLevel, string message);
+    Task LaunchAppHostAsync(string projectFile, List<string> arguments, List<EnvVar> environment, bool debug);
+    void DisplayDashboardUrls(DashboardUrlsState dashboardUrls);
+    void NotifyAppHostStartupCompleted();
+    void DisplayConsolePlainText(string message);
+    Task StartDebugSessionAsync(string workingDirectory, string? projectFile, bool debug, DebugSessionOptions? options = null);
+    void WriteDebugSessionMessage(string message, bool stdout, string? textStyle);
+    void WriteAppHostLogEntry(ExtensionAppHostLogEntry entry);
+    void ConsoleDisplaySubtleMessage(string message, bool allowMarkup = false);
+}
+
+internal class ExtensionInteractionService : IExtensionInteractionService, IDisposable
+{
+    private static readonly TimeSpan s_messageActionsSupportProbeTimeout = TimeSpan.FromSeconds(5);
+
+    private readonly ConsoleInteractionService _consoleInteractionService;
+    private readonly bool _extensionPromptEnabled;
+    private readonly CancellationTokenSource _cts = new();
+    private readonly CancellationToken _cancellationToken;
+    private readonly Channel<Func<Task>> _extensionTaskChannel;
+    private readonly ILogger<ExtensionInteractionService> _logger;
+
+    /// <summary>
+    /// The background pump task that processes queued extension operations.
+    /// Completes when the channel is completed and/or the token is cancelled.
+    /// </summary>
+    internal Task PumpTask { get; }
+
+    public IExtensionBackchannel Backchannel { get; }
+
+    public ExtensionInteractionService(ConsoleInteractionService consoleInteractionService, IExtensionBackchannel backchannel, bool extensionPromptEnabled, ILogger<ExtensionInteractionService> logger)
+    {
+        _consoleInteractionService = consoleInteractionService;
+        Backchannel = backchannel;
+        _extensionPromptEnabled = extensionPromptEnabled;
+        _cancellationToken = _cts.Token;
+        _logger = logger;
+        _extensionTaskChannel = Channel.CreateUnbounded<Func<Task>>(new UnboundedChannelOptions
+        {
+            SingleReader = true,
+            SingleWriter = true
+        });
+
+        // Use CancellationToken.None here to avoid the pump task being cancelled before it is scheduled.
+        // Code in the pump task itself will observe the cancellation token to exit gracefully when the service is disposed.
+        PumpTask = Task.Run(ProcessExtensionTaskChannelAsync, CancellationToken.None);
+    }
+
+    public async Task FlushAsync(CancellationToken cancellationToken = default)
+    {
+        var completionSource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        // Queue a sentinel after all pending extension operations so callers can wait until
+        // debug-console output has reached the extension before the CLI process exits.
+        await _extensionTaskChannel.Writer.WriteAsync(() =>
+        {
+            completionSource.TrySetResult();
+            return Task.CompletedTask;
+        }, cancellationToken).ConfigureAwait(false);
+
+        await completionSource.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<T> ShowStatusAsync<T>(string statusText, Func<Task<T>> action, KnownEmoji? emoji = null, bool allowMarkup = false)
+    {
+        var result = _extensionTaskChannel.Writer.TryWrite(() => Backchannel.ShowStatusAsync(StringUtils.RemoveMarkup(statusText), _cancellationToken));
+        Debug.Assert(result);
+
+        try
+        {
+            return await _consoleInteractionService.ShowStatusAsync(statusText, action, emoji, allowMarkup).ConfigureAwait(false);
+        }
+        finally
+        {
+            // Clear the IDE status indicator even if the action threw, to avoid leaving it spinning indefinitely.
+            result = _extensionTaskChannel.Writer.TryWrite(() => Backchannel.ShowStatusAsync(null, _cancellationToken));
+            Debug.Assert(result);
+        }
+    }
+
+    public async Task<T> ShowDynamicStatusAsync<T>(string initialStatusText, Func<Action<string>, Task<T>> action, KnownEmoji? emoji = null)
+    {
+        var result = _extensionTaskChannel.Writer.TryWrite(() => Backchannel.ShowStatusAsync(StringUtils.RemoveMarkup(initialStatusText), _cancellationToken));
+        Debug.Assert(result);
+
+        try
+        {
+            return await _consoleInteractionService.ShowDynamicStatusAsync(
+                initialStatusText,
+                updateStatus => action(statusText =>
+                {
+                    var result = _extensionTaskChannel.Writer.TryWrite(() => Backchannel.ShowStatusAsync(StringUtils.RemoveMarkup(statusText), _cancellationToken));
+                    Debug.Assert(result);
+                    updateStatus(statusText);
+                }),
+                emoji).ConfigureAwait(false);
+        }
+        finally
+        {
+            result = _extensionTaskChannel.Writer.TryWrite(() => Backchannel.ShowStatusAsync(null, _cancellationToken));
+            Debug.Assert(result);
+        }
+    }
+
+    public void ShowStatus(string statusText, Action action, KnownEmoji? emoji = null, bool allowMarkup = false)
+    {
+        var result = _extensionTaskChannel.Writer.TryWrite(() => Backchannel.ShowStatusAsync(StringUtils.RemoveMarkup(statusText), _cancellationToken));
+        Debug.Assert(result);
+
+        try
+        {
+            _consoleInteractionService.ShowStatus(statusText, action, emoji, allowMarkup);
+        }
+        finally
+        {
+            // Clear the IDE status indicator even if the action threw, to avoid leaving it spinning indefinitely.
+            result = _extensionTaskChannel.Writer.TryWrite(() => Backchannel.ShowStatusAsync(null, _cancellationToken));
+            Debug.Assert(result);
+        }
+    }
+
+    public async Task<string> PromptForStringAsync(string promptText, Func<string, ValidationResult>? validator = null, bool isSecret = false, bool required = false, PromptBinding<string?>? binding = null, bool logResponse = true, CancellationToken cancellationToken = default)
+    {
+        // Check binding first — if a CLI arg was explicitly provided, return it immediately
+        // without prompting through either the extension or console path.
+        var (wasProvided, value, _) = PromptBinding.Resolve(binding);
+        if (wasProvided && value is not null)
+        {
+            _consoleInteractionService.ValidateResolvedStringValue(value, required, validator, binding!.SymbolDisplayName);
+            return value;
+        }
+
+        if (_extensionPromptEnabled)
+        {
+            var tcs = new TaskCompletionSource<string>();
+
+            await _extensionTaskChannel.Writer.WriteAsync(async () =>
+            {
+                try
+                {
+                    string result;
+                    if (isSecret)
+                    {
+                        // Check if extension supports the new secret prompts capability
+                        var hasSecretPromptsCapability = await Backchannel.HasCapabilityAsync(KnownCapabilities.SecretPrompts, _cancellationToken).ConfigureAwait(false);
+
+                        if (hasSecretPromptsCapability)
+                        {
+                            // Use the new dedicated secret prompt method (no default value for secrets)
+                            result = await Backchannel.PromptForSecretStringAsync(StringUtils.RemoveMarkup(promptText), validator, required, _cancellationToken).ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            // Older extensions cannot mask regular input boxes, so keep secret entry in the terminal.
+                            result = await _consoleInteractionService.PromptForStringAsync(promptText, validator, isSecret, required, binding, logResponse, cancellationToken).ConfigureAwait(false);
+                        }
+                    }
+                    else
+                    {
+                        result = await Backchannel.PromptForStringAsync(StringUtils.RemoveMarkup(promptText), binding?.DefaultValue, validator, required, _cancellationToken).ConfigureAwait(false);
+                    }
+
+                    tcs.SetResult(result);
+                }
+                catch (Exception ex)
+                {
+                    tcs.SetException(ex);
+                }
+            }, cancellationToken).ConfigureAwait(false);
+
+            return await tcs.Task.ConfigureAwait(false);
+        }
+        else
+        {
+            return await _consoleInteractionService.PromptForStringAsync(promptText, validator, isSecret, required, binding, logResponse, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    public async Task<string> PromptForFilePathAsync(string promptText, Func<string, ValidationResult>? validator = null, bool directory = false, bool required = false, PromptBinding<string?>? binding = null, bool retryOnValidationFailure = false, CancellationToken cancellationToken = default)
+    {
+        var (wasProvided, value, _) = PromptBinding.Resolve(binding);
+        if (wasProvided && value is not null)
+        {
+            _consoleInteractionService.ValidateResolvedStringValue(value, required, validator, binding!.SymbolDisplayName);
+            return value;
+        }
+
+        if (_extensionPromptEnabled)
+        {
+            var hasFilePickersCapability = await Backchannel.HasCapabilityAsync(KnownCapabilities.FilePickers, _cancellationToken).ConfigureAwait(false);
+
+            if (hasFilePickersCapability)
+            {
+                while (true)
+                {
+                    var tcs = new TaskCompletionSource<string?>();
+
+                    await _extensionTaskChannel.Writer.WriteAsync(async () =>
+                    {
+                        try
+                        {
+                            var result = await Backchannel.PromptForFilePathAsync(StringUtils.RemoveMarkup(promptText), binding?.DefaultValue, directory, _cancellationToken).ConfigureAwait(false);
+                            tcs.SetResult(result);
+                        }
+                        catch (Exception ex)
+                        {
+                            tcs.SetException(ex);
+                        }
+                    }, cancellationToken).ConfigureAwait(false);
+
+                    var picked = await tcs.Task.ConfigureAwait(false);
+
+                    if (picked is null)
+                    {
+                        throw new ExtensionOperationCanceledException(promptText);
+                    }
+
+                    if (validator is null)
+                    {
+                        return picked;
+                    }
+
+                    var validationResult = validator(picked);
+                    if (validationResult.Successful)
+                    {
+                        return picked;
+                    }
+
+                    // VS Code file pickers can't show inline validation, so keep the wizard alive
+                    // by displaying the error before reopening the picker.
+                    var errorMessage = validationResult.Message ?? InteractionServiceStrings.InvalidSelection;
+                    DisplayError(errorMessage);
+
+                    if (!retryOnValidationFailure)
+                    {
+                        throw new InvalidOperationException(errorMessage);
+                    }
+                }
+            }
+
+            // Fall back to string prompt for older extensions without file picker support
+            return await PromptForStringAsync(promptText, validator, isSecret: false, required, binding, cancellationToken: cancellationToken).ConfigureAwait(false);
+        }
+
+        return await _consoleInteractionService.PromptForFilePathAsync(promptText, validator, directory, required, binding, retryOnValidationFailure, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<bool> PromptConfirmAsync(string promptText, PromptBinding<bool>? binding = null, CancellationToken cancellationToken = default)
+    {
+        var (wasProvided, value, _) = PromptBinding.Resolve(binding);
+        if (wasProvided)
+        {
+            return value;
+        }
+
+        if (_extensionPromptEnabled)
+        {
+            var tcs = new TaskCompletionSource<bool>();
+
+            await _extensionTaskChannel.Writer.WriteAsync(async () =>
+            {
+                try
+                {
+                    var result = await Backchannel.ConfirmAsync(StringUtils.RemoveMarkup(promptText), binding?.DefaultValue ?? false, _cancellationToken).ConfigureAwait(false);
+                    tcs.SetResult(result);
+                }
+                catch (Exception ex)
+                {
+                    tcs.SetException(ex);
+                    if (ex is not ExtensionOperationCanceledException)
+                    {
+                        DisplayError(ex.Message);
+                    }
+                }
+            }, cancellationToken).ConfigureAwait(false);
+
+            return await tcs.Task.ConfigureAwait(false);
+        }
+        else
+        {
+            return await _consoleInteractionService.PromptConfirmAsync(promptText, binding, cancellationToken);
+        }
+    }
+
+    public Task<T> PromptForSelectionAsync<T>(string promptText, IEnumerable<T> choices, Func<T, string> choiceFormatter,
+        Func<T, SelectionChoiceGroup?> choiceGroup, Func<T, string> groupedChoiceFormatter, PromptBinding<string?>? binding = null, bool echoSelected = true, CancellationToken cancellationToken = default) where T : notnull
+    {
+        // Keep the extension's legacy string[] RPC unchanged. Source-qualified labels
+        // remain sufficient when the client cannot render the optional group headings.
+        return _extensionPromptEnabled
+            ? PromptForSelectionAsync(promptText, choices, choiceFormatter, binding, echoSelected, cancellationToken)
+            : _consoleInteractionService.PromptForSelectionAsync(promptText, choices, choiceFormatter, choiceGroup, groupedChoiceFormatter, binding, echoSelected, cancellationToken);
+    }
+
+    public async Task<T> PromptForSelectionAsync<T>(string promptText, IEnumerable<T> choices, Func<T, string> choiceFormatter,
+        PromptBinding<string?>? binding = null, bool echoSelected = true, CancellationToken cancellationToken = default) where T : notnull
+    {
+        var (wasProvided, value, _) = PromptBinding.Resolve(binding);
+        if (wasProvided && value is not null)
+        {
+            return _consoleInteractionService.MatchChoiceOrThrow(value, binding!, choices, choiceFormatter);
+        }
+
+        if (_extensionPromptEnabled)
+        {
+            var tcs = new TaskCompletionSource<T>();
+
+            await _extensionTaskChannel.Writer.WriteAsync(async () =>
+            {
+                try
+                {
+                    var result = await Backchannel.PromptForSelectionAsync(StringUtils.RemoveMarkup(promptText), choices, choiceFormatter, _cancellationToken).ConfigureAwait(false);
+                    tcs.SetResult(result);
+                }
+                catch (Exception ex)
+                {
+                    tcs.SetException(ex);
+                    if (ex is not ExtensionOperationCanceledException)
+                    {
+                        DisplayError(ex.Message);
+                    }
+                }
+            }, cancellationToken).ConfigureAwait(false);
+
+            return await tcs.Task.ConfigureAwait(false);
+        }
+        else
+        {
+            return await _consoleInteractionService.PromptForSelectionAsync(promptText, choices, choiceFormatter, binding, echoSelected, cancellationToken);
+        }
+    }
+
+    public async Task<IReadOnlyList<T>> PromptForSelectionsAsync<T>(string promptText, IEnumerable<T> choices, Func<T, string> choiceFormatter,
+        IEnumerable<T>? preSelected = null, bool optional = false, PromptBinding<string?>? binding = null, bool echoSelected = true, IEnumerable<T>? bindingChoices = null, CancellationToken cancellationToken = default) where T : notnull
+    {
+        var (wasProvided, value, _) = PromptBinding.Resolve(binding);
+        if (wasProvided && value is not null)
+        {
+            var validationChoices = bindingChoices ?? choices;
+            return _consoleInteractionService.MatchChoicesOrThrow(value, binding!, validationChoices, choiceFormatter);
+        }
+
+        if (_extensionPromptEnabled)
+        {
+            var tcs = new TaskCompletionSource<IReadOnlyList<T>>();
+
+            await _extensionTaskChannel.Writer.WriteAsync(async () =>
+            {
+                try
+                {
+                    var result = await Backchannel.PromptForSelectionsAsync(StringUtils.RemoveMarkup(promptText), choices, choiceFormatter, preSelected, _cancellationToken).ConfigureAwait(false);
+                    tcs.SetResult(result);
+                }
+                catch (Exception ex)
+                {
+                    tcs.SetException(ex);
+                    if (ex is not ExtensionOperationCanceledException)
+                    {
+                        DisplayError(ex.Message);
+                    }
+                }
+            }, cancellationToken).ConfigureAwait(false);
+
+            return await tcs.Task.ConfigureAwait(false);
+        }
+        else
+        {
+            return await _consoleInteractionService.PromptForSelectionsAsync(promptText, choices, choiceFormatter, preSelected, optional, binding, echoSelected, bindingChoices, cancellationToken);
+        }
+    }
+
+    public int DisplayIncompatibleVersionError(AppHostIncompatibleException ex, string appHostHostingSdkVersion)
+    {
+        var result = _extensionTaskChannel.Writer.TryWrite(() => Backchannel.DisplayIncompatibleVersionErrorAsync(ex.RequiredCapability, appHostHostingSdkVersion, _cancellationToken));
+        Debug.Assert(result);
+
+        return _consoleInteractionService.DisplayIncompatibleVersionError(ex, appHostHostingSdkVersion);
+    }
+
+    public void DisplayError(string errorMessage, bool allowMarkup = false)
+    {
+        // Serialize the local console write onto the same channel as the backchannel call so
+        // it stays ordered with prior queued operations (e.g. DisplayLines). Otherwise the
+        // synchronous Spectre write would land in the IDE debug console (via stdout/stderr
+        // capture) before earlier asynchronous DisplayLines RPCs had flushed, producing
+        // out-of-order output like an error message preceding the lines that explain it.
+        var result = _extensionTaskChannel.Writer.TryWrite(async () =>
+        {
+            await Backchannel.DisplayErrorAsync(allowMarkup ? StringUtils.RemoveMarkup(errorMessage) : errorMessage, _cancellationToken);
+            _consoleInteractionService.DisplayError(errorMessage, allowMarkup);
+        });
+        Debug.Assert(result);
+    }
+
+    public void DisplayError(string errorMessage, IReadOnlyList<InteractionMessageAction> actions, bool allowMarkup = false)
+    {
+        var materializedActions = actions.ToArray();
+        var result = _extensionTaskChannel.Writer.TryWrite(async () =>
+        {
+            await Backchannel.DisplayErrorAsync(allowMarkup ? StringUtils.RemoveMarkup(errorMessage) : errorMessage, materializedActions, _cancellationToken);
+            _consoleInteractionService.DisplayError(errorMessage, allowMarkup);
+        });
+        Debug.Assert(result);
+    }
+
+    public void DisplayMessage(KnownEmoji emoji, string message, bool allowMarkup = false, ConsoleOutput? consoleOverride = null)
+    {
+        var result = _extensionTaskChannel.Writer.TryWrite(async () =>
+        {
+            await Backchannel.DisplayMessageAsync(emoji.Name, StringUtils.RemoveMarkup(message), _cancellationToken);
+            _consoleInteractionService.DisplayMessage(emoji, message, allowMarkup, consoleOverride);
+        });
+        Debug.Assert(result);
+    }
+
+    public void DisplayMessage(KnownEmoji emoji, string message, IReadOnlyList<InteractionMessageAction> actions, bool allowMarkup = false, ConsoleOutput? consoleOverride = null)
+    {
+        var materializedActions = actions.ToArray();
+        var result = _extensionTaskChannel.Writer.TryWrite(async () =>
+        {
+            await Backchannel.DisplayMessageAsync(emoji.Name, StringUtils.RemoveMarkup(message), materializedActions, _cancellationToken);
+            _consoleInteractionService.DisplayMessage(emoji, message, allowMarkup, consoleOverride);
+        });
+        Debug.Assert(result);
+    }
+
+    private void ConsoleDisplayMessage(KnownEmoji emoji, string message, bool allowMarkup = false, ConsoleOutput? consoleOverride = null)
+    {
+        var result = _extensionTaskChannel.Writer.TryWrite(() =>
+        {
+            _consoleInteractionService.DisplayMessage(emoji, message, allowMarkup, consoleOverride);
+            return Task.CompletedTask;
+        });
+        Debug.Assert(result);
+    }
+
+    public async Task<bool> SupportsMessageActionsAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await Backchannel.HasCapabilityAsync(KnownCapabilities.MessageActions, cancellationToken)
+                .WaitAsync(s_messageActionsSupportProbeTimeout, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Message action capability probe failed; using legacy extension notifications.");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Displays an actionable command failure when the extension supports message actions.
+    /// </summary>
+    /// <returns><see langword="true"/> when the failure was displayed; otherwise, <see langword="false"/> so the caller can use the legacy notification flow.</returns>
+    public async Task<bool> TryDisplayCommandFailureAsync(
+        string? errorMessage,
+        string cliLogFilePath,
+        string? appHostCliLogFilePath,
+        bool allowMarkup,
+        CancellationToken cancellationToken)
+    {
+        if (!await SupportsMessageActionsAsync(cancellationToken).ConfigureAwait(false))
+        {
+            return false;
+        }
+
+        var diagnosticLogs = new List<(KnownEmoji Emoji, string Message, InteractionMessageAction Action)>
+        {
+            (
+                KnownEmojis.PageFacingUp,
+                string.Format(
+                    CultureInfo.CurrentCulture,
+                    InteractionServiceStrings.SeeLogsAt,
+                    MarkupHelpers.SafeFileLink(this, cliLogFilePath)),
+                InteractionMessageAction.OpenFile(InteractionServiceStrings.OpenCliLog, cliLogFilePath))
+        };
+
+        if (appHostCliLogFilePath is not null)
+        {
+            diagnosticLogs.Add((
+                KnownEmojis.MagnifyingGlassTiltedLeft,
+                string.Format(
+                    CultureInfo.CurrentCulture,
+                    InteractionServiceStrings.SeeAppHostLogsAt,
+                    MarkupHelpers.SafeFileLink(this, appHostCliLogFilePath)),
+                InteractionMessageAction.OpenFile(InteractionServiceStrings.OpenAppHostLog, appHostCliLogFilePath)));
+        }
+
+        if (errorMessage is null)
+        {
+            foreach (var log in diagnosticLogs)
+            {
+                DisplayMessage(log.Emoji, log.Message, [log.Action], allowMarkup: true, consoleOverride: ConsoleOutput.Error);
+            }
+        }
+        else
+        {
+            DisplayError(errorMessage, diagnosticLogs.Select(log => log.Action).ToArray(), allowMarkup);
+            foreach (var log in diagnosticLogs)
+            {
+                ConsoleDisplayMessage(log.Emoji, log.Message, allowMarkup: true, consoleOverride: ConsoleOutput.Error);
+            }
+        }
+
+        return true;
+    }
+
+    public void DisplaySuccess(string message, bool allowMarkup = false)
+    {
+        var result = _extensionTaskChannel.Writer.TryWrite(() => Backchannel.DisplaySuccessAsync(StringUtils.RemoveMarkup(message), _cancellationToken));
+        Debug.Assert(result);
+        _consoleInteractionService.DisplaySuccess(message, allowMarkup);
+    }
+
+    public void DisplaySubtleMessage(string message, bool allowMarkup = false)
+    {
+        var result = _extensionTaskChannel.Writer.TryWrite(() => Backchannel.DisplaySubtleMessageAsync(StringUtils.RemoveMarkup(message), _cancellationToken));
+        Debug.Assert(result);
+        _consoleInteractionService.DisplaySubtleMessage(message, allowMarkup);
+    }
+
+    public void ConsoleDisplaySubtleMessage(string message, bool allowMarkup = false)
+    {
+        _consoleInteractionService.DisplaySubtleMessage(message, allowMarkup);
+    }
+
+    public void DisplayDashboardUrls(DashboardUrlsState dashboardUrls)
+    {
+        var result = _extensionTaskChannel.Writer.TryWrite(() => Backchannel.DisplayDashboardUrlsAsync(dashboardUrls, _cancellationToken));
+        Debug.Assert(result);
+    }
+
+    public void DisplayLines(IEnumerable<(OutputLineStream Stream, string Line)> lines)
+    {
+        // Materialize so we can iterate twice without re-enumerating a possibly lazy/one-shot source.
+        var materialized = lines as IReadOnlyCollection<(OutputLineStream Stream, string Line)> ?? lines.ToList();
+
+        var result = _extensionTaskChannel.Writer.TryWrite(() => Backchannel.DisplayLinesAsync(materialized.Select(line => new DisplayLineState(
+            line.Stream == OutputLineStream.StdOut ? "stdout" : "stderr",
+            StringUtils.RemoveMarkup(line.Line))), _cancellationToken));
+        Debug.Assert(result);
+
+        // Intentionally do NOT also write to the local console here. Unlike most Display* methods
+        // (whose backchannel sinks are distinct from the debug console — popups, status bar, log
+        // channel, etc.), the extension's `displayLines` RPC routes the lines into the active
+        // AppHost debug console. The CLI's stdout/stderr is also captured by the extension and
+        // forwarded into that same debug console, so calling _consoleInteractionService.DisplayLines
+        // here would surface every line twice.
+    }
+
+    public void DisplayCancellationMessage(string? message = null, ConsoleOutput? consoleOverride = null)
+    {
+        var result = _extensionTaskChannel.Writer.TryWrite(() => Backchannel.DisplayCancellationMessageAsync(_cancellationToken));
+        Debug.Assert(result);
+        _consoleInteractionService.DisplayCancellationMessage(message, consoleOverride);
+    }
+
+    public void DisplayEmptyLine()
+    {
+        var result = _extensionTaskChannel.Writer.TryWrite(() => Backchannel.DisplayEmptyLineAsync(_cancellationToken));
+        Debug.Assert(result);
+        _consoleInteractionService.DisplayEmptyLine();
+    }
+
+    public void OpenEditor(string path)
+    {
+        var result = _extensionTaskChannel.Writer.TryWrite(() => Backchannel.OpenEditorAsync(path, _cancellationToken));
+        Debug.Assert(result);
+    }
+
+    public void DisplayPlainText(string text)
+    {
+        var result = _extensionTaskChannel.Writer.TryWrite(() => Backchannel.DisplayPlainTextAsync(text, _cancellationToken));
+        Debug.Assert(result);
+        _consoleInteractionService.DisplayPlainText(text);
+    }
+
+    public ConsoleOutput Console
+    {
+        get => _consoleInteractionService.Console;
+        set => _consoleInteractionService.Console = value;
+    }
+
+    // The extension's local stdout/stderr stream is mirrored into VS Code's debug console,
+    // which displays OSC-8 terminal hyperlinks as raw text instead of rendering them.
+    public bool SupportsLinks => false;
+
+    public void DisplayRawText(string text, ConsoleOutput? consoleOverride = null)
+    {
+        var result = _extensionTaskChannel.Writer.TryWrite(() => Backchannel.DisplayPlainTextAsync(text, _cancellationToken));
+        Debug.Assert(result);
+        _consoleInteractionService.DisplayRawText(text, consoleOverride);
+    }
+
+    public void DisplayMarkdown(string markdown, ConsoleOutput? consoleOverride = null, int? maxWidth = null)
+    {
+        // Send raw markdown to extension (it can handle markdown natively)
+        // Convert to Spectre markup for console display
+        var result = _extensionTaskChannel.Writer.TryWrite(() => Backchannel.LogMessageAsync(LogLevel.Information, markdown, _cancellationToken));
+        Debug.Assert(result);
+        _consoleInteractionService.DisplayMarkdown(markdown, consoleOverride, maxWidth);
+    }
+
+    public void DisplayMarkupLine(string markup)
+    {
+        // Strip markup for backchannel, display as-is to console
+        var result = _extensionTaskChannel.Writer.TryWrite(() => Backchannel.LogMessageAsync(LogLevel.Information, StringUtils.RemoveMarkup(markup), _cancellationToken));
+        Debug.Assert(result);
+        _consoleInteractionService.DisplayMarkupLine(markup);
+    }
+
+    public void DisplayVersionUpdateNotification(string newerVersion, string? updateCommand = null)
+    {
+        _consoleInteractionService.DisplayVersionUpdateNotification(newerVersion, updateCommand);
+    }
+
+    public void DisplayRenderable(IRenderable renderable)
+    {
+        _consoleInteractionService.DisplayRenderable(renderable);
+    }
+
+    public Task DisplayLiveAsync(IRenderable initialRenderable, Func<Action<IRenderable>, Task> callback)
+    {
+        return _consoleInteractionService.DisplayLiveAsync(initialRenderable, callback);
+    }
+
+    public void LogMessage(LogLevel logLevel, string message)
+    {
+        var result = _extensionTaskChannel.Writer.TryWrite(() => Backchannel.LogMessageAsync(logLevel, StringUtils.RemoveMarkup(message), _cancellationToken));
+        Debug.Assert(result);
+    }
+
+    public Task LaunchAppHostAsync(string projectFile, List<string> arguments, List<EnvVar> environment, bool debug)
+    {
+        return Backchannel.LaunchAppHostAsync(projectFile, arguments, environment, debug, _cancellationToken);
+    }
+
+    public void WriteConsoleLog(string message, int? lineNumber = null, string? type = null, bool isErrorMessage = false)
+    {
+        _consoleInteractionService.WriteConsoleLog(message, lineNumber, type, isErrorMessage);
+    }
+
+    public void NotifyAppHostStartupCompleted()
+    {
+        var result = _extensionTaskChannel.Writer.TryWrite(() => Backchannel.NotifyAppHostStartupCompletedAsync(_cancellationToken));
+        Debug.Assert(result);
+    }
+
+    public void DisplayConsolePlainText(string message)
+    {
+        _consoleInteractionService.DisplayPlainText(message);
+    }
+
+    public Task StartDebugSessionAsync(string workingDirectory, string? projectFile, bool debug, DebugSessionOptions? options = null)
+    {
+        return Backchannel.StartDebugSessionAsync(workingDirectory, projectFile, debug, options, _cancellationToken);
+    }
+
+    public void WriteDebugSessionMessage(string message, bool stdout, string? textStyle)
+    {
+        var result = _extensionTaskChannel.Writer.TryWrite(() => Backchannel.WriteDebugSessionMessageAsync(StringUtils.RemoveMarkup(message), stdout, textStyle, _cancellationToken));
+        Debug.Assert(result);
+    }
+
+    public void WriteAppHostLogEntry(ExtensionAppHostLogEntry entry)
+    {
+        var result = _extensionTaskChannel.Writer.TryWrite(async () => await Backchannel.WriteAppHostLogEntryAsync(entry, _cancellationToken).ConfigureAwait(false));
+        Debug.Assert(result);
+    }
+
+    private async Task ProcessExtensionTaskChannelAsync()
+    {
+        try
+        {
+            while (await _extensionTaskChannel.Reader.WaitToReadAsync(_cancellationToken).ConfigureAwait(false))
+            {
+                try
+                {
+                    var taskFunction = await _extensionTaskChannel.Reader.ReadAsync().ConfigureAwait(false);
+                    await taskFunction.Invoke();
+                }
+                catch (Exception ex) when (ex is not ExtensionOperationCanceledException)
+                {
+                    try
+                    {
+                        await Backchannel.DisplayErrorAsync(StringUtils.RemoveMarkup(ex.Message), _cancellationToken);
+                    }
+                    catch (Exception displayErrorException)
+                    {
+                        // Keep the single-reader pump alive even when the extension connection is
+                        // already broken; otherwise the final flush sentinel can never be processed.
+                        _logger.LogDebug(displayErrorException, "Failed to display an extension operation error through the extension backchannel.");
+                    }
+
+                    _consoleInteractionService.DisplayError(ex.Message);
+                }
+            }
+        }
+        catch (OperationCanceledException) when (_cancellationToken.IsCancellationRequested)
+        {
+            // Expected during disposal — the channel was completed and/or the token cancelled.
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error in extension task channel processing loop.");
+        }
+    }
+
+    public void Dispose()
+    {
+        _extensionTaskChannel.Writer.TryComplete();
+        _cts.Cancel();
+        _cts.Dispose();
+    }
+}

@@ -1,0 +1,59 @@
+﻿@using Aspire.Dashboard.Extensions
+@using Aspire.Dashboard.Resources
+
+@if (Virtualize)
+{
+    @* Focusable scroll region: the virtualized text/code overflows and scrolls, so it must be
+       reachable and operable by keyboard (WCAG 2.1.1 scrollable-region-focusable). Mirrors the
+       console log scroll region in LogViewer.razor. *@
+    <div class="log-overflow @(IsUnformatted ? "text-visualizer-unformatted" : null)" tabindex="0" role="region" aria-label="@Loc[nameof(ControlsStrings.TextVisualizerContentLabel)]">
+        <div class="log-container @(NoWrap ? "text-visualizer-no-wrap" : null)" @ref="_containerElement">
+            <Virtualize @ref="VirtualizeRef" Items="@(!DisplayUnformatted ? ViewModel.FormattedLines : ViewModel.Lines)" ItemSize="20" OverscanCount="100" ItemContent="@RenderLogLine">
+            </Virtualize>
+        </div>
+    </div>
+}
+else
+{
+    <div class="log-container @(IsUnformatted ? "text-visualizer-unformatted" : null) @(NoWrap ? "text-visualizer-no-wrap" : null)" @ref="_containerElement">
+        @foreach (var item in !DisplayUnformatted ? ViewModel.FormattedLines : ViewModel.Lines)
+        {
+            @RenderLogLine(item)
+        }
+    </div>
+}
+
+@{
+    RenderFragment RenderLogLine(StringLogLine context)
+    {
+        return@<div>
+        @if (_isInitialized)
+        {
+                <div class="log-line-row-container">
+                    <div class="log-line-row">
+                        <span class="log-line-area">
+                            @if (!HideLineNumbers)
+                            {
+                                <span class="log-line-number text-visualizer-line-number">@context.LineNumber</span>
+                            }
+                            @if (context.FormatKind != DashboardUIHelpers.PlaintextFormat)
+                            {
+                                // data-content and data-language used in javascript when re-highlighting a node when its
+                                // content changes (through scrolling)
+                                <span class="@GetLogContentClass()" data-content="@context.Content" data-language="@context.FormatKind">
+                                    @context.Content
+                                </span>
+                             }
+                             else
+                             {
+                                 <span class="log-content">
+                                     @GetFormattedPlaintext(context)
+                                 </span>
+                             }
+                         </span>
+                     </div>
+                </div>
+        }
+        </div>;
+    }
+}

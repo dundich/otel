@@ -1,0 +1,175 @@
+﻿@using Aspire.Dashboard.Components.Controls.Grid
+@using Aspire.Dashboard.Resources
+@inject IStringLocalizer<ControlsStrings> Loc
+@inject IStringLocalizer<Dialogs> DialogsLoc
+
+<div class="details-layout span-details-layout">
+    @if (!HideToolbar)
+    {
+        <div class="details-toolbar" role="toolbar">
+            <div>
+                @Loc[nameof(ControlsStrings.SpanDetailsResourceLabel)] <strong>@ViewModel.Span.Source.Resource.ResourceName</strong>
+            </div>
+            <div>
+                @Loc[nameof(ControlsStrings.SpanDetailsDurationLabel)] <strong>@DurationFormatter.FormatDuration(ViewModel.Span.Duration, CultureInfo.CurrentCulture)</strong>
+            </div>
+            <div>
+                @{
+                    // Start time for root span is zero. We don't want to display the smallest unit (0μs) because that looks odd. Use the unit from duration.
+                    var startTime = ViewModel.Span.StartTime - ViewModel.Span.Trace.FirstSpan.StartTime;
+                    var formattedStartTime = startTime > TimeSpan.Zero ? DurationFormatter.FormatDuration(startTime, CultureInfo.CurrentCulture) : $"0{DurationFormatter.GetUnit(ViewModel.Span.Duration)}";
+                }
+                @Loc[nameof(ControlsStrings.SpanDetailsStartTimeLabel)] <strong>@formattedStartTime</strong>
+            </div>
+            <div class="toolbar-end">
+                <FluentTextInput TextInputType="TextInputType.Search" Placeholder="@Loc[nameof(ControlsStrings.FilterPlaceholder)]"
+                              Immediate="true"
+                              Autofocus="true"
+                              AutoComplete="off"
+                              @bind-Value="_filter">
+                    <StartTemplate>
+                        <FluentIcon Value="@(new Icons.Regular.Size16.Search())" Color="Color.Primary" />
+                    </StartTemplate>
+                </FluentTextInput>
+                <AspireMenuButton ButtonAppearance="ButtonAppearance.Default"
+                                  ButtonClass="toolbar-button details-toolbar-button span-details-actions"
+                                  Icon="@(new Icons.Regular.Size20.Options())"
+                                  ItemsProvider="@(() => _spanActionsMenuItems)"
+                                  Title="@Loc[nameof(ControlsStrings.ActionsButtonText)]" />
+            </div>
+        </div>
+    }
+    <div class="property-grid-container">
+        <FluentAccordion Block="true">
+            <AspirePropertyDetailsAccordionItem Header="@Loc[nameof(ControlsStrings.SpanDetailsSpanHeader)]"
+                                                Count="@FilteredItems.Count()"
+                                                Expanded="true">
+                <PropertyGrid TItem="TelemetryPropertyViewModel"
+                              Items="@FilteredItems"
+                              GridTemplateColumns="1fr 2fr"
+                              HighlightText="@_filter"
+                              ValueComponents="_valueComponents" />
+            </AspirePropertyDetailsAccordionItem>
+            <AspirePropertyDetailsAccordionItem Header="@Loc[nameof(ControlsStrings.SpanDetailsContextHeader)]"
+                                                Count="@FilteredContextItems.Count()"
+                                                Expanded="true">
+                <PropertyGrid TItem="TelemetryPropertyViewModel"
+                              Items="@FilteredContextItems"
+                              GridTemplateColumns="1fr 2fr"
+                              HighlightText="@_filter"
+                              ValueComponents="@_valueComponents" />
+            </AspirePropertyDetailsAccordionItem>
+            <AspirePropertyDetailsAccordionItem Header="@Loc[nameof(ControlsStrings.SpanDetailsResourceHeader)]"
+                                                Count="@FilteredResourceItems.Count()"
+                                                Expanded="true">
+                <PropertyGrid TItem="TelemetryPropertyViewModel"
+                              Items="@FilteredResourceItems"
+                              GridTemplateColumns="1fr 2fr"
+                              HighlightText="@_filter"
+                              ValueComponents="@_valueComponents" />
+            </AspirePropertyDetailsAccordionItem>
+            <AspirePropertyDetailsAccordionItem Header="@Loc[nameof(ControlsStrings.SpanDetailsEventsHeader)]"
+                                                Count="@FilteredSpanEvents.Count()"
+                                                Expanded="@_isSpanEventsExpanded">
+                <PropertyGrid TItem="OtlpSpanEvent"
+                              Items="@FilteredSpanEvents"
+                              GridTemplateColumns="1fr 2fr"
+                              NameColumnTitle="@(Loc[nameof(ControlsStrings.TimeOffsetColumnHeader)])"
+                              ValueColumnTitle="@(Loc[nameof(ControlsStrings.EventColumnHeader)])"
+                              IsNameSortable="false"
+                              IsValueSortable="false"
+                              HighlightText="@_filter"
+                              Multiline="true">
+                    <ExtraValueContent>
+                        @if (context.Attributes.Length > 0)
+                        {
+                            <PropertyGrid TItem="OtlpSpanAttributeItem"
+                                          Items="@OtlpSpanAttributeItem.CreateItems(context.Attributes, ViewModel.Span.Attributes)"
+                                          GridTemplateColumns="1fr 2fr"
+                                          IsNameSortable="false"
+                                          IsValueSortable="false"
+                                          GenerateHeader="DataGridGeneratedHeaderType.Default" />
+                        }
+                    </ExtraValueContent>
+                </PropertyGrid>
+            </AspirePropertyDetailsAccordionItem>
+            <AspirePropertyDetailsAccordionItem Header="@Loc[nameof(ControlsStrings.SpanDetailsLinksHeader)]"
+                                                Count="@FilteredSpanLinks.Count()"
+                                                Expanded="@_isSpanLinksExpanded">
+                <DisposalSafeFluentDataGrid
+                                HeaderCellAsButtonWithMenu="true"
+                                ResizeType="DataGridResizeType.Discrete"
+                                ResizableColumns="true"
+                                TGridItem="SpanLinkViewModel"
+                                ItemsProvider="@EnumerableGridItemsProvider.Create(() => FilteredSpanLinks)"
+                                Style="width:100%"
+                                RowSize="DataGridRowSize.Medium"
+                                GridTemplateColumns="4fr 1fr"
+                                ShowHover="true"
+                                Multiline="true">
+                    <AspireTemplateColumn Title="@Loc[nameof(ControlsStrings.SpanDetailsSpanColumnHeader)]">
+                        @WriteSpanLink(context)
+                    </AspireTemplateColumn>
+                    <AspireTemplateColumn Title="@Loc[nameof(ControlsStrings.SpanDetailsDetailsColumnHeader)]">
+                        <FluentButton OnClick="@(() => OnViewDetailsAsync(context))" Appearance="ButtonAppearance.Transparent" Class="button-hyperlink" IconStart="new Icons.Regular.Size16.GanttChart()">
+                            @OtlpHelpers.ToShortenedId(context.SpanId)
+                        </FluentButton>
+                    </AspireTemplateColumn>
+                </DisposalSafeFluentDataGrid>
+            </AspirePropertyDetailsAccordionItem>
+            <AspirePropertyDetailsAccordionItem Header="@Loc[nameof(ControlsStrings.SpanDetailsBacklinksHeader)]"
+                                                Count="@FilteredSpanBacklinks.Count()"
+                                                Expanded="@_isSpanBacklinksExpanded">
+                <DisposalSafeFluentDataGrid
+                                HeaderCellAsButtonWithMenu="true"
+                                ResizeType="DataGridResizeType.Discrete"
+                                ResizableColumns="true"
+                                TGridItem="SpanLinkViewModel"
+                                ItemsProvider="@EnumerableGridItemsProvider.Create(() => FilteredSpanBacklinks)"
+                                Style="width:100%"
+                                RowSize="DataGridRowSize.Medium"
+                                GridTemplateColumns="4fr 1fr"
+                                ShowHover="true"
+                                Multiline="true">
+                    <AspireTemplateColumn Title="@Loc[nameof(ControlsStrings.SpanDetailsSpanColumnHeader)]">
+                        @WriteSpanLink(context)
+                    </AspireTemplateColumn>
+                    <AspireTemplateColumn Title="@Loc[nameof(ControlsStrings.SpanDetailsDetailsColumnHeader)]">
+                        <FluentButton OnClick="@(() => OnViewDetailsAsync(context))" Appearance="ButtonAppearance.Transparent" Class="button-hyperlink" IconStart="new Icons.Regular.Size16.GanttChart()">
+                            @OtlpHelpers.ToShortenedId(context.SpanId)
+                        </FluentButton>
+                    </AspireTemplateColumn>
+                </DisposalSafeFluentDataGrid>
+            </AspirePropertyDetailsAccordionItem>
+        </FluentAccordion>
+    </div>
+</div>
+
+@code {
+    RenderFragment WriteSpanLink(SpanLinkViewModel context)
+    {
+        var content = context.Span != null
+            ? SpanWaterfallViewModel.GetTitle(context.Span, ViewModel.Resources)
+            : $"{Loc[nameof(ControlsStrings.SpanDetailsSpanPrefix)]}: {OtlpHelpers.ToShortenedId(context.SpanId)}";
+        var color = context.Span != null
+            ? ColorGenerator.Instance.GetColorVariableByKey(OtlpResource.GetResourceName(context.Span.Source, ViewModel.Resources))
+            : "transparent";
+
+        return @<div>
+        <div class="spanlink-container" style="height:32px;">
+            <span class="spanlink-text" data-tooltip="@content" style="padding-left:5px; border-left-width: 5px; border-left-style: solid; border-left-color: @(color);">
+                @content
+            </span>
+        </div>
+        @if (context.Attributes.Length > 0)
+        {
+            <PropertyGrid TItem="OtlpSpanAttributeItem"
+                          Items="@OtlpSpanAttributeItem.CreateItems(context.Attributes, context.Span?.Attributes ?? [])"
+                          GridTemplateColumns="1fr 2fr"
+                          IsNameSortable="false"
+                          IsValueSortable="false"
+                          GenerateHeader="DataGridGeneratedHeaderType.Default" />
+        }
+    </div>;
+    }
+}

@@ -1,0 +1,107 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="es" original="../McpCommandStrings.resx">
+    <body>
+      <trans-unit id="CallCommand_Description">
+        <source>Call an MCP tool on a running resource</source>
+        <target state="translated">Llamar a una herramienta MCP en un recurso en ejecución</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="CallCommand_InputOptionDescription">
+        <source>JSON input to pass to the tool</source>
+        <target state="translated">Entrada JSON que se va a pasar a la herramienta</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="CallCommand_ResourceArgumentDescription">
+        <source>The name of the resource that exposes the MCP tool</source>
+        <target state="translated">Nombre del recurso que expone la herramienta MCP</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="CallCommand_ToolArgumentDescription">
+        <source>The name of the MCP tool to call</source>
+        <target state="translated">Nombre de la herramienta MCP a la que se va a llamar</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DeprecatedCommandWarning">
+        <source>Warning: 'aspire mcp' commands are deprecated and will be removed in a future release. Please use 'aspire agent' instead.</source>
+        <target state="translated">Advertencia: los comandos "mcp" están en desuso y se quitarán en una versión futura. En su lugar, use "agente aspire" en su lugar.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="Description">
+        <source>Interact with MCP (Model Context Protocol) tools exposed by Aspire resources</source>
+        <target state="translated">Interacción con las herramientas MCP (Protocolo de contexto de modelo) expuestas por los recursos de Aspire</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InitCommand_AdditionalOptionsSelectPrompt">
+        <source>Which additional options do you want to enable?</source>
+        <target state="translated">¿Qué opciones adicionales desea habilitar?</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InitCommand_AgentConfigurationSelectPrompt">
+        <source>Which agent environments do you want to configure?</source>
+        <target state="translated">¿Qué entornos de agente desea configurar?</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InitCommand_ConfigurationComplete">
+        <source>Agent environment configuration complete.</source>
+        <target state="translated">Se completó la configuración del entorno del agente.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InitCommand_ConfigurePlaywrightPrompt">
+        <source>Install Playwright CLI for browser automation?</source>
+        <target state="translated">¿Instalar la CLI de Playwright para la automatización del explorador?</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InitCommand_CreateAgentInstructionsPrompt">
+        <source>Create agent environment specific instruction files?</source>
+        <target state="translated">¿Crear archivos de instrucciones específicos del entorno del agente?</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InitCommand_Description">
+        <source>Initialize MCP server configuration for detected agent environments (deprecated, use 'agent init')</source>
+        <target state="translated">Inicializar la configuración del servidor MCP para los entornos de agente detectados (en desuso, use "agent init")</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InitCommand_DetectingAgentEnvironments">
+        <source>Detecting agent environments...</source>
+        <target state="translated">Detectando entornos de agente...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InitCommand_NoAgentEnvironmentsDetected">
+        <source>No agent environments were detected.</source>
+        <target state="translated">No se detectó ningún entorno de agente.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InitCommand_WorkspaceRootNotFound">
+        <source>Directory not found: {0}</source>
+        <target state="translated">Directorio no encontrado: {0}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InitCommand_WorkspaceRootPrompt">
+        <source>Enter the path to the root of your workspace:</source>
+        <target state="translated">Escriba la ruta de acceso a la raíz del área de trabajo:</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InitCommand_WorkspaceRootRequired">
+        <source>Workspace root path is required.</source>
+        <target state="translated">Se requiere la ruta de acceso raíz del área de trabajo.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="StartCommand_Description">
+        <source>Start the MCP (Model Context Protocol) server (deprecated, use 'agent mcp')</source>
+        <target state="translated">Inicie el servidor MCP (Protocolo de contexto de modelo) (en desuso, use "agent mcp")</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ToolsCommand_Description">
+        <source>List MCP tools exposed by running resources</source>
+        <target state="translated">Enumeración de las herramientas MCP expuestas por la ejecución de recursos</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ToolsCommand_FormatOptionDescription">
+        <source>Output format (Table or Json)</source>
+        <target state="translated">Formato de salida (Tabla o JSON)</target>
+        <note />
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

@@ -1,0 +1,833 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+using System.Text.RegularExpressions;
+using System.Globalization;
+using System.Runtime.ExceptionServices;
+using Aspire.DashboardService.Proto.V1;
+using Google.Protobuf.Collections;
+using Google.Protobuf.WellKnownTypes;
+using Grpc.Core;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using static Aspire.Hosting.Interaction;
+
+#pragma warning disable ASPIRETERMINAL001 // Internal consumer of the experimental AppHost terminal API.
+
+// Aspire.Hosting.ApplicationModel cannot be imported wholesale: it declares TerminalDescriptor and TerminalChangeType,
+// which collide with the identically named proto types this file converts them into. Alias the individual types
+// instead, so the AppHost-side names read cleanly and the proto names stay unqualified.
+using AppHostTerminalChange = Aspire.Hosting.ApplicationModel.TerminalChange;
+using AppHostTerminalChangeType = Aspire.Hosting.ApplicationModel.TerminalChangeType;
+using AppHostTerminalDescriptor = Aspire.Hosting.ApplicationModel.TerminalDescriptor;
+using AppHostTerminalSnapshot = Aspire.Hosting.ApplicationModel.TerminalSnapshot;
+using TerminalService = Aspire.Hosting.ApplicationModel.TerminalService;
+
+namespace Aspire.Hosting.Dashboard;
+
+/// <summary>
+/// Implements a gRPC service that a dashboard can consume.
+/// </summary>
+/// <remarks>
+/// An instance of this type is created for every gRPC service call, so it may not hold onto any state
+/// required beyond a single request. Longer-scoped data is stored in <see cref="DashboardServiceData"/>.
+/// </remarks>
+/// <remarks>
+/// Types from <c>Aspire.Hosting.ApplicationModel</c> are qualified rather than imported: several of them
+/// (<c>TerminalDescriptor</c>, <c>TerminalChangeType</c>) share a name with their generated protobuf
+/// counterparts, and importing both namespaces would make every bare use ambiguous.
+/// </remarks>
+[Authorize(Policy = ResourceServiceApiKeyAuthorization.PolicyName)]
+internal sealed partial class DashboardService(DashboardServiceData serviceData, IHostEnvironment hostEnvironment, IHostApplicationLifetime hostApplicationLifetime, IConfiguration configuration, ILogger<DashboardService> logger, IInteractionFileUploadStore fileUploadStore, TerminalService terminalService)
+    : Aspire.DashboardService.Proto.V1.DashboardService.DashboardServiceBase
+{
+    // gRPC has a maximum receive size of 4MB. Force logs into batches to avoid exceeding receive size.
+    // Protobuf sends strings as UTF8. Be conservative and assume the average character byte size is 2.
+    public const int LogMaxBatchCharacters = 1024 * 1024 * 2;
+
+    internal const int CloseTerminalTimeoutSeconds = 10;
+
+    /// <summary>
+    /// The minimum dashboard version required by this AppHost build.
+    /// Bump this when a new AppHost feature requires a newer dashboard.
+    /// </summary>
+    internal const string MinRequiredDashboardVersion = "13.5.0";
+
+    // Calls that consume or produce streams must create a linked cancellation token
+    // with IHostApplicationLifetime.ApplicationStopping to ensure eager cancellation
+    // of pending connections during shutdown.
+
+    [GeneratedRegex("""^(?<name>.+?)\.?AppHost$""", RegexOptions.ExplicitCapture | RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant)]
+    private static partial Regex ApplicationNameRegex();
+
+    public override Task<ApplicationInformationResponse> GetApplicationInformation(
+        ApplicationInformationRequest request,
+        ServerCallContext context)
+    {
+        // Read the application name from configuration if available, otherwise fall back to the environment
+        var applicationName = configuration["AppHost:DashboardApplicationName"] ?? hostEnvironment.ApplicationName;
+
+        return Task.FromResult(new ApplicationInformationResponse
+        {
+            ApplicationName = GetDashboardApplicationName(applicationName),
+            MinDashboardVersion = MinRequiredDashboardVersion
+        });
+    }
+
+    internal static string GetDashboardApplicationName(string applicationName)
+    {
+        return ApplicationNameRegex().Match(applicationName) switch
+        {
+            Match { Success: true } match => match.Groups["name"].Value,
+            _ => applicationName
+        };
+    }
+
+    public override async Task WatchInteractions(IAsyncStreamReader<WatchInteractionsRequestUpdate> requestStream, IServerStreamWriter<WatchInteractionsResponseUpdate> responseStream, ServerCallContext context)
+    {
+        await ExecuteAsync(
+            WatchInteractionsInternal,
+            context).ConfigureAwait(false);
+
+        async Task WatchInteractionsInternal(CancellationToken cancellationToken)
+        {
+            var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            var updates = serviceData.SubscribeInteractionUpdates();
+
+            // Send
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await foreach (var interaction in updates.WithCancellation(cts.Token).ConfigureAwait(false))
+                    {
+                        var change = new WatchInteractionsResponseUpdate();
+                        change.InteractionId = interaction.InteractionId;
+                        change.Title = interaction.Title;
+                        if (interaction.Message != null)
+                        {
+                            change.Message = interaction.Message;
+                        }
+                        if (interaction.Options.PrimaryButtonText != null)
+                        {
+                            change.PrimaryButtonText = interaction.Options.PrimaryButtonText;
+                        }
+                        if (interaction.Options.SecondaryButtonText != null)
+                        {
+                            change.SecondaryButtonText = interaction.Options.SecondaryButtonText;
+                        }
+                        change.ShowDismiss = interaction.Options.ShowDismiss ?? true;
+                        change.ShowSecondaryButton = interaction.Options.ShowSecondaryButton ?? true;
+                        change.EnableMessageMarkdown = interaction.Options.EnableMessageMarkdown ?? false;
+
+                        if (interaction.State == InteractionState.Complete)
+                        {
+                            change.Complete = new InteractionComplete();
+                        }
+                        else if (interaction.InteractionInfo is MessageBoxInteractionInfo messageBox)
+                        {
+                            change.MessageBox = new InteractionMessageBox();
+                            change.MessageBox.Intent = MapMessageIntent(messageBox.Intent);
+                        }
+                        else if (interaction.InteractionInfo is NotificationInteractionInfo notification)
+                        {
+                            change.Notification = new InteractionNotification();
+                            change.Notification.Intent = MapMessageIntent(notification.Intent);
+                            if (notification.LinkText != null)
+                            {
+                                change.Notification.LinkText = notification.LinkText;
+                            }
+                            if (notification.LinkUrl != null)
+                            {
+                                change.Notification.LinkUrl = notification.LinkUrl;
+                            }
+                            change.Notification.RelatedResourceNames.AddRange(notification.RelatedResourceNames);
+                        }
+                        else if (interaction.InteractionInfo is InputsInteractionInfo inputs)
+                        {
+                            change.InputsDialog = new InteractionInputsDialog();
+
+                            // Find all the inputs that are depended on.
+                            // These inputs value changing will cause the interaction to be sent to the server.
+                            var updateStateOnChangeInputs = inputs.Inputs
+                                .SelectMany(i => i.DynamicLoading?.DependsOnInputs ?? [])
+                                .ToList();
+
+                            var maxFileUploadSize = FileUploadHelpers.GetMaxFileUploadSize(configuration);
+                            var inputInstances = inputs.Inputs.Select(input => CreateInteractionInputDto(input, updateStateOnChangeInputs, maxFileUploadSize)).ToList();
+                            change.InputsDialog.InputItems.AddRange(inputInstances);
+                        }
+                        else if (interaction.InteractionInfo is ProgressInteractionInfo)
+                        {
+                            change.PromptProgress = new InteractionPromptProgress();
+                        }
+                        else if (interaction.InteractionInfo is TerminalInteractionInfo terminal)
+                        {
+                            change.PromptTerminal = new InteractionPromptTerminal { TerminalId = terminal.TerminalId };
+                        }
+
+                        await responseStream.WriteAsync(change, cts.Token).ConfigureAwait(false);
+                    }
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    logger.LogError(ex, "Error while watching interactions.");
+                }
+                finally
+                {
+                    cts.Cancel();
+                }
+            }, cts.Token);
+
+            // Receive
+            try
+            {
+                await foreach (var request in requestStream.ReadAllAsync(cts.Token).ConfigureAwait(false))
+                {
+                    await serviceData.SendInteractionRequestAsync(request, cts.Token).ConfigureAwait(false);
+                }
+            }
+            finally
+            {
+                // Ensure the write task is cancelled if we exit the loop.
+                cts.Cancel();
+            }
+        }
+    }
+
+    private static Aspire.DashboardService.Proto.V1.MessageIntent MapMessageIntent(Aspire.Hosting.MessageIntent? intent)
+    {
+        if (intent is null)
+        {
+            return Aspire.DashboardService.Proto.V1.MessageIntent.None;
+        }
+
+        return intent.Value switch
+        {
+            Aspire.Hosting.MessageIntent.Success => Aspire.DashboardService.Proto.V1.MessageIntent.Success,
+            Aspire.Hosting.MessageIntent.Warning => Aspire.DashboardService.Proto.V1.MessageIntent.Warning,
+            Aspire.Hosting.MessageIntent.Error => Aspire.DashboardService.Proto.V1.MessageIntent.Error,
+            Aspire.Hosting.MessageIntent.Information => Aspire.DashboardService.Proto.V1.MessageIntent.Information,
+            Aspire.Hosting.MessageIntent.Confirmation => Aspire.DashboardService.Proto.V1.MessageIntent.Confirmation,
+            _ => Aspire.DashboardService.Proto.V1.MessageIntent.None,
+        };
+    }
+
+    internal static Aspire.DashboardService.Proto.V1.InteractionInput CreateInteractionInputDto(Aspire.Hosting.InteractionInput input, IReadOnlyList<string>? updateStateOnChangeInputs = null, long? maxFileUploadSize = null)
+    {
+        var updateStateOnChange = updateStateOnChangeInputs?.Any(i => string.Equals(i, input.Name, StringComparisons.InteractionInputName)) == true;
+
+        var dto = new Aspire.DashboardService.Proto.V1.InteractionInput
+        {
+            Name = input.Name,
+            InputType = MapInputType(input.InputType),
+            Required = input.Required,
+            AllowCustomChoice = input.AllowCustomChoice,
+            UpdateStateOnChange = updateStateOnChange,
+            Disabled = input.Disabled
+        };
+        if (input.EffectiveLabel != null)
+        {
+            dto.Label = input.EffectiveLabel;
+        }
+        if (input.Description != null)
+        {
+            dto.Description = input.Description;
+            dto.EnableDescriptionMarkdown = input.EnableDescriptionMarkdown;
+        }
+        if (input.Placeholder != null)
+        {
+            dto.Placeholder = input.Placeholder;
+        }
+        if (input.Value != null)
+        {
+            dto.Value = input.Value;
+        }
+        if (input.Options != null)
+        {
+            dto.Options.Add(input.Options.ToDictionary());
+        }
+        if (input.DynamicLoadingState is { } providerState)
+        {
+            dto.Loading = providerState.Loading;
+        }
+        if (input.MaxLength != null)
+        {
+            dto.MaxLength = input.MaxLength.Value;
+        }
+        if (input.MaxFileSize != null)
+        {
+            // Cap the per-input MaxFileSize at the configured server-side upload limit.
+            var effectiveMaxFileSize = maxFileUploadSize.HasValue
+                ? Math.Min(input.MaxFileSize.Value, maxFileUploadSize.Value)
+                : input.MaxFileSize.Value;
+            dto.MaxFileSize = effectiveMaxFileSize;
+        }
+        else if (maxFileUploadSize.HasValue && input.InputType == InputType.File)
+        {
+            // If no per-input limit is set but a server-side limit exists, apply it.
+            dto.MaxFileSize = maxFileUploadSize.Value;
+        }
+        if (input.AllowMultipleFiles)
+        {
+            dto.AllowMultipleFiles = true;
+        }
+        if (!string.IsNullOrEmpty(input.FileFilter))
+        {
+            dto.FileFilter = input.FileFilter;
+        }
+        if (input.RelatedResourceName is not null)
+        {
+            dto.RelatedResourceName = input.RelatedResourceName;
+        }
+        dto.ValidationErrors.AddRange(input.ValidationErrors);
+        return dto;
+    }
+
+    internal static Aspire.DashboardService.Proto.V1.InputType MapInputType(Aspire.Hosting.InputType inputType)
+    {
+        return inputType switch
+        {
+            Aspire.Hosting.InputType.Text => Aspire.DashboardService.Proto.V1.InputType.Text,
+            Aspire.Hosting.InputType.SecretText => Aspire.DashboardService.Proto.V1.InputType.SecretText,
+            Aspire.Hosting.InputType.Choice => Aspire.DashboardService.Proto.V1.InputType.Choice,
+            Aspire.Hosting.InputType.Boolean => Aspire.DashboardService.Proto.V1.InputType.Boolean,
+            Aspire.Hosting.InputType.Number => Aspire.DashboardService.Proto.V1.InputType.Number,
+            Aspire.Hosting.InputType.File => Aspire.DashboardService.Proto.V1.InputType.File,
+            _ => throw new InvalidOperationException($"Unexpected input type: {inputType}"),
+        };
+    }
+
+    public static Aspire.Hosting.InputType MapInputType(Aspire.DashboardService.Proto.V1.InputType inputType)
+    {
+        return inputType switch
+        {
+            Aspire.DashboardService.Proto.V1.InputType.Text => InputType.Text,
+            Aspire.DashboardService.Proto.V1.InputType.SecretText => InputType.SecretText,
+            Aspire.DashboardService.Proto.V1.InputType.Choice => InputType.Choice,
+            Aspire.DashboardService.Proto.V1.InputType.Boolean => InputType.Boolean,
+            Aspire.DashboardService.Proto.V1.InputType.Number => InputType.Number,
+            Aspire.DashboardService.Proto.V1.InputType.File => InputType.File,
+            _ => throw new InvalidOperationException($"Unexpected input type: {inputType}"),
+        };
+    }
+
+    public override async Task WatchResources(
+        WatchResourcesRequest request,
+        IServerStreamWriter<WatchResourcesUpdate> responseStream,
+        ServerCallContext context)
+    {
+        await ExecuteAsync(
+            WatchResourcesInternal,
+            context).ConfigureAwait(false);
+
+        async Task WatchResourcesInternal(CancellationToken cancellationToken)
+        {
+            var (initialData, updates) = serviceData.SubscribeResources();
+
+            var data = new InitialResourceData();
+
+            foreach (var resource in initialData)
+            {
+                data.Resources.Add(Resource.FromSnapshot(resource));
+            }
+
+            await responseStream.WriteAsync(new() { InitialData = data }, cancellationToken).ConfigureAwait(false);
+
+            await foreach (var batch in updates.WithCancellation(cancellationToken).ConfigureAwait(false))
+            {
+                var changes = new WatchResourcesChanges();
+
+                foreach (var update in batch)
+                {
+                    var change = new WatchResourcesChange();
+
+                    if (update.ChangeType is ResourceSnapshotChangeType.Upsert)
+                    {
+                        change.Upsert = Resource.FromSnapshot(update.Resource);
+                    }
+                    else if (update.ChangeType is ResourceSnapshotChangeType.Delete)
+                    {
+                        change.Delete = new() { ResourceName = update.Resource.Name, ResourceType = update.Resource.ResourceType };
+                    }
+                    else
+                    {
+                        throw new FormatException($"Unexpected {nameof(ResourceSnapshotChange)} type: {update.ChangeType}");
+                    }
+
+                    changes.Value.Add(change);
+                }
+
+                await responseStream.WriteAsync(new() { Changes = changes }, cancellationToken).ConfigureAwait(false);
+            }
+        }
+    }
+
+    public override async Task WatchResourceConsoleLogs(
+        WatchResourceConsoleLogsRequest request,
+        IServerStreamWriter<WatchResourceConsoleLogsUpdate> responseStream,
+        ServerCallContext context)
+    {
+        await ExecuteAsync(
+            cancellationToken => WatchResourceConsoleLogsInternal(request.SuppressFollow, cancellationToken),
+            context).ConfigureAwait(false);
+
+        async Task WatchResourceConsoleLogsInternal(bool suppressFollow, CancellationToken cancellationToken)
+        {
+            var enumerable = suppressFollow
+                ? serviceData.GetConsoleLogs(request.ResourceName)
+                : serviceData.SubscribeConsoleLogs(request.ResourceName);
+
+            if (enumerable is null)
+            {
+                return;
+            }
+
+            await foreach (var group in enumerable.WithCancellation(cancellationToken).ConfigureAwait(false))
+            {
+                var sentLines = 0;
+
+                while (sentLines < group.Count)
+                {
+                    var update = new WatchResourceConsoleLogsUpdate();
+                    var currentChars = 0;
+
+                    foreach (var (lineNumber, content, isErrorMessage) in group.Skip(sentLines))
+                    {
+                        // Truncate excessively long lines.
+                        var resolvedContent = content.Length > LogMaxBatchCharacters
+                            ? content[..LogMaxBatchCharacters]
+                            : content;
+
+                        // Count number of characters to figure out if batch exceeds the limit.
+                        // We could calculate byte size here with UTF8 encoding, but getting the exact size of the text and message
+                        // would be a bit more complicated. Character count plus a conservative limit should be fine.
+                        currentChars += resolvedContent.Length;
+
+                        if (currentChars <= LogMaxBatchCharacters)
+                        {
+                            update.LogLines.Add(new ConsoleLogLine() { LineNumber = lineNumber, Text = resolvedContent, IsStdErr = isErrorMessage });
+                            sentLines++;
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+
+                    await responseStream.WriteAsync(update, cancellationToken).ConfigureAwait(false);
+                }
+            }
+        }
+    }
+
+    public override async Task<ResourceCommandResponse> ExecuteResourceCommand(ResourceCommandRequest request, ServerCallContext context)
+    {
+        var (result, message, value, invalidArguments) = await serviceData.ExecuteCommandAsync(
+            request.ResourceName,
+            request.CommandName,
+            new ExecuteResourceCommandOptions
+            {
+                ArgumentValues = ConvertArgumentValues(request.Arguments),
+                NonInteractive = request.NonInteractive
+            },
+            context.CancellationToken).ConfigureAwait(false);
+        var responseKind = result switch
+        {
+            ExecuteCommandResultType.Success => ResourceCommandResponseKind.Succeeded,
+            ExecuteCommandResultType.Canceled => ResourceCommandResponseKind.Cancelled,
+            ExecuteCommandResultType.Failure when invalidArguments is not null => ResourceCommandResponseKind.InvalidArguments,
+            ExecuteCommandResultType.Failure => ResourceCommandResponseKind.Failed,
+            _ => ResourceCommandResponseKind.Undefined
+        };
+
+        var response = new ResourceCommandResponse
+        {
+            Kind = responseKind,
+            Message = message ?? string.Empty,
+        };
+
+#pragma warning disable CS0612 // Type or member is obsolete
+        response.ErrorMessage = message ?? string.Empty;
+#pragma warning restore CS0612 // Type or member is obsolete
+
+        if (value is not null)
+        {
+            static Aspire.DashboardService.Proto.V1.CommandResultFormat MapFormat(ApplicationModel.CommandResultFormat format) => format switch
+            {
+                ApplicationModel.CommandResultFormat.Text => Aspire.DashboardService.Proto.V1.CommandResultFormat.Text,
+                ApplicationModel.CommandResultFormat.Json => Aspire.DashboardService.Proto.V1.CommandResultFormat.Json,
+                ApplicationModel.CommandResultFormat.Markdown => Aspire.DashboardService.Proto.V1.CommandResultFormat.Markdown,
+                _ => Aspire.DashboardService.Proto.V1.CommandResultFormat.None
+            };
+
+            response.Result = new ResourceCommandResult
+            {
+                Value = value.Value,
+                Format = MapFormat(value.Format),
+                DisplayImmediately = value.DisplayImmediately
+            };
+        }
+
+        return response;
+    }
+
+    private static IReadOnlyDictionary<string, string?>? ConvertArgumentValues(MapField<string, Value> arguments)
+    {
+        if (arguments.Count == 0)
+        {
+            return null;
+        }
+
+        var values = new Dictionary<string, string?>(StringComparers.InteractionInputName);
+        foreach (var field in arguments)
+        {
+            values[field.Key] = ConvertArgumentValue(field.Key, field.Value);
+        }
+
+        return values;
+    }
+
+    private static string? ConvertArgumentValue(string name, Value value)
+    {
+        return value.KindCase switch
+        {
+            Value.KindOneofCase.StringValue => value.StringValue,
+            Value.KindOneofCase.NumberValue => value.NumberValue.ToString("R", CultureInfo.InvariantCulture),
+            Value.KindOneofCase.BoolValue => value.BoolValue ? "true" : "false",
+            Value.KindOneofCase.NullValue => null,
+            _ => throw new RpcException(new Status(StatusCode.InvalidArgument, $"Resource command argument '{name}' must be a string, number, boolean, or null."))
+        };
+    }
+
+    private async Task ExecuteAsync(Func<CancellationToken, Task> execute, ServerCallContext serverCallContext)
+    {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(hostApplicationLifetime.ApplicationStopping, serverCallContext.CancellationToken);
+
+        try
+        {
+            await execute(cts.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cts.Token.IsCancellationRequested)
+        {
+            // Ignore cancellation and just return.
+        }
+        catch (IOException) when (cts.Token.IsCancellationRequested)
+        {
+            // Ignore cancellation and just return. Cancelled writes throw IOException.
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error executing service method '{Method}'.", serverCallContext.Method);
+            throw;
+        }
+    }
+
+    public override async Task<UploadFileResponse> UploadFile(IAsyncStreamReader<UploadFileChunk> requestStream, ServerCallContext context)
+    {
+        var maxTotalUploadBytes = FileUploadHelpers.GetMaxFileUploadSize(configuration);
+
+        var cancellationToken = context.CancellationToken;
+        long totalBytesWritten = 0;
+        string? fileId = null;
+        int? interactionId = null;
+        FileStream? fileStream = null;
+
+        try
+        {
+            while (await requestStream.MoveNext(cancellationToken).ConfigureAwait(false))
+            {
+                var chunk = requestStream.Current;
+
+                // The first chunk carries the file name — create the store entry and file stream.
+                if (fileStream is null)
+                {
+                    if (string.IsNullOrEmpty(chunk.FileName))
+                    {
+                        throw new RpcException(new Status(StatusCode.InvalidArgument, "First chunk must include a file name."));
+                    }
+                    if (chunk.InteractionId <= 0)
+                    {
+                        throw new RpcException(new Status(StatusCode.InvalidArgument, "First chunk must include an interaction ID."));
+                    }
+                    if (string.IsNullOrEmpty(chunk.InputName))
+                    {
+                        throw new RpcException(new Status(StatusCode.InvalidArgument, "First chunk must include an input name."));
+                    }
+
+                    string path;
+                    interactionId = chunk.InteractionId;
+                    try
+                    {
+                        (fileId, path) = fileUploadStore.CreateEntry(chunk.FileName, interactionId.Value, chunk.InputName);
+                    }
+                    catch (InvalidOperationException ex)
+                    {
+                        throw new RpcException(new Status(StatusCode.FailedPrecondition, ex.Message));
+                    }
+                    fileStream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 81920, useAsync: true);
+                }
+
+                if (!chunk.Data.IsEmpty)
+                {
+                    totalBytesWritten += chunk.Data.Length;
+                    if (totalBytesWritten > maxTotalUploadBytes)
+                    {
+                        throw new RpcException(new Status(StatusCode.ResourceExhausted, $"Upload exceeds maximum allowed size of {maxTotalUploadBytes} bytes."));
+                    }
+
+                    await fileStream.WriteAsync(chunk.Data.Memory, cancellationToken).ConfigureAwait(false);
+                }
+            }
+
+            if (fileStream is null)
+            {
+                throw new RpcException(new Status(StatusCode.InvalidArgument, "Upload stream is empty."));
+            }
+
+            // Close and flush the file before marking the upload complete. If disposal fails,
+            // the catch path removes the entry so a partial upload is never retained.
+            await fileStream.DisposeAsync().ConfigureAwait(false);
+            fileStream = null;
+
+            fileUploadStore.CompleteUpload(interactionId!.Value, fileId!);
+
+            return new UploadFileResponse { FileId = fileId };
+        }
+        catch
+        {
+            // Dispose the stream before removing the entry so the file handle is closed
+            // before attempting deletion — on Windows, open handles prevent file deletion.
+            if (fileStream is not null)
+            {
+                try
+                {
+                    await fileStream.DisposeAsync().ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Failed to close incomplete uploaded file {FileId}.", fileId);
+                }
+            }
+
+            if (fileId is not null && interactionId is not null)
+            {
+                fileUploadStore.RemoveEntry(interactionId.Value, fileId);
+            }
+
+            throw;
+        }
+    }
+
+    public override async Task AttachTerminal(
+        IAsyncStreamReader<TerminalClientFrame> requestStream,
+        IServerStreamWriter<TerminalServerFrame> responseStream,
+        ServerCallContext context)
+    {
+        // Linked with ApplicationStopping so a tunnel that is otherwise idle does not keep shutdown waiting.
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken, hostApplicationLifetime.ApplicationStopping);
+        var cancellationToken = linked.Token;
+
+        // The first frame selects the terminal, mirroring how UploadFile carries its metadata on the first chunk.
+        if (!await requestStream.MoveNext(cancellationToken).ConfigureAwait(false))
+        {
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "Terminal stream is empty."));
+        }
+
+        var selector = requestStream.Current;
+        if (string.IsNullOrEmpty(selector.TerminalId))
+        {
+            throw new RpcException(new Status(StatusCode.InvalidArgument, "First frame must include a terminal ID."));
+        }
+
+        var stream = new GrpcTerminalStream(requestStream, responseStream);
+        await using var _ = stream.ConfigureAwait(false);
+
+        try
+        {
+            logger.LogDebug("Attaching terminal {TerminalId} to a dashboard viewer.", selector.TerminalId);
+
+            // Returns once the terminal ends or the caller disconnects. Holding the call open for that whole time is
+            // what keeps the tunnel alive, so this must not be fire-and-forget.
+            await terminalService.AttachAsync(selector.TerminalId, stream, async ct =>
+            {
+                await stream.WriteEndedAsync(ct).ConfigureAwait(false);
+
+                // Let the dashboard consume the ended notification and close the tunnel. Returning immediately
+                // can fail a concurrent ClientHello write, cancelling the proxy's reader before it sees the status.
+                // This retains only the viewer's RPC, not the completed Hex1b workload.
+                await Task.Delay(Timeout.InfiniteTimeSpan, ct).ConfigureAwait(false);
+            }, cancellationToken).ConfigureAwait(false);
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Expected. The terminal was disposed, or never existed; the dashboard may still be holding a stale dialog
+            // or dock tab open, so report it as a precondition failure rather than faulting the whole connection.
+            // Debug rather than Warning because a stale tab reattaching is routine and the client already receives the
+            // reason in the status -- anything louder would be noise an operator cannot act on.
+            logger.LogDebug(ex, "Terminal {TerminalId} is not available to attach. The dashboard is likely holding a view of a terminal that has already ended.", selector.TerminalId);
+
+            throw new RpcException(new Status(StatusCode.FailedPrecondition, ex.Message));
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Expected. The dashboard closed the tunnel, typically because the browser tab or dialog went away.
+            logger.LogDebug("Terminal {TerminalId} tunnel closed by the dashboard.", selector.TerminalId);
+        }
+        catch (Exception ex)
+        {
+            // Unexpected. Nothing else logs this call: AttachTerminal deliberately does not route through
+            // ExecuteAsync, because that would log the expected FailedPrecondition above as an error.
+            logger.LogError(ex, "Unexpected error while tunnelling terminal {TerminalId} to the dashboard.", selector.TerminalId);
+
+            throw;
+        }
+    }
+
+    public override async Task WatchTerminals(
+        WatchTerminalsRequest request,
+        IServerStreamWriter<WatchTerminalsUpdate> responseStream,
+        ServerCallContext context)
+    {
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken, hostApplicationLifetime.ApplicationStopping);
+        var cancellationToken = linked.Token;
+
+        // Subscribe before writing the snapshot. SubscribeDockTerminals captures both under one lock, so a terminal
+        // created concurrently lands in exactly one of them.
+        using var subscription = terminalService.SubscribeDockTerminals();
+
+        try
+        {
+            // The snapshot write belongs inside the try: if the dashboard disconnects in the window between
+            // subscribing and the first write, this throws, and letting it escape would skip the disposal above.
+            var snapshot = ToProtoTerminalSnapshot(subscription.InitialState, activatedTerminalId: null);
+            await responseStream.WriteAsync(new WatchTerminalsUpdate { Snapshot = snapshot }, cancellationToken).ConfigureAwait(false);
+
+            await foreach (var update in subscription.Subscription.WithCancellation(cancellationToken).ConfigureAwait(false))
+            {
+                var message = update switch
+                {
+                    AppHostTerminalSnapshot recovery => new WatchTerminalsUpdate
+                    {
+                        Snapshot = ToProtoTerminalSnapshot(recovery.Terminals, recovery.ActivatedTerminalId)
+                    },
+                    AppHostTerminalChange change => new WatchTerminalsUpdate
+                    {
+                        Change = new TerminalChangeNotification
+                        {
+                            ChangeType = ToProtoChangeType(change.ChangeType),
+                            Terminal = ToProtoDescriptor(change.Terminal)
+                        }
+                    },
+                    _ => throw new InvalidOperationException("Unknown terminal watch update.")
+                };
+                await responseStream.WriteAsync(message, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Expected. The dashboard disconnected or the AppHost is shutting down.
+            logger.LogDebug("Terminal dock watch stream closed.");
+        }
+        catch (Exception ex)
+        {
+            // Unexpected. Without this the dock silently stops updating, because WatchTerminals does not route
+            // through ExecuteAsync and so has no ambient error logging.
+            logger.LogError(ex, "Unexpected error while watching dock terminals. The dashboard terminal dock will stop receiving updates.");
+
+            throw;
+        }
+    }
+
+    public override async Task<CloseTerminalResponse> CloseTerminal(
+        CloseTerminalRequest request,
+        ServerCallContext context)
+    {
+        if (terminalService.TryGetTerminal(request.TerminalId, out var terminal))
+        {
+            // Only dock terminals opt into dashboard-managed closure. Dialog and headless terminals
+            // remain caller-owned, and resource handles are shared automation peers.
+            if (terminal.Owner != Aspire.Hosting.ApplicationModel.TerminalOwner.AppHost ||
+                terminal.Placement != Aspire.Hosting.ApplicationModel.TerminalPlacement.Dock)
+            {
+                throw new RpcException(new Status(StatusCode.InvalidArgument, "Only AppHost-owned dock terminals can be closed from the dashboard."));
+            }
+
+            await CloseTerminalAsync(terminal, context.CancellationToken).ConfigureAwait(false);
+        }
+
+        // Closing an unknown terminal is not an error: the dashboard may be reacting to a tab the AppHost
+        // already removed.
+        return new CloseTerminalResponse();
+    }
+
+    /// <summary>
+    /// Requests disposal while bounding only the dashboard's wait for cleanup.
+    /// </summary>
+    internal async Task CloseTerminalAsync(Aspire.Hosting.ApplicationModel.AspireTerminal terminal, CancellationToken cancellationToken)
+    {
+        using var waitCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var timeout = Task.Delay(TimeSpan.FromSeconds(CloseTerminalTimeoutSeconds), waitCts.Token);
+
+        // DisposeAsync can block synchronously in cancellation callbacks. Run it independently so even
+        // that work is bounded by the RPC's wait, without letting a disconnect cancel the disposal.
+        var disposal = Task.Run<ExceptionDispatchInfo?>(async () =>
+        {
+            try
+            {
+                await terminal.DisposeAsync().ConfigureAwait(false);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to dispose terminal {TerminalId}.", terminal.Id);
+                // Carry the failure back to a waiting RPC without leaving an unobserved faulted task
+                // if the RPC has already timed out or disconnected.
+                return ExceptionDispatchInfo.Capture(ex);
+            }
+        }, CancellationToken.None);
+
+        try
+        {
+            if (await Task.WhenAny(disposal, timeout).ConfigureAwait(false) != disposal)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                // Only stop waiting. Cleanup still owns the attached transports until terminal teardown
+                // finishes, and the background operation logs any failure after this RPC has returned.
+                throw new RpcException(new Status(StatusCode.DeadlineExceeded,
+                    $"Terminal '{terminal.Id}' did not finish disposing within {CloseTerminalTimeoutSeconds} seconds."));
+            }
+
+            // Preserve genuine disposal failures, including TimeoutException from the workload itself.
+            var failure = await disposal.ConfigureAwait(false);
+            failure?.Throw();
+        }
+        finally
+        {
+            waitCts.Cancel();
+        }
+    }
+
+    private static TerminalDescriptor ToProtoDescriptor(AppHostTerminalDescriptor descriptor)
+        => new() { TerminalId = descriptor.Id, Title = descriptor.Title };
+
+    private static TerminalDescriptorList ToProtoTerminalSnapshot(
+        IEnumerable<AppHostTerminalDescriptor> terminals, string? activatedTerminalId)
+        => new()
+        {
+            Terminals = { terminals.Select(ToProtoDescriptor) },
+            ActivatedTerminalId = activatedTerminalId ?? string.Empty
+        };
+
+    private static TerminalChangeType ToProtoChangeType(AppHostTerminalChangeType changeType) => changeType switch
+    {
+        AppHostTerminalChangeType.Added => TerminalChangeType.Added,
+        AppHostTerminalChangeType.Removed => TerminalChangeType.Removed,
+        AppHostTerminalChangeType.Retitled => TerminalChangeType.Retitled,
+        AppHostTerminalChangeType.Activated => TerminalChangeType.Activated,
+        _ => TerminalChangeType.Unspecified
+    };
+}

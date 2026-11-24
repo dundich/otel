@@ -1,0 +1,902 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="FilterDialogFieldPlaceholder" xml:space="preserve">
+    <value>Field</value>
+  </data>
+  <data name="FilterDialogTextValuePlaceholder" xml:space="preserve">
+    <value>Value</value>
+  </data>
+  <data name="FilterDialogDateValueLabel" xml:space="preserve">
+    <value>Date and time</value>
+  </data>
+  <data name="FilterDialogDatePlaceholder" xml:space="preserve">
+    <value>e.g. 2024-01-15T09:30:00</value>
+  </data>
+  <data name="FilterDialogPickDateButtonTitle" xml:space="preserve">
+    <value>Pick date and time</value>
+  </data>
+  <data name="FilterDialogInvalidDate" xml:space="preserve">
+    <value>Invalid date format</value>
+  </data>
+  <data name="FilterDialogCancelButtonText" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="FilterDialogApplyFilterButtonText" xml:space="preserve">
+    <value>Apply filter</value>
+  </data>
+  <data name="FilterDialogDisableFilterButtonText" xml:space="preserve">
+    <value>Disable filter</value>
+  </data>
+  <data name="FilterDialogRemoveFilterButtonText" xml:space="preserve">
+    <value>Remove filter</value>
+  </data>
+  <data name="SettingsDialogSystemTheme" xml:space="preserve">
+    <value>System</value>
+  </data>
+  <data name="SettingsDialogLightTheme" xml:space="preserve">
+    <value>Light</value>
+  </data>
+  <data name="SettingsDialogDarkTheme" xml:space="preserve">
+    <value>Dark</value>
+  </data>
+  <data name="SettingsDialogTheme" xml:space="preserve">
+    <value>Theme</value>
+  </data>
+  <data name="SettingsDialogVersion" xml:space="preserve">
+    <value>Version: {0}</value>
+    <comment>{0} is the dashboard version string</comment>
+  </data>
+  <data name="SettingsDialogLanguage" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="SettingsDialogLanguagePageReloads" xml:space="preserve">
+    <value>The page will reload on language change.</value>
+  </data>
+  <data name="FilterDialogParameterInputLabel" xml:space="preserve">
+    <value>Parameter</value>
+  </data>
+  <data name="FilterDialogConditionInputLabel" xml:space="preserve">
+    <value>Condition</value>
+  </data>
+  <data name="HelpDialogCategoryPanels" xml:space="preserve">
+    <value>Panels</value>
+  </data>
+  <data name="HelpDialogCategoryPageNavigation" xml:space="preserve">
+    <value>Dashboard navigation</value>
+  </data>
+  <data name="HelpDialogCategoryNavigation" xml:space="preserve">
+    <value>General</value>
+  </data>
+  <data name="HelpDialogCategoryResourceGraph" xml:space="preserve">
+    <value>Resource graph</value>
+  </data>
+  <data name="HelpDialogCategoryTelemetry" xml:space="preserve">
+    <value>Logs &amp; telemetry</value>
+  </data>
+  <data name="HelpDialogShortcutsHint" xml:space="preserve">
+    <value>Use shortcuts outside text fields and terminal input. Panel shortcuts apply to an open details panel. Press {0} in a terminal to focus its controls before using dashboard shortcuts.</value>
+    <comment>{0} is the F6 key, rendered as a keyboard key.</comment>
+  </data>
+  <data name="HelpDialogGoToParameters" xml:space="preserve">
+    <value>Parameters</value>
+  </data>
+  <data name="HelpDialogGoToGraph" xml:space="preserve">
+    <value>Resource graph</value>
+  </data>
+  <data name="HelpDialogGoToExtensions" xml:space="preserve">
+    <value>Extensions</value>
+  </data>
+  <data name="HelpDialogGoToTelemetrySources" xml:space="preserve">
+    <value>Telemetry sources</value>
+  </data>
+  <data name="HelpDialogIncreasePanelSize" xml:space="preserve">
+    <value>Increase panel size</value>
+  </data>
+  <data name="HelpDialogDecreasePanelSize" xml:space="preserve">
+    <value>Decrease panel size</value>
+  </data>
+  <data name="HelpDialogResetPanelSize" xml:space="preserve">
+    <value>Reset panel sizes</value>
+  </data>
+  <data name="HelpDialogTogglePanelOrientation" xml:space="preserve">
+    <value>Toggle panel orientation</value>
+  </data>
+  <data name="HelpDialogTogglePanelOpen" xml:space="preserve">
+    <value>Close panel</value>
+  </data>
+  <data name="HelpDialogGoToResources" xml:space="preserve">
+    <value>Resources</value>
+  </data>
+  <data name="HelpDialogGoToConsoleLogs" xml:space="preserve">
+    <value>Console logs (all resources)</value>
+  </data>
+  <data name="HelpDialogGoToStructuredLogs" xml:space="preserve">
+    <value>Structured logs</value>
+  </data>
+  <data name="HelpDialogGoToTraces" xml:space="preserve">
+    <value>Traces</value>
+  </data>
+  <data name="HelpDialogGoToMetrics" xml:space="preserve">
+    <value>Metrics</value>
+  </data>
+  <data name="HelpDialogGoToTerminals" xml:space="preserve">
+    <value>Terminals</value>
+  </data>
+  <data name="HelpDialogGoToHelp" xml:space="preserve">
+    <value>Keyboard shortcuts</value>
+  </data>
+  <data name="HelpDialogGoToSettings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="HelpDialogToggleTerminalDock" xml:space="preserve">
+    <value>Toggle terminal dock</value>
+  </data>
+  <data name="DialogCloseButtonText" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="ExemplarsDialogTitle" xml:space="preserve">
+    <value>Exemplars</value>
+  </data>
+  <data name="ExemplarsDialogTraceColumnHeader" xml:space="preserve">
+    <value>Trace</value>
+  </data>
+  <data name="ExemplarsDialogTimestampColumnHeader" xml:space="preserve">
+    <value>Timestamp</value>
+  </data>
+  <data name="ExemplarsDialogValueColumnHeader" xml:space="preserve">
+    <value>Value</value>
+  </data>
+  <data name="ExemplarsDialogDetailsColumnHeader" xml:space="preserve">
+    <value>Details</value>
+  </data>
+  <data name="ExemplarsDialogTrace" xml:space="preserve">
+    <value>Trace</value>
+  </data>
+  <data name="OpenSpanDialogMessage" xml:space="preserve">
+    <value>Waiting for span {0} to load...</value>
+    <comment>{0} is a span ID</comment>
+  </data>
+  <data name="OpenSpanDialogCancelButtonText" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="TextVisualizerDialogPlaintextFormat" xml:space="preserve">
+    <value>Unformatted</value>
+  </data>
+  <data name="TextVisualizerWordWrap" xml:space="preserve">
+    <value>Word wrap</value>
+  </data>
+  <data name="TextVisualizerDialogJsonFormat" xml:space="preserve">
+    <value>JSON</value>
+  </data>
+  <data name="TextVisualizerDialogXmlFormat" xml:space="preserve">
+    <value>XML</value>
+  </data>
+  <data name="TextVisualizerDialogMarkdownFormat" xml:space="preserve">
+    <value>Markdown</value>
+  </data>
+  <data name="TextVisualizerDialogSqlFormat" xml:space="preserve">
+    <value>SQL</value>
+  </data>
+  <data name="TextVisualizerSelectFormatType" xml:space="preserve">
+    <value>Select format</value>
+  </data>
+  <data name="OpenInTextVisualizer" xml:space="preserve">
+    <value>Open in text visualizer</value>
+  </data>
+  <data name="FieldRequired" xml:space="preserve">
+    <value>A value is required.</value>
+    <comment>{0} is the literal, untranslated field name which we do not want to show, so it is missing.</comment>
+  </data>
+  <data name="FieldTooLong" xml:space="preserve">
+    <value>A maximum length of {1} characters is allowed.</value>
+    <comment>{0} is the field name, whereas {1} is the length. We don't want to show the field name, so it is missing.</comment>
+  </data>
+  <data name="SettingsDialogDashboardLogsAndTelemetry" xml:space="preserve">
+    <value>Resource logs and telemetry</value>
+  </data>
+  <data name="SettingsDialogDashboardExperience" xml:space="preserve">
+    <value>Dashboard experience</value>
+  </data>
+  <data name="SettingsDialogDashboardExperienceDescription" xml:space="preserve">
+    <value>Choose which dashboard experience to use.</value>
+  </data>
+  <data name="SettingsDialogDashboardExperienceNew" xml:space="preserve">
+    <value>New dashboard</value>
+  </data>
+  <data name="SettingsDialogDashboardExperiencePrevious" xml:space="preserve">
+    <value>Previous dashboard</value>
+  </data>
+  <data name="SettingsDialogDashboardExperienceSelectorLabel" xml:space="preserve">
+    <value>Experience</value>
+  </data>
+  <data name="SettingsDialogAppearanceGroup" xml:space="preserve">
+    <value>Appearance</value>
+  </data>
+  <data name="SettingsDialogLanguageAndTimeGroup" xml:space="preserve">
+    <value>Language and time</value>
+  </data>
+  <data name="SettingsDialogExperienceGroup" xml:space="preserve">
+    <value>Dashboard experience</value>
+  </data>
+  <data name="SettingsDialogDataAndTelemetryGroup" xml:space="preserve">
+    <value>Data and telemetry</value>
+  </data>
+  <data name="DashboardFeedbackDialogTitle" xml:space="preserve">
+    <value>Share dashboard feedback</value>
+  </data>
+  <data name="DashboardFeedbackDescription" xml:space="preserve">
+    <value>Your answers stay in this browser until you copy them. GitHub opens in a new tab so you can review and submit the feedback yourself.</value>
+  </data>
+  <data name="DashboardFeedbackStepProgress" xml:space="preserve">
+    <value>Step {0} of 2</value>
+  </data>
+  <data name="DashboardFeedbackStepOneTitle" xml:space="preserve">
+    <value>Why are you going back to the previous dashboard?</value>
+  </data>
+  <data name="DashboardFeedbackStepTwoTitle" xml:space="preserve">
+    <value>Is there anything else you want to tell us?</value>
+  </data>
+  <data name="DashboardFeedbackStepTwoDescription" xml:space="preserve">
+    <value>Both questions are optional, but your answers help us decide what to improve.</value>
+  </data>
+  <data name="DashboardFeedbackContinue" xml:space="preserve">
+    <value>Continue</value>
+  </data>
+  <data name="DashboardFeedbackBack" xml:space="preserve">
+    <value>Back</value>
+  </data>
+  <data name="DashboardFeedbackPreviewDisclosure" xml:space="preserve">
+    <value>Preview copied feedback</value>
+  </data>
+  <data name="DashboardFeedbackCopyOpenAndSwitch" xml:space="preserve">
+    <value>Open new discussion and switch</value>
+  </data>
+  <data name="DashboardFeedbackSkipAndSwitch" xml:space="preserve">
+    <value>Skip and switch</value>
+  </data>
+  <data name="DashboardFeedbackDurationLabel" xml:space="preserve">
+    <value>How long have you used the new dashboard?</value>
+  </data>
+  <data name="DashboardFeedbackDurationNotSpecified" xml:space="preserve">
+    <value>I&apos;d rather not say</value>
+  </data>
+  <data name="DashboardFeedbackDurationLessThanOneHour" xml:space="preserve">
+    <value>Less than an hour</value>
+  </data>
+  <data name="DashboardFeedbackDurationOneDay" xml:space="preserve">
+    <value>About a day</value>
+  </data>
+  <data name="DashboardFeedbackDurationTwoToSevenDays" xml:space="preserve">
+    <value>2 to 7 days</value>
+  </data>
+  <data name="DashboardFeedbackDurationMoreThanOneWeek" xml:space="preserve">
+    <value>More than a week</value>
+  </data>
+  <data name="DashboardFeedbackReasonsLabel" xml:space="preserve">
+    <value>What made you go back? Select all that apply.</value>
+  </data>
+  <data name="DashboardFeedbackReasonNavigation" xml:space="preserve">
+    <value>It was hard to find my way around</value>
+  </data>
+  <data name="DashboardFeedbackReasonFindingApplicationUrls" xml:space="preserve">
+    <value>I couldn&apos;t find my application URLs</value>
+  </data>
+  <data name="DashboardFeedbackReasonTelemetryWorkflow" xml:space="preserve">
+    <value>The telemetry workflow didn&apos;t work for me</value>
+  </data>
+  <data name="DashboardFeedbackReasonTerminals" xml:space="preserve">
+    <value>The terminals didn&apos;t work for me</value>
+  </data>
+  <data name="DashboardFeedbackReasonPerformanceOrAccessibility" xml:space="preserve">
+    <value>It was slow or hard to use with assistive technology</value>
+  </data>
+  <data name="DashboardFeedbackReasonMissingFeature" xml:space="preserve">
+    <value>A feature I need is missing</value>
+  </data>
+  <data name="DashboardFeedbackReasonOther" xml:space="preserve">
+    <value>Another reason</value>
+  </data>
+  <data name="DashboardFeedbackOtherPlaceholder" xml:space="preserve">
+    <value>Tell us what happened</value>
+  </data>
+  <data name="DashboardFeedbackMissingLabel" xml:space="preserve">
+    <value>What is missing from the new dashboard?</value>
+  </data>
+  <data name="DashboardFeedbackDifficultiesLabel" xml:space="preserve">
+    <value>What was harder or less clear than in the previous dashboard?</value>
+  </data>
+  <data name="DashboardFeedbackPreviewLabel" xml:space="preserve">
+    <value>Your feedback</value>
+  </data>
+  <data name="DashboardFeedbackModeLabel" xml:space="preserve">
+    <value>How do you run the dashboard?</value>
+  </data>
+  <data name="DashboardFeedbackModeAppHost" xml:space="preserve">
+    <value>With an AppHost</value>
+  </data>
+  <data name="DashboardFeedbackModeStandalone" xml:space="preserve">
+    <value>Standalone, for telemetry only</value>
+  </data>
+  <data name="DashboardFeedbackMarkdownTitle" xml:space="preserve">
+    <value>Dashboard experience feedback</value>
+  </data>
+  <data name="DashboardFeedbackCopy" xml:space="preserve">
+    <value>Copy feedback</value>
+  </data>
+  <data name="DashboardFeedbackCopyAndOpen" xml:space="preserve">
+    <value>Copy and open discussion</value>
+  </data>
+  <data name="DashboardFeedbackCopied" xml:space="preserve">
+    <value>Feedback copied to the clipboard.</value>
+  </data>
+  <data name="DashboardFeedbackCopiedAndOpened" xml:space="preserve">
+    <value>Feedback copied. Paste it into the GitHub discussion to share it.</value>
+  </data>
+  <data name="DashboardFeedbackCopyFailed" xml:space="preserve">
+    <value>The clipboard could not be accessed. Copy the preview manually.</value>
+  </data>
+  <data name="DashboardFeedbackSwitchToLegacy" xml:space="preserve">
+    <value>Switch to previous dashboard</value>
+  </data>
+  <data name="DashboardFeedbackPromptTitle" xml:space="preserve">
+    <value>Welcome to the new Aspire dashboard!</value>
+  </data>
+  <data name="DashboardFeedbackPromptMessage" xml:space="preserve">
+    <value>We'd love your feedback on the new experience.</value>
+  </data>
+  <data name="DashboardFeedbackPromptShare" xml:space="preserve">
+    <value>Share feedback</value>
+  </data>
+  <data name="DashboardFeedbackPromptIgnore" xml:space="preserve">
+    <value>Don't ask again</value>
+  </data>
+  <data name="SettingsRemoveAllButtonText" xml:space="preserve">
+    <value>Remove all</value>
+  </data>
+  <data name="SettingsExportAllButtonText" xml:space="preserve">
+    <value>Export all</value>
+  </data>
+  <data name="SettingsImportButtonText" xml:space="preserve">
+    <value>Import logs and telemetry</value>
+  </data>
+  <data name="ManageDataExportErrorMessage" xml:space="preserve">
+    <value>Failed to export data</value>
+  </data>
+  <data name="ManageDataImportErrorMessage" xml:space="preserve">
+    <value>Failed to import data</value>
+  </data>
+  <data name="ManageDataRemoveErrorMessage" xml:space="preserve">
+    <value>Failed to remove data</value>
+  </data>
+  <data name="TextVisualizerSecretWarningTitle" xml:space="preserve">
+    <value>Sensitive value hidden</value>
+  </data>
+  <data name="TextVisualizerSecretWarningDescription" xml:space="preserve">
+    <value>Confirm you want to show this value. Once confirmed, the text visualizer in the browser will show values automatically</value>
+  </data>
+  <data name="TextVisualizerSecretWarningAcknowledge" xml:space="preserve">
+    <value>Show value</value>
+  </data>
+  <data name="FilterDialogDisableAll" xml:space="preserve">
+    <value>Disable all</value>
+  </data>
+  <data name="FilterDialogEnableAll" xml:space="preserve">
+    <value>Enable all</value>
+  </data>
+  <data name="SettingsDialogTelemetryEnabledInfo" xml:space="preserve">
+    <value>Dashboard telemetry is enabled. Aspire will collect usage data and send it to Microsoft.</value>
+  </data>
+  <data name="SettingsDialogTelemetryInfoLinkText" xml:space="preserve">
+    <value>Why?</value>
+  </data>
+  <data name="SettingsDialogTelemetryInfoLinkTooltip" xml:space="preserve">
+    <value>Go to usage telemetry documentation</value>
+  </data>
+  <data name="InteractionButtonOk" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="InteractionButtonCancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="InteractionButtonClose" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="InteractionFileExceedsMaxSize" xml:space="preserve">
+    <value>Exceeds the maximum size of {0}</value>
+  </data>
+  <data name="InteractionFilePlaceholder" xml:space="preserve">
+    <value>Choose a file</value>
+  </data>
+  <data name="InteractionFilePlaceholderMultiple" xml:space="preserve">
+    <value>Choose files</value>
+  </data>
+  <data name="InteractionFileUploadFailed" xml:space="preserve">
+    <value>Upload failed</value>
+  </data>
+  <data name="GenAIPreviousButtonText" xml:space="preserve">
+    <value>Previous</value>
+  </data>
+  <data name="GenAINextButtonText" xml:space="preserve">
+    <value>Next</value>
+  </data>
+  <data name="GenAIPreviewTabText" xml:space="preserve">
+    <value>Preview</value>
+  </data>
+  <data name="GenAIRawTabText" xml:space="preserve">
+    <value>Raw</value>
+  </data>
+  <data name="GenAIDetailsTabText" xml:space="preserve">
+    <value>Details</value>
+  </data>
+  <data name="GenAIInputOutputTabText" xml:space="preserve">
+    <value>Input &amp; output</value>
+  </data>
+  <data name="GenAIDurationLabel" xml:space="preserve">
+    <value>Duration</value>
+  </data>
+  <data name="GenAITokensLabel" xml:space="preserve">
+    <value>Tokens</value>
+  </data>
+  <data name="GenAINAText" xml:space="preserve">
+    <value>n/a</value>
+    <comment>Abbreviation for Not Available</comment>
+  </data>
+  <data name="GenAIInputTokensText" xml:space="preserve">
+    <value>Input tokens: {0}</value>
+    <comment>{0} is the number of tokens</comment>
+  </data>
+  <data name="GenAIOutputTokensText" xml:space="preserve">
+    <value>Output tokens: {0}</value>
+    <comment>{0} is the number of tokens</comment>
+  </data>
+  <data name="GenAIInputHeaderText" xml:space="preserve">
+    <value>Input</value>
+  </data>
+  <data name="GenAIOutputHeaderText" xml:space="preserve">
+    <value>Output</value>
+  </data>
+  <data name="GenAILLMBadgeText" xml:space="preserve">
+    <value>LLM</value>
+  </data>
+  <data name="GenAIMessageTreeLabel" xml:space="preserve">
+    <value>Generative AI messages</value>
+  </data>
+  <data name="GenAIMessageCategoryToolCalls" xml:space="preserve">
+    <value>Tool calls</value>
+  </data>
+  <data name="GenAIMessageCategoryOutput" xml:space="preserve">
+    <value>Output</value>
+  </data>
+  <data name="GenAIMessageCategoryMessage" xml:space="preserve">
+    <value>Message</value>
+  </data>
+  <data name="GenAIMessageTitleSystem" xml:space="preserve">
+    <value>System</value>
+  </data>
+  <data name="GenAIMessageTitleUser" xml:space="preserve">
+    <value>User</value>
+  </data>
+  <data name="GenAIMessageTitleAssistant" xml:space="preserve">
+    <value>Assistant</value>
+  </data>
+  <data name="GenAIMessageTitleTool" xml:space="preserve">
+    <value>Tool</value>
+  </data>
+  <data name="GenAIMessageTitleError" xml:space="preserve">
+    <value>Error</value>
+  </data>
+  <data name="GenAIMessageCategoryStatus" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="GenAIErrorHeaderText" xml:space="preserve">
+    <value>Error</value>
+  </data>
+  <data name="GenAINoMessageContentMoreInformationMessage" xml:space="preserve">
+    <value>No message content was recorded to telemetry. Additional configuration may be required to view sensitive content. For more information, see &lt;a href="{0}" target="_blank"&gt;AI telemetry configuration&lt;/a&gt;.</value>
+    <comment>{0} is a URL</comment>
+  </data>
+  <data name="GenAINoMessageContent" xml:space="preserve">
+    <value>No message content.</value>
+  </data>
+  <data name="GenAINoMessages" xml:space="preserve">
+    <value>No messages found.</value>
+  </data>
+  <data name="GenAINoTools" xml:space="preserve">
+    <value>No tools found.</value>
+  </data>
+  <data name="GenAIToolParameterName" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="GenAIToolParameterType" xml:space="preserve">
+    <value>Type</value>
+  </data>
+  <data name="GenAIToolParameterDescription" xml:space="preserve">
+    <value>Description</value>
+  </data>
+  <data name="GenAIToolRequiredParameter" xml:space="preserve">
+    <value>Required parameter</value>
+  </data>
+  <data name="GenAIToolCallButtonText" xml:space="preserve">
+    <value>Tool call</value>
+  </data>
+  <data name="GenAIToolDefinitionButtonText" xml:space="preserve">
+    <value>Tool definition</value>
+  </data>
+  <data name="GenAIToolNoParameters" xml:space="preserve">
+    <value>No parameters</value>
+  </data>
+  <data name="GenAIToolsTabText" xml:space="preserve">
+    <value>Tools</value>
+  </data>
+  <data name="GenAIEvaluationsTabText" xml:space="preserve">
+    <value>Evaluations</value>
+  </data>
+  <data name="SettingsDialogDotNetRuntimeVersion" xml:space="preserve">
+    <value>Runtime: {0}</value>
+    <comment>{0} is the .NET runtime version</comment>
+  </data>
+  <data name="GenAIDisplayErrorMessageText" xml:space="preserve">
+    <value>Error displaying GenAI content:</value>
+  </data>
+  <data name="GenAIUnexpectedOrTruncatedContent" xml:space="preserve">
+    <value>Unexpected or truncated message content.</value>
+  </data>
+  <data name="GenAIMessageCategoryToolResponse" xml:space="preserve">
+    <value>Tool response</value>
+  </data>
+  <data name="ManageDataDialogTitle" xml:space="preserve">
+    <value>Manage logs and telemetry</value>
+  </data>
+  <data name="ManageDataAllDataCheckboxLabel" xml:space="preserve">
+    <value>All data</value>
+  </data>
+  <data name="ManageDataConsoleLogs" xml:space="preserve">
+    <value>Console logs</value>
+  </data>
+  <data name="ManageDataDataTypeForResourceCheckboxLabel" xml:space="preserve">
+    <value>{0} for {1}</value>
+    <comment>{0} is the data type display name. {1} is the parent resource display name.</comment>
+  </data>
+  <data name="ManageDataExportButtonText" xml:space="preserve">
+    <value>Export selected</value>
+  </data>
+  <data name="ManageDataManageButtonText" xml:space="preserve">
+    <value>Manage</value>
+  </data>
+  <data name="ManageDataMetrics" xml:space="preserve">
+    <value>Metrics</value>
+  </data>
+  <data name="ManageDataNoResources" xml:space="preserve">
+    <value>No resources found</value>
+  </data>
+  <data name="ManageDataRemoveButtonText" xml:space="preserve">
+    <value>Remove selected</value>
+  </data>
+  <data name="ManageDataStructuredLogs" xml:space="preserve">
+    <value>Structured logs</value>
+  </data>
+  <data name="ManageDataSummaryColumnHeader" xml:space="preserve">
+    <value>Summary</value>
+  </data>
+  <data name="ManageDataTraces" xml:space="preserve">
+    <value>Traces</value>
+  </data>
+  <data name="ManageDataResource" xml:space="preserve">
+    <value>Resource</value>
+  </data>
+  <data name="SettingsDialogGroupOverview" xml:space="preserve">
+    <value>Overview layout</value>
+  </data>
+  <data name="SettingsDialogGroupOverviewSummary" xml:space="preserve">
+    <value>Summary</value>
+  </data>
+  <data name="SettingsDialogResourceListDensity" xml:space="preserve">
+    <value>Resource list density</value>
+  </data>
+  <data name="SettingsDialogResourceListDensityComfortable" xml:space="preserve">
+    <value>Comfortable</value>
+  </data>
+  <data name="SettingsDialogResourceListDensityCompact" xml:space="preserve">
+    <value>Compact</value>
+  </data>
+  <data name="SettingsDialogTimeFormat" xml:space="preserve">
+    <value>Time format</value>
+  </data>
+  <data name="SettingsDialogTimeFormatSystem" xml:space="preserve">
+    <value>System</value>
+  </data>
+  <data name="SettingsDialogTimeFormatTwelveHour" xml:space="preserve">
+    <value>12-hour</value>
+  </data>
+  <data name="SettingsDialogTimeFormatTwentyFourHour" xml:space="preserve">
+    <value>24-hour</value>
+  </data>
+  <data name="NotificationCenterDismissAll" xml:space="preserve">
+    <value>Dismiss all</value>
+  </data>
+  <data name="NotificationCenterEmpty" xml:space="preserve">
+    <value>No notifications</value>
+  </data>
+  <data name="NotificationEntryDismiss" xml:space="preserve">
+    <value>Dismiss notification</value>
+  </data>
+  <data name="AIAgentsDialogTitle" xml:space="preserve">
+    <value>AI agents</value>
+  </data>
+  <data name="HelpDialogDocumentationTab" xml:space="preserve">
+    <value>Documentation</value>
+  </data>
+  <data name="HelpDialogDashboardDocumentationDescription" xml:space="preserve">
+    <value>Guides and reference for using the Aspire dashboard.</value>
+  </data>
+  <data name="HelpDialogRepoDescription" xml:space="preserve">
+    <value>Source code, releases and issues on GitHub.</value>
+  </data>
+  <data name="HelpDialogOpensInNewTab" xml:space="preserve">
+    <value>Opens in a new tab</value>
+  </data>
+  <data name="HelpDialogLearnHeading" xml:space="preserve">
+    <value>Learn</value>
+  </data>
+  <data name="HelpDialogCommunityHeading" xml:space="preserve">
+    <value>Community and support</value>
+  </data>
+  <data name="HelpDialogAspireDocumentationTitle" xml:space="preserve">
+    <value>Aspire documentation</value>
+  </data>
+  <data name="HelpDialogAspireDocumentationDescription" xml:space="preserve">
+    <value>Get started with Aspire, its integrations and deployment.</value>
+  </data>
+  <data name="HelpDialogReportIssueTitle" xml:space="preserve">
+    <value>Report an issue</value>
+  </data>
+  <data name="HelpDialogReportIssueDescription" xml:space="preserve">
+    <value>Found a bug or have an idea? Open an issue on GitHub.</value>
+  </data>
+  <data name="HelpDialogDashboardFeedbackTitle" xml:space="preserve">
+    <value>Dashboard feedback</value>
+  </data>
+  <data name="HelpDialogDashboardFeedbackDescription" xml:space="preserve">
+    <value>Share feedback about the evolving dashboard experience.</value>
+  </data>
+  <data name="HelpDialogDiscordTitle" xml:space="preserve">
+    <value>Discord</value>
+  </data>
+  <data name="HelpDialogDiscordDescription" xml:space="preserve">
+    <value>Chat with the Aspire team and community.</value>
+  </data>
+  <data name="HelpDialogDashboardVersion" xml:space="preserve">
+    <value>Aspire dashboard version {0}</value>
+  </data>
+  <data name="HelpDialogPlayGame" xml:space="preserve">
+    <value>Play Aspire Outage, when the graph has focus</value>
+    <comment>Aspire Outage is the name of a game.</comment>
+  </data>
+  <data name="HelpDialogGameTitle" xml:space="preserve">
+    <value>Aspire Outage</value>
+  </data>
+  <data name="HelpDialogGameDescription" xml:space="preserve">
+    <value>In the resource graph, select Play Aspire Outage, or focus the graph and press O, to play a game starring your resources. Press Esc to return to the graph.</value>
+  </data>
+  <data name="AIAgentsDialogStandaloneDescription" xml:space="preserve">
+    <value>Aspire gives AI coding agents deep observability into your app using the same information visible in the dashboard. Agents use telemetry to diagnose issues faster and verify fixes with confidence. 🚀
+
+- 📊 Distributed traces
+- 🔗 Trace spans
+- 🪵 Structured logs
+- 🗂️ Zip file export
+
+AI agents access dashboard telemetry using the Aspire CLI. [Install the Aspire CLI]({2}) if you haven't already.
+
+Use Aspire CLI commands to retrieve telemetry data directly in your terminal:
+
+```bash
+aspire otel logs --dashboard-url {0}
+```
+
+This is one example of how AI agents can access telemetry for your app. See [`aspire otel`](https://aspire.dev/reference/cli/commands/aspire-otel/) and [`aspire export`](https://aspire.dev/reference/cli/commands/aspire-export/).
+
+For more information about using AI agents with the dashboard, including setting up skills, see [Standalone dashboard and AI coding agents]({1}).</value>
+    <comment>{0} is the dashboard URL, {1} is the learn more URL, {2} is the install CLI URL</comment>
+  </data>
+  <data name="AIAgentsDialogAppHostDescription" xml:space="preserve">
+    <value>Aspire gives AI coding agents deep observability into your app using the same information visible in the dashboard. Agents use telemetry to diagnose issues faster and verify fixes with confidence. 🚀
+
+- 📦 Resource state, health checks, and relationships
+- 🖥️ Console logs
+- 📊 Distributed traces
+- 🪵 Structured logs
+
+## Getting started
+
+AI agents access dashboard telemetry through the Aspire CLI. If you haven't installed it yet, [install the Aspire CLI]({1}).
+
+Initialize AI agent support in your project with:
+
+```bash
+aspire agent init
+```
+
+This command configures skill files for your AI agent. The skill files tell the agent how to use Aspire CLI commands like [`aspire logs`](https://aspire.dev/reference/cli/commands/aspire-logs/) and [`aspire otel traces`](https://aspire.dev/reference/cli/commands/aspire-otel-traces/).
+
+Once connected, agents can start your app, check resource health, fetch logs and traces, and more.
+
+For more information about using AI agents with Aspire, such as setting up skills, see [AI coding agents]({0}).</value>
+    <comment>{0} is the learn more URL, {1} is the install CLI URL</comment>
+  </data>
+  <data name="TelemetryHelpMessage" xml:space="preserve">
+    <value>Configure your app to send telemetry to the dashboard.</value>
+  </data>
+  <data name="TelemetryHelpMoreInformation" xml:space="preserve">
+    <value>For setup instructions, see</value>
+    <comment>Followed by the TelemetryHelpButtonText inline link and a period.</comment>
+  </data>
+  <data name="TelemetryHelpButtonText" xml:space="preserve">
+    <value>Add telemetry</value>
+    <comment>Inline link following TelemetryHelpMoreInformation. Opens the telemetry setup dialog.</comment>
+  </data>
+  <data name="TelemetryHelpDialogTitle" xml:space="preserve">
+    <value>Add telemetry</value>
+  </data>
+  <data name="TelemetryHelpIntroduction" xml:space="preserve">
+    <value>Visualize logs, traces, and metrics in the dashboard. To see telemetry, first send it to the dashboard using OTLP or manually import telemetry JSON files.
+
+### 📡 Send telemetry from your app
+
+Configure your app to export logs, traces, and metrics using [OTLP]({0}).</value>
+    <comment>Markdown. {0} is the OTLP specification URL.</comment>
+  </data>
+  <data name="TelemetryHelpProtocolHeader" xml:space="preserve">
+    <value>Protocol</value>
+  </data>
+  <data name="TelemetryHelpEndpointHeader" xml:space="preserve">
+    <value>Dashboard endpoint</value>
+  </data>
+  <data name="TelemetryHelpContainerDescription" xml:space="preserve">
+    <value>The dashboard is running in a container. Access it from the host using port forwarding.</value>
+  </data>
+  <data name="TelemetryHelpApiKeyDescription" xml:space="preserve">
+    <value>Set OTEL_EXPORTER_OTLP_HEADERS to x-otlp-api-key=&lt;your-api-key&gt;, replacing &lt;your-api-key&gt; with the dashboard's configured OTLP API key.</value>
+  </data>
+  <data name="TelemetryHelpCertificateDescription" xml:space="preserve">
+    <value>Configure your OTLP exporter to present a client certificate trusted by the dashboard. Use your SDK's OTLP exporter settings to specify the certificate and private key.</value>
+  </data>
+  <data name="TelemetryHelpNoEndpointsDescription" xml:space="preserve">
+    <value>No OTLP endpoints are configured. To receive live telemetry, configure an OTLP endpoint when starting the dashboard.</value>
+  </data>
+  <data name="TelemetryHelpSendTelemetryLink" xml:space="preserve">
+    <value>Connect your app to the dashboard</value>
+  </data>
+  <data name="TelemetryHelpImportDescription" xml:space="preserve">
+    <value>### 📥 Import telemetry from a file
+
+Import previously exported telemetry or OTLP JSON files by selecting **{0}** in the **{1}** dialog.</value>
+    <comment>Markdown. {0} is the localized import button text, {1} is the localized data management dialog title.</comment>
+  </data>
+  <data name="TelemetryHelpManageDataLink" xml:space="preserve">
+    <value>Learn about managing dashboard data</value>
+  </data>
+  <data name="HelpDialogGetHelpLinkText" xml:space="preserve">
+    <value>Go to aspire.dev documentation</value>
+  </data>
+  <data name="HelpDialogKeyboardShortcutsTitle" xml:space="preserve">
+    <value>Keyboard Shortcuts</value>
+  </data>
+</root>

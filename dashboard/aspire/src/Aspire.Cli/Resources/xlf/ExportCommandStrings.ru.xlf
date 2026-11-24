@@ -1,0 +1,77 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="ru" original="../ExportCommandStrings.resx">
+    <body>
+      <trans-unit id="DashboardNotAvailable">
+        <source>Dashboard is not available. Telemetry data (structured logs, traces) will not be included in the export.</source>
+        <target state="translated">Панель мониторинга недоступна. Данные телеметрии (структурированные журналы, трассировки) не будут включены в экспорт.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="Description">
+        <source>Export telemetry and resource data to a zip file</source>
+        <target state="translated">Экспортировать данные телеметрии и ресурсов в ZIP-файл</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ExportComplete">
+        <source>Export saved to {0}</source>
+        <target state="translated">Экспорт сохранен в {0}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FailedToExport">
+        <source>Failed to export resource and telemetry data: {0}</source>
+        <target state="translated">Не удалось экспортировать данные ресурсов и телеметрии: {0}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GatheringConsoleLogs">
+        <source>Gathering console logs...</source>
+        <target state="translated">Сбор журналов консоли...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GatheringResources">
+        <source>Gathering resource data...</source>
+        <target state="translated">Сбор данных ресурсов...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GatheringStructuredLogs">
+        <source>Gathering structured logs...</source>
+        <target state="translated">Сбор структурированных журналов...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GatheringTraces">
+        <source>Gathering traces...</source>
+        <target state="translated">Сбор трассировок...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="IncludeHiddenOptionDescription">
+        <source>Include hidden resources in the output</source>
+        <target state="translated">Включить скрытые ресурсы в выходные данные</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="NoResourcesFound">
+        <source>No resources found.</source>
+        <target state="translated">Ресурсы не найдены.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="OutputOptionDescription">
+        <source>The output file path for the export zip file</source>
+        <target state="translated">Путь к файлу вывода для экспортируемого zip-файла</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceNotFound">
+        <source>Resource '{0}' not found.</source>
+        <target state="translated">Ресурс "{0}" не найден.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceOptionDescription">
+        <source>Export data only for the specified resource</source>
+        <target state="translated">Экспортировать данные только для указанного ресурса</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SelectAppHostAction">
+        <source>export data from</source>
+        <target state="translated">экспортировать данные из</target>
+        <note />
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

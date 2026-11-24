@@ -1,0 +1,165 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+using System.Diagnostics;
+using Google.Protobuf.Collections;
+using OpenTelemetry.Proto.Metrics.V1;
+
+namespace Aspire.Dashboard.Otlp.Model.MetricValues;
+
+[DebuggerDisplay("Name = {Name}, Values = {Values.Count}")]
+public class DimensionScope
+{
+    public const string NoDimensions = "no-dimensions";
+    public string Name { get; init; }
+    public KeyValuePair<string, string>[] Attributes { get; init; }
+    public IList<MetricValueBase> Values => _values;
+
+    private readonly CircularBuffer<MetricValueBase> _values;
+    // Used to aid in merging values that are the same in a concurrent environment
+    private MetricValueBase? _lastValue;
+
+    public int Capacity => _values.Capacity;
+
+    public DimensionScope(int capacity, KeyValuePair<string, string>[] attributes)
+    {
+        Attributes = attributes;
+        var name = Attributes.ConcatProperties();
+        Name = name != null && name.Length > 0 ? name : NoDimensions;
+        _values = new(capacity);
+    }
+
+    public void AddPointValue(NumberDataPoint d, OtlpContext context)
+    {
+        OtlpHelpers.ValidateNumberDataPoint(d);
+        var start = d.StartTimeUnixNano;
+        var end = d.TimeUnixNano;
+
+        if (d.ValueCase == NumberDataPoint.ValueOneofCase.AsInt)
+        {
+            var value = d.AsInt;
+            var lastLongValue = _lastValue as MetricValue<long>;
+            if (lastLongValue is not null && lastLongValue.Value == value)
+            {
+                lastLongValue.EndTimeUnixNano = end;
+                AddExemplars(lastLongValue, d.Exemplars, context);
+                Interlocked.Increment(ref lastLongValue.Count);
+            }
+            else
+            {
+                if (lastLongValue is not null)
+                {
+                    start = lastLongValue.EndTimeUnixNano;
+                }
+                _lastValue = new MetricValue<long>(d.AsInt, start, end);
+                AddExemplars(_lastValue, d.Exemplars, context);
+                _values.Add(_lastValue);
+            }
+        }
+        else if (d.ValueCase == NumberDataPoint.ValueOneofCase.AsDouble)
+        {
+            var lastDoubleValue = _lastValue as MetricValue<double>;
+            if (lastDoubleValue is not null && lastDoubleValue.Value == d.AsDouble)
+            {
+                lastDoubleValue.EndTimeUnixNano = end;
+                AddExemplars(lastDoubleValue, d.Exemplars, context);
+                Interlocked.Increment(ref lastDoubleValue.Count);
+            }
+            else
+            {
+                if (lastDoubleValue is not null)
+                {
+                    start = lastDoubleValue.EndTimeUnixNano;
+                }
+                _lastValue = new MetricValue<double>(d.AsDouble, start, end);
+                AddExemplars(_lastValue, d.Exemplars, context);
+                _values.Add(_lastValue);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Adds a histogram point, merging unchanged cumulative snapshots but retaining delta intervals.
+    /// </summary>
+    /// <param name="h">The histogram point to add.</param>
+    /// <param name="temporality">The histogram's aggregation temporality.</param>
+    /// <param name="context">The telemetry ingestion context.</param>
+    public void AddHistogramValue(HistogramDataPoint h, OtlpAggregationTemporality temporality, OtlpContext context)
+    {
+        OtlpHelpers.ValidateHistogramDataPoint(h);
+        var lastHistogramValue = _lastValue as HistogramValue;
+        var value = HistogramValue.Create(h, temporality, lastHistogramValue);
+        if (ReferenceEquals(value, lastHistogramValue))
+        {
+            AddExemplars(value, h.Exemplars, context);
+        }
+        else
+        {
+            _lastValue = value;
+            AddExemplars(_lastValue, h.Exemplars, context);
+            _values.Add(_lastValue);
+        }
+    }
+
+    private static void AddExemplars(MetricValueBase value, RepeatedField<Exemplar> exemplars, OtlpContext context)
+    {
+        if (exemplars.Count > 0)
+        {
+            foreach (var exemplar in exemplars)
+            {
+                // Can't do anything useful with exemplars without a linked trace. Filter them out.
+                if (exemplar.TraceId == null || exemplar.SpanId == null)
+                {
+                    continue;
+                }
+
+                var exemplarValue = exemplar.HasAsDouble ? exemplar.AsDouble : exemplar.AsInt;
+                if (!double.IsFinite(exemplarValue) || !OtlpHelpers.TryValidateMetricExemplarTimestamp(exemplar, context))
+                {
+                    continue;
+                }
+
+                var exists = false;
+                foreach (var existingExemplar in value.Exemplars)
+                {
+                    if (exemplar.TimeUnixNano == existingExemplar.TimeUnixNano && exemplarValue == existingExemplar.Value)
+                    {
+                        exists = true;
+                        break;
+                    }
+                }
+                if (exists)
+                {
+                    continue;
+                }
+
+                value.Exemplars.Add(new MetricsExemplar
+                {
+                    TimeUnixNano = exemplar.TimeUnixNano,
+                    Value = exemplarValue,
+                    Attributes = exemplar.FilteredAttributes.ToKeyValuePairs(context),
+                    SpanId = exemplar.SpanId.ToHexString(),
+                    TraceId = exemplar.TraceId.ToHexString()
+                });
+            }
+        }
+    }
+
+    internal static DimensionScope Clone(DimensionScope value, DateTime? valuesStart, DateTime? valuesEnd)
+    {
+        var newDimensionScope = new DimensionScope(value.Capacity, value.Attributes);
+        if (valuesStart != null && valuesEnd != null)
+        {
+            foreach (var item in value._values)
+            {
+                if ((item.Start <= valuesEnd.Value && item.End >= valuesStart.Value) ||
+                    (item.Start >= valuesStart.Value && item.End <= valuesEnd.Value))
+                {
+                    newDimensionScope._values.Add(MetricValueBase.Clone(item));
+                }
+            }
+        }
+
+        return newDimensionScope;
+    }
+}

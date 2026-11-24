@@ -1,0 +1,21 @@
+<Project>
+  <PropertyGroup>
+    <AspireHostingSDKVersion>@VERSION@</AspireHostingSDKVersion>
+    <!-- Do not import the workload targets as this project is instead using the Aspire.AppHost.Sdk -->
+    <SkipAspireWorkloadManifest>true</SkipAspireWorkloadManifest>
+    <IsAspireHost>true</IsAspireHost>
+    <!-- Marker used by Aspire.Hosting.AppHost targets to distinguish projects that opted into the
+         (obsolete) Aspire.AppHost.Sdk from projects that only reference the Aspire.Hosting.AppHost
+         package directly (e.g. Project Resource v2 / AddDotnetProject apps using Microsoft.NET.Sdk). -->
+    <_UsingAspireAppHostSdk>true</_UsingAspireAppHostSdk>
+    <!-- Auto-import the Microsoft.NET.Sdk if not already imported -->
+    <_ImportMicrosoftNETSdkFromAspireSdk Condition=" '$(UsingMicrosoftNETSdk)' == '' ">true</_ImportMicrosoftNETSdkFromAspireSdk>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(FileBasedProgram)' == 'true' ">
+    <!-- Disable AOT and Trimming for file-based apps -->
+    <PublishAot>false</PublishAot>
+  </PropertyGroup>
+
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" Condition=" '$(_ImportMicrosoftNETSdkFromAspireSdk)' == 'true' " />
+</Project>

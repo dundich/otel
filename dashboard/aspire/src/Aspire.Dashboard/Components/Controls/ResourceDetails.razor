@@ -1,0 +1,289 @@
+@using Aspire.Dashboard.Components.Controls.Grid
+@using Aspire.Dashboard.Components.Controls.PropertyValues
+@using Aspire.Dashboard.Resources
+@using Humanizer
+@using Microsoft.AspNetCore.WebUtilities
+@using Microsoft.Extensions.Diagnostics.HealthChecks
+
+@inject IStringLocalizer<ControlsStrings> ControlStringsLoc
+@inject IStringLocalizer<Aspire.Dashboard.Resources.Resources> Loc
+@inject IStringLocalizer<Columns> ColumnsLoc
+
+<div class="details-layout resource-details-layout">
+
+    <div class="details-toolbar" role="toolbar">
+        <div class="toolbar-end">
+            <FluentTextInput TextInputType="TextInputType.Search" Placeholder="@ControlStringsLoc[nameof(ControlsStrings.FilterPlaceholder)]"
+                          Immediate="true"
+                          Autofocus="@AutofocusFilter"
+                          AutoComplete="off"
+                          @bind-Value="_filter">
+                <StartTemplate>
+                    <FluentIcon Value="@(new Icons.Regular.Size16.Search())" Color="Color.Primary" />
+                </StartTemplate>
+            </FluentTextInput>
+            <AspireMenuButton ButtonAppearance="ButtonAppearance.Default"
+                              ButtonClass="toolbar-button details-toolbar-button resource-details-actions"
+                              Icon="@(new Icons.Regular.Size20.Options())"
+                              ItemsProvider="@(() => _resourceActionsMenuItems)"
+                              Title="@Loc[nameof(Aspire.Dashboard.Resources.Resources.ResourcesChangeViewOptions)]" />
+        </div>
+    </div>
+    <div class="property-grid-container">
+        <FluentAccordion Block="true">
+            <AspirePropertyDetailsAccordionItem Header="@ControlStringsLoc[nameof(ControlsStrings.ResourceDetailsResourceHeader)]"
+                                                Count="@FilteredResourceProperties.Count()"
+                                                Expanded="true">
+                <PropertyGrid TItem="DisplayedResourcePropertyViewModel"
+                              Items="@FilteredResourceProperties"
+                              IsValueMaskedChanged="@OnValueMaskedChanged"
+                              HighlightText="@_filter"
+                              GridTemplateColumns="1fr 1.5fr"
+                              ValueComponents="_valueComponents" />
+            </AspirePropertyDetailsAccordionItem>
+            <AspirePropertyDetailsAccordionItem Header="@ControlStringsLoc[nameof(ControlsStrings.ResourceDetailsUrlsHeader)]"
+                                                Count="@FilteredUrls.Count()"
+                                                Expanded="@_isUrlsExpanded">
+                <DisposalSafeFluentDataGrid TGridItem="DisplayedUrl"
+                                ItemKey="@(vm => ((IPropertyGridItem)vm).Key)"
+                                ItemsProvider="@EnumerableGridItemsProvider.Create(() => FilteredUrls)"
+                                HeaderCellAsButtonWithMenu="true"
+                                ResizableColumns="true"
+                                ResizeType="DataGridResizeType.Discrete"
+                                Style="width:100%"
+                                RowSize="DataGridRowSize.Medium"
+                                GridTemplateColumns="1fr 1fr 0.5fr"
+                                ShowHover="true">
+                    <AspireTemplateColumn Sortable="true" SortBy="@_urlValueSort" Title="@ControlStringsLoc[nameof(ControlsStrings.LinkAddressColumnHeader)]">
+                        <GridValue ValueDescription="@ControlStringsLoc[nameof(ControlsStrings.LinkAddressColumnHeader)]"
+                                   Value="@context.OriginalUrlString"
+                                   ValueTemplate="@(_ => RenderAddressValue(context, _filter))"
+                                   EnableHighlighting="@(!string.IsNullOrEmpty(_filter))"
+                                   IsMaskedChanged="@(_ => OnValueMaskedChanged(context))"
+                                   HighlightText="@_filter" />
+                    </AspireTemplateColumn>
+                    <AspireTemplateColumn Sortable="true" SortBy="@_urlValueSort" Title="@ControlStringsLoc[nameof(ControlsStrings.LinkTextColumnHeader)]">
+                        <GridValue ValueDescription="@ControlStringsLoc[nameof(ControlsStrings.LinkTextColumnHeader)]"
+                                   Value="@context.DisplayName"
+                                   ValueTemplate="@(_ => RenderTextValue(context, _filter))"
+                                   EnableHighlighting="@(!string.IsNullOrEmpty(_filter) && !string.IsNullOrEmpty(context.DisplayName))"
+                                   IsMaskedChanged="@(_ => OnValueMaskedChanged(context))"
+                                   HighlightText="@_filter" />
+                    </AspireTemplateColumn>
+                    <AspireTemplateColumn Sortable="true" SortBy="@(EnumerableGridSort<DisplayedUrl>.ByAscending(item => item.Name))" Title="@ControlStringsLoc[nameof(ControlsStrings.EndpointNameColumnHeader)]">
+                        <GridValue ValueDescription="@ControlStringsLoc[nameof(ControlsStrings.EndpointNameColumnHeader)]"
+                                   Value="@context.Name"
+                                   EnableHighlighting="@(!string.IsNullOrEmpty(_filter))"
+                                   HighlightText="@_filter" />
+                    </AspireTemplateColumn>
+                </DisposalSafeFluentDataGrid>
+            </AspirePropertyDetailsAccordionItem>
+            @if (Resource.IsContainer())
+            {
+                <AspirePropertyDetailsAccordionItem Header="@ControlStringsLoc[nameof(ControlsStrings.ResourceDetailsVolumesHeader)]"
+                                                    Count="@FilteredVolumes.Count()"
+                                                    Expanded="@_isVolumesExpanded">
+                    <DisposalSafeFluentDataGrid TGridItem="VolumeViewModel"
+                                    ItemKey="@(vm => ((IPropertyGridItem)vm).Key)"
+                                    ItemsProvider="@EnumerableGridItemsProvider.Create(() => FilteredVolumes)"
+                                    HeaderCellAsButtonWithMenu="true"
+                                    ResizableColumns="true"
+                                    ResizeType="DataGridResizeType.Discrete"
+                                    Style="width:100%"
+                                    RowSize="DataGridRowSize.Medium"
+                                    GridTemplateColumns="1fr 1fr 0.5fr"
+                                    ShowHover="true">
+                        <AspireTemplateColumn Sortable="true" SortBy="@(EnumerableGridSort<VolumeViewModel>.ByAscending(item => item.Source))" Title="@ControlStringsLoc[nameof(ControlsStrings.NameColumnHeader)]">
+                            <GridValue ValueDescription="@ControlStringsLoc[nameof(ControlsStrings.NameColumnHeader)]"
+                                       Value="@context.Source"
+                                       EnableHighlighting="@(!string.IsNullOrEmpty(_filter))"
+                                       HighlightText="@_filter" />
+                        </AspireTemplateColumn>
+                        <AspireTemplateColumn Sortable="true" SortBy="@(EnumerableGridSort<VolumeViewModel>.ByAscending(item => item.Target))" Title="@ControlStringsLoc[nameof(ControlsStrings.VolumePathColumnHeader)]">
+                            <GridValue ValueDescription="@ControlStringsLoc[nameof(ControlsStrings.VolumePathColumnHeader)]"
+                                       Value="@context.Target"
+                                       EnableHighlighting="@(!string.IsNullOrEmpty(_filter))"
+                                       HighlightText="@_filter" />
+                        </AspireTemplateColumn>
+                        <AspireTemplateColumn Sortable="true" SortBy="@(EnumerableGridSort<VolumeViewModel>.ByAscending(item => item.MountType))" Title="@ControlStringsLoc[nameof(ControlsStrings.VolumeMountTypeColumnHeader)]">
+                            <GridValue ValueDescription="@ControlStringsLoc[nameof(ControlsStrings.VolumeMountTypeColumnHeader)]"
+                                       Value="@context.MountType.Humanize()">
+                                <ContentBeforeValue>
+                                    @if (context.IsReadOnly)
+                                    {
+                                        <FluentIcon Value="@(new Icons.Regular.Size16.LockClosed())" Color="Color.Primary" Class="volume-mount-type-icon" />
+                                    }
+                                </ContentBeforeValue>
+                            </GridValue>
+                        </AspireTemplateColumn>
+                    </DisposalSafeFluentDataGrid>
+                </AspirePropertyDetailsAccordionItem>
+            }
+            <AspirePropertyDetailsAccordionItem Header="@ControlStringsLoc[nameof(ControlsStrings.ResourceDetailsReferences)]"
+                                                Count="@FilteredRelationships.Count()"
+                                                Expanded="@_isRelationshipsExpanded">
+                <DisposalSafeFluentDataGrid
+                                HeaderCellAsButtonWithMenu="true"
+                                ResizeType="DataGridResizeType.Discrete"
+                                TGridItem="ResourceDetailRelationshipViewModel"
+                                ItemsProvider="@EnumerableGridItemsProvider.Create(() => FilteredRelationships)"
+                                ItemKey="r => r.ResourceName"
+                                ResizableColumns="true"
+                                Style="width:100%"
+                                RowSize="DataGridRowSize.Medium"
+                                GridTemplateColumns="1fr 1fr 0.5fr"
+                                ShowHover="true">
+                    <AspireTemplateColumn Title="@ControlStringsLoc[nameof(ControlsStrings.ResourceDetailsResourceHeader)]">
+                        <ResourceNameValue Resource="@context.Resource" Value="@context.ResourceName" FormatName="@FormatName" />
+                    </AspireTemplateColumn>
+                    <AspireTemplateColumn Title="@ControlStringsLoc[nameof(ControlsStrings.ResourceDetailsTypeHeader)]" TooltipText="@(c => string.Join(", ", c.Types))">
+                        @string.Join(", ", context.Types)
+                    </AspireTemplateColumn>
+                    <AspireTemplateColumn Title="@ControlStringsLoc[nameof(ControlsStrings.ViewAction)]" Class="no-ellipsis">
+                        <FluentButton Appearance="ButtonAppearance.Transparent" Class="button-hyperlink-no-icon" OnClick="@(() => OnViewRelationshipAsync(context))">@ControlStringsLoc[nameof(ControlsStrings.ViewAction)]</FluentButton>
+                    </AspireTemplateColumn>
+                </DisposalSafeFluentDataGrid>
+            </AspirePropertyDetailsAccordionItem>
+            <AspirePropertyDetailsAccordionItem Header="@ControlStringsLoc[nameof(ControlsStrings.ResourceDetailsBackReferences)]"
+                                                Count="@FilteredBackRelationships.Count()"
+                                                Expanded="@_isBackRelationshipsExpanded">
+                <DisposalSafeFluentDataGrid
+                                HeaderCellAsButtonWithMenu="true"
+                                ResizeType="DataGridResizeType.Discrete"
+                                TGridItem="ResourceDetailRelationshipViewModel"
+                                ItemsProvider="@EnumerableGridItemsProvider.Create(() => FilteredBackRelationships)"
+                                ItemKey="r => r.ResourceName"
+                                ResizableColumns="true"
+                                Style="width:100%"
+                                RowSize="DataGridRowSize.Medium"
+                                GridTemplateColumns="1fr 1fr 0.5fr"
+                                ShowHover="true">
+                    <AspireTemplateColumn Title="@ControlStringsLoc[nameof(ControlsStrings.ResourceDetailsResourceHeader)]">
+                        <ResourceNameValue Resource="@context.Resource" Value="@context.ResourceName" FormatName="@FormatName" />
+                    </AspireTemplateColumn>
+                    <AspireTemplateColumn Title="@ControlStringsLoc[nameof(ControlsStrings.ResourceDetailsTypeHeader)]" TooltipText="@(c => string.Join(", ", c.Types))">
+                        @string.Join(", ", context.Types)
+                    </AspireTemplateColumn>
+                    <AspireTemplateColumn Title="@ControlStringsLoc[nameof(ControlsStrings.ViewAction)]" Class="no-ellipsis">
+                        <FluentButton Appearance="ButtonAppearance.Transparent" Class="button-hyperlink-no-icon" OnClick="@(() => OnViewRelationshipAsync(context))">@ControlStringsLoc[nameof(ControlsStrings.ViewAction)]</FluentButton>
+                    </AspireTemplateColumn>
+                </DisposalSafeFluentDataGrid>
+            </AspirePropertyDetailsAccordionItem>
+            <AspirePropertyDetailsAccordionItem Header="@ControlStringsLoc[nameof(ControlsStrings.ResourceHealthChecksHeader)]"
+                                                Count="@FilteredHealthReports.Count()"
+                                                Expanded="@_isHealthChecksExpanded">
+                <DisposalSafeFluentDataGrid
+                                HeaderCellAsButtonWithMenu="true"
+                                ResizeType="DataGridResizeType.Discrete"
+                                ItemsProvider="@EnumerableGridItemsProvider.Create(() => FilteredHealthReports)"
+                                ItemKey="r => r.Name"
+                                ResizableColumns="true"
+                                Style="width:100%"
+                                RowSize="DataGridRowSize.Medium"
+                                GridTemplateColumns="1fr 1fr 1.5fr"
+                                ShowHover="true">
+                    <AspireTemplateColumn Title="@ControlStringsLoc[nameof(ControlsStrings.NameColumnHeader)]" Class="nameColumn">
+                        <GridValue ValueDescription="@ControlStringsLoc[nameof(ControlsStrings.NameColumnHeader)]"
+                                   Value="@context.Name"
+                                   EnableHighlighting="@(!string.IsNullOrEmpty(_filter))"
+                                   HighlightText="@_filter" />
+                    </AspireTemplateColumn>
+                    <AspireTemplateColumn Title="@ControlStringsLoc[nameof(ControlsStrings.StateColumnHeader)]" Class="stateColumn">
+                        <GridValue ValueDescription="@ControlStringsLoc[nameof(ControlsStrings.StateColumnHeader)]"
+                                   Value="@GetHealthStatusWithTime(context)"
+                                   ToolTip="@GetHealthStatusTooltip(context)"
+                                   EnableHighlighting="@(!string.IsNullOrEmpty(_filter))"
+                                   HighlightText="@_filter"
+                                   TextVisualizerTitle="@context.Name">
+                            <ContentBeforeValue>
+                                @if (context.HealthStatus is null)
+                                {
+                                    <AspireProgressRing Width="16px"
+                                                        Style="display: inline-block;"
+                                                        Class="severity-icon"
+                                                        AriaLabel="@Loc[nameof(Aspire.Dashboard.Resources.Resources.WaitingForHealthDataMessage)]" />
+                                }
+                                else
+                                {
+                                    (Icon? icon, Color color) = ResourceIconHelpers.GetHealthStatusIcon(context.HealthStatus);
+
+                                    <FluentIcon Value="@icon" Color="@color" Class="severity-icon"/>
+                                }
+                            </ContentBeforeValue>
+                        </GridValue>
+                    </AspireTemplateColumn>
+                    <AspireTemplateColumn Title="@ControlStringsLoc[nameof(ControlsStrings.DetailsColumnHeader)]" Class="detailsColumn">
+                        <GridValue ValueDescription="@ControlStringsLoc[nameof(ControlsStrings.DetailsColumnHeader)]"
+                                   Value="@(context.HealthStatus is null ? Loc[nameof(Aspire.Dashboard.Resources.Resources.WaitingForHealthDataMessage)] : context.DisplayedDescription)"
+                                   EnableHighlighting="@(!string.IsNullOrEmpty(_filter))"
+                                   HighlightText="@_filter"
+                                   TextVisualizerTitle="@context.Name">
+                            <ContentInButtonArea>
+                                <ExceptionDetails ExceptionText="@context.ExceptionText" />
+                            </ContentInButtonArea>
+                        </GridValue>
+                    </AspireTemplateColumn>
+                </DisposalSafeFluentDataGrid>
+            </AspirePropertyDetailsAccordionItem>
+            <AspirePropertyDetailsAccordionItem Header="@ControlStringsLoc[nameof(ControlsStrings.ResourceDetailsEnvironmentVariablesHeader)]"
+                                                Count="@FilteredEnvironmentVariables.Count()"
+                                                Expanded="@_isEnvironmentVariablesExpanded">
+                <PropertyGrid TItem="EnvironmentVariableViewModel"
+                              Items="@FilteredEnvironmentVariables"
+                              IsValueMaskedChanged="@OnValueMaskedChanged"
+                              HighlightText="@_filter"
+                              GridTemplateColumns="1fr 1.5fr"
+                              Class="env-var-properties" />
+            </AspirePropertyDetailsAccordionItem>
+        </FluentAccordion>
+    </div>
+</div>
+
+@code {
+    private static RenderFragment RenderAddressValue(DisplayedUrl vm, string filter)
+    {
+        var highlighting = !string.IsNullOrEmpty(filter);
+
+        // If there's no URL, e.g. this is a tcp:// URI, just show the text
+        if (vm.Url is null)
+        {
+            if (highlighting)
+            {
+                return @<FluentHighlighter HighlightedText="@filter" Text="@vm.Text" />;
+            }
+            return @<span>@vm.Text</span>;
+        }
+        // Otherwise, render a link for the URL
+        else
+        {
+            // Mask querystring values for display
+            var displayUrl = DashboardUIHelpers.MaskQueryStringValues(vm.Url);
+
+            if (highlighting)
+            {
+                return @<a href="@vm.Url" target="_blank"><FluentHighlighter HighlightedText="@filter" Text="@displayUrl" /></a>;
+            }
+            return @<a href="@vm.Url" target="_blank">@displayUrl</a>;
+        }
+    }
+
+    private static RenderFragment RenderTextValue(DisplayedUrl vm, string filter)
+    {
+        var highlighting = !string.IsNullOrEmpty(filter) && !string.IsNullOrEmpty(vm.DisplayName);
+
+        // If there's no DisplayName then show nothing
+        if (string.IsNullOrEmpty(vm.DisplayName))
+        {
+            return @<span class="empty-data"></span>;
+        }
+        // Otherwise, render a link with the text as the anchor text & title as the URL
+        else
+        {
+            if (highlighting)
+            {
+                return @<a href="@vm.Url" data-tooltip="@vm.Url" target="_blank"><FluentHighlighter HighlightedText="@filter" Text="@vm.DisplayName" /></a>;
+            }
+            return @<a href="@vm.Url" data-tooltip="@vm.Url" target="_blank">@vm.DisplayName</a>;
+        }
+    }
+}

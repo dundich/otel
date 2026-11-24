@@ -1,0 +1,74 @@
+﻿@using Aspire.Dashboard.Model
+@using Aspire.Dashboard.Resources
+@using System.Collections.Immutable
+@using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons
+@inject IStringLocalizer<ControlsStrings> Loc
+
+<div class="details-layout structured-log-details-layout">
+    <div class="details-toolbar" role="toolbar">
+        <div>
+            @Loc[nameof(ControlsStrings.StructuredLogsDetailsResourceLabel)] <strong>@ViewModel.LogEntry.ResourceView.Resource.ResourceName</strong>
+        </div>
+        <div data-tooltip="@FormatHelpers.FormatTimeWithOptionalDate(TimeProvider, ViewModel.LogEntry.TimeStamp, MillisecondsDisplay.Full)">
+            @Loc[nameof(ControlsStrings.StructuredLogsDetailsTimestampLabel)] <strong>@FormatHelpers.FormatTimeWithOptionalDate(TimeProvider, ViewModel.LogEntry.TimeStamp, MillisecondsDisplay.Truncated)</strong>
+        </div>
+        <div class="toolbar-end">
+            <FluentTextInput TextInputType="TextInputType.Search" Placeholder="@Loc[nameof(ControlsStrings.FilterPlaceholder)]"
+                          Immediate="true"
+                          Autofocus="true"
+                          AutoComplete="off"
+                          @bind-Value="_filter">
+                <StartTemplate>
+                    <FluentIcon Value="@(new Icons.Regular.Size16.Search())" Color="Color.Primary" />
+                </StartTemplate>
+            </FluentTextInput>
+            <AspireMenuButton ButtonAppearance="ButtonAppearance.Default"
+                              ButtonClass="toolbar-button details-toolbar-button structured-log-details-actions"
+                              Icon="@(new Icons.Regular.Size20.Options())"
+                              ItemsProvider="@(() => _logActionsMenuItems)"
+                              Title="@Loc[nameof(ControlsStrings.ActionsButtonText)]" />
+        </div>
+    </div>
+    <div class="property-grid-container">
+        <FluentAccordion Block="true">
+            <AspirePropertyDetailsAccordionItem Header="@Loc[nameof(ControlsStrings.StructuredLogsDetailsLogEntryHeader)]"
+                                                Count="@FilteredItems.Count()"
+                                                Expanded="true">
+                <PropertyGrid TItem="TelemetryPropertyViewModel"
+                              Items="@FilteredItems"
+                              GridTemplateColumns="1fr 2fr"
+                              HighlightText="@_filter"
+                              ValueComponents="@_valueComponents" />
+            </AspirePropertyDetailsAccordionItem>
+            <AspirePropertyDetailsAccordionItem Header="@Loc[nameof(ControlsStrings.StructuredLogsDetailsContextHeader)]"
+                                                Count="@FilteredContextItems.Count()"
+                                                Expanded="true">
+                <PropertyGrid TItem="TelemetryPropertyViewModel"
+                              Items="@FilteredContextItems"
+                              GridTemplateColumns="1fr 2fr"
+                              HighlightText="@_filter"
+                              ValueComponents="@_valueComponents" />
+            </AspirePropertyDetailsAccordionItem>
+            @if (_exceptionAttributes.Count > 0)
+            {
+                <AspirePropertyDetailsAccordionItem Header="@Loc[nameof(ControlsStrings.StructuredLogsDetailsExceptionHeader)]"
+                                                    Count="@FilteredExceptionItems.Count()"
+                                                    Expanded="true">
+                    <PropertyGrid TItem="TelemetryPropertyViewModel"
+                                  Items="@FilteredExceptionItems"
+                                  GridTemplateColumns="1fr 2fr"
+                                  HighlightText="@_filter" />
+                </AspirePropertyDetailsAccordionItem>
+            }
+            <AspirePropertyDetailsAccordionItem Header="@Loc[nameof(ControlsStrings.StructuredLogsDetailsResourceHeader)]"
+                                                Count="@FilteredResourceItems.Count()"
+                                                Expanded="true">
+                <PropertyGrid TItem="TelemetryPropertyViewModel"
+                              Items="@FilteredResourceItems"
+                              GridTemplateColumns="1fr 2fr"
+                              HighlightText="@_filter"
+                              ValueComponents="@_valueComponents" />
+            </AspirePropertyDetailsAccordionItem>
+        </FluentAccordion>
+    </div>
+</div>

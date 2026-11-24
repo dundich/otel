@@ -1,0 +1,57 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="zh-Hant" original="../MigrationStrings.resx">
+    <body>
+      <trans-unit id="AvailableMigrationsHeader">
+        <source>The following migrations will be applied:</source>
+        <target state="translated">將套用下列移轉:</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConfirmApplyPrompt">
+        <source>Apply these migrations?</source>
+        <target state="translated">要套用這些移轉嗎?</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="MigratingStatus">
+        <source>Migrating to apphost.mts</source>
+        <target state="translated">正在移轉至 apphost.mts</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="MigrationCancelled">
+        <source>Migration cancelled. No changes were made.</source>
+        <target state="translated">已取消移轉。沒有進行任何變更。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="MigrationSucceededFormat">
+        <source>Migrated '{0}' to '{1}'.</source>
+        <target state="translated">已將 '{0}' 移轉至 '{1}'。</target>
+        <note>{0} is the legacy apphost.ts file name, {1} is the modern apphost.mts file name.</note>
+      </trans-unit>
+      <trans-unit id="NoAutomaticMigrationsAppHostSdkObsolete">
+        <source>No automatic migrations apply. This AppHost still uses Aspire.AppHost.Sdk (ASPIRE012), which is obsolete. See https://aka.ms/aspire/diagnostics/aspire012 for how to migrate.</source>
+        <target state="new">No automatic migrations apply. This AppHost still uses Aspire.AppHost.Sdk (ASPIRE012), which is obsolete. See https://aka.ms/aspire/diagnostics/aspire012 for how to migrate.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="NothingToMigrate">
+        <source>Nothing to migrate. The current project is already using the latest recommended Aspire conventions.</source>
+        <target state="translated">沒有要移轉的項目。目前的專案已使用最新建議的 Aspire 慣例。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="RegenerateFailedWarning">
+        <source>Migration completed, but regenerating the SDK code failed. Run 'aspire restore' to regenerate it.</source>
+        <target state="translated">移轉已完成，但重新產生 SDK 程式碼時失敗。請執行 'aspire restore' 以重新產生 SDK 程式碼。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="RegeneratingStatus">
+        <source>Regenerating SDK code</source>
+        <target state="translated">重新產生 SDK 程式碼</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="TypeScriptMigrationTitleFormat">
+        <source>Migrate '{0}' to '{1}' (rewrites SDK imports and updates aspire.config.json and tsconfig.apphost.json).</source>
+        <target state="translated">將 '{0}' 移轉至 '{1}'(重寫 SDK 匯入並更新 aspire.config.json 和 tsconfig.apphost.json)。</target>
+        <note>{0} is the legacy apphost.ts file name, {1} is the modern apphost.mts file name.</note>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

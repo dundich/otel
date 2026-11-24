@@ -1,0 +1,302 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
+using Aspire.Cli.Telemetry;
+using Microsoft.Extensions.Logging;
+using Microsoft.Win32.SafeHandles;
+using Semver;
+
+namespace Aspire.Cli.Npm;
+
+/// <summary>
+/// Runs npm CLI commands for package management operations.
+/// </summary>
+internal sealed class NpmRunner(IEnvironment environment, ILogger<NpmRunner> logger, ProfilingTelemetry profilingTelemetry) : INpmRunner
+{
+    /// <summary>
+    /// The canonical public npm registry URL. Commands that resolve, pack, or install
+    /// packages pass this explicitly via <c>--registry</c> so resolution and install use
+    /// the public feed and cannot inherit a project-level <c>.npmrc</c> that redirects to a
+    /// private feed (for example an Azure DevOps Artifacts feed). Such a private feed would
+    /// otherwise return 401 for packages (including transitive dependencies) it has not
+    /// mirrored, breaking <c>aspire agent init</c>.
+    /// See https://github.com/microsoft/aspire/issues/19370.
+    /// </summary>
+    private const string PublicRegistry = "https://registry.npmjs.org/";
+
+    private readonly Lazy<string?> _npmPath = new(() => PathLookupHelper.FindFullPathFromPath("npm"));
+
+    /// <inheritdoc />
+    public bool IsAvailable => _npmPath.Value is not null;
+
+    /// <inheritdoc />
+    public async Task<NpmPackageInfo?> ResolvePackageAsync(string packageName, string versionRange, CancellationToken cancellationToken)
+    {
+        var npmPath = FindNpmPath();
+        if (npmPath is null)
+        {
+            return null;
+        }
+
+        logger.LogDebug("Resolving npm package {PackageSpecifier}", NpmPackageInfo.FormatPackageSpecifier(packageName, versionRange));
+
+        // Use an isolated temp subdirectory so npm doesn't pick up .npmrc or
+        // other config files from the shared temp root or the user's CWD.
+        var tempDir = CreateIsolatedTempDirectory();
+
+        try
+        {
+            // Resolve version: npm view <package>@<range> version
+            var versionOutput = await RunNpmCommandInDirectoryAsync(
+                npmPath,
+                ["view", NpmPackageInfo.FormatPackageSpecifier(packageName, versionRange), "version", "--registry", PublicRegistry],
+                tempDir,
+                cancellationToken);
+
+            if (versionOutput is null)
+            {
+                logger.LogDebug("Failed to resolve version for {PackageSpecifier}", NpmPackageInfo.FormatPackageSpecifier(packageName, versionRange));
+                return null;
+            }
+
+            if (!TryExtractLastVersion(versionOutput, out var versionString))
+            {
+                logger.LogDebug("Could not extract version from npm output: {Output}", versionOutput.Trim());
+                return null;
+            }
+
+            if (!SemVersion.TryParse(versionString, SemVersionStyles.Any, out var version))
+            {
+                logger.LogDebug("Could not parse npm version from output: {Output}", versionString);
+                return null;
+            }
+
+            logger.LogDebug("Resolved {PackageSpecifier}", NpmPackageInfo.FormatPackageSpecifier(packageName, version));
+
+            return new NpmPackageInfo
+            {
+                Version = version
+            };
+        }
+        finally
+        {
+            CleanupTempDirectory(tempDir);
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<string?> PackAsync(string packageName, string version, string outputDirectory, CancellationToken cancellationToken)
+    {
+        var npmPath = FindNpmPath();
+        if (npmPath is null)
+        {
+            return null;
+        }
+
+        logger.LogDebug("Packing npm package {PackageSpecifier} to {OutputDirectory}", NpmPackageInfo.FormatPackageSpecifier(packageName, version), outputDirectory);
+
+        var output = await RunNpmCommandInDirectoryAsync(
+            npmPath,
+            ["pack", NpmPackageInfo.FormatPackageSpecifier(packageName, version), "--pack-destination", outputDirectory, "--registry", PublicRegistry],
+            outputDirectory,
+            cancellationToken);
+
+        if (output is null)
+        {
+            logger.LogDebug("Failed to pack {PackageSpecifier}", NpmPackageInfo.FormatPackageSpecifier(packageName, version));
+            return null;
+        }
+
+        // npm pack outputs the filename of the created tarball
+        var filename = output.Trim().Split(['\n', '\r'], StringSplitOptions.RemoveEmptyEntries).LastOrDefault();
+        if (string.IsNullOrWhiteSpace(filename))
+        {
+            logger.LogDebug("npm pack returned empty filename");
+            return null;
+        }
+
+        var tarballPath = Path.Combine(outputDirectory, filename);
+        if (!File.Exists(tarballPath))
+        {
+            logger.LogDebug("npm pack output file not found: {Path}", tarballPath);
+            return null;
+        }
+
+        logger.LogDebug("Packed {PackageSpecifier} to {TarballPath}", NpmPackageInfo.FormatPackageSpecifier(packageName, version), tarballPath);
+
+        return tarballPath;
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> InstallGlobalAsync(string tarballPath, CancellationToken cancellationToken)
+    {
+        var npmPath = FindNpmPath();
+        if (npmPath is null)
+        {
+            return false;
+        }
+
+        logger.LogDebug("Installing npm package globally from {TarballPath}", tarballPath);
+
+        // Use an isolated temp subdirectory so npm doesn't pick up .npmrc or
+        // other config files from the shared temp root or the user's CWD.
+        var tempDir = CreateIsolatedTempDirectory();
+
+        try
+        {
+            // The root tarball is provenance-verified, but its transitive dependencies are not.
+            // Prevent dependency lifecycle scripts from executing during installation.
+            var output = await RunNpmCommandInDirectoryAsync(
+                npmPath,
+                ["install", "-g", tarballPath, "--ignore-scripts", "--registry", PublicRegistry],
+                tempDir,
+                cancellationToken);
+
+            if (output is null)
+            {
+                logger.LogDebug("Failed to install npm package globally from {TarballPath}", tarballPath);
+                return false;
+            }
+
+            logger.LogDebug("Successfully installed npm package globally from {TarballPath}", tarballPath);
+            return true;
+        }
+        finally
+        {
+            CleanupTempDirectory(tempDir);
+        }
+    }
+
+    private string? FindNpmPath()
+    {
+        var npmPath = _npmPath.Value;
+        if (npmPath is null)
+        {
+            logger.LogDebug("npm is not installed or not found in PATH");
+        }
+
+        return npmPath;
+    }
+
+    private static string CreateIsolatedTempDirectory()
+    {
+        return Directory.CreateTempSubdirectory("aspire-npm-").FullName;
+    }
+
+    private void CleanupTempDirectory(string tempDir)
+    {
+        try
+        {
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, recursive: true);
+            }
+        }
+        catch (IOException ex)
+        {
+            logger.LogDebug(ex, "Failed to clean up temporary directory: {TempDir}", tempDir);
+        }
+    }
+
+    /// <summary>
+    /// Creates a <see cref="ProcessStartInfo"/> configured to run an npm command.
+    /// On Windows, .cmd files are invoked via cmd.exe /c for reliable stdout redirection.
+    /// </summary>
+    /// <param name="npmPath">Path to the npm executable or batch wrapper.</param>
+    /// <param name="args">npm arguments.</param>
+    /// <param name="workingDirectory">Working directory for the npm process.</param>
+    /// <param name="environment">Environment used to detect the host platform.</param>
+    /// <param name="standardInput">
+    /// Null-device handle kept alive until launch, or null when the shared process runner assigns stdin.
+    /// </param>
+    internal static ProcessStartInfo CreateNpmProcessStartInfo(string npmPath, string[] args, string workingDirectory, IEnvironment environment, SafeFileHandle? standardInput)
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            // Give npm (and any lifecycle scripts it invokes) a null stdin so reads see EOF
+            // instead of blocking on the CLI's terminal. NpmRunner is intended to be fully
+            // non-interactive. See https://github.com/microsoft/aspire/issues/16791.
+            StandardInputHandle = standardInput,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true,
+            WorkingDirectory = workingDirectory
+        };
+
+        ProcessStartInfoHelper.SetCommand(startInfo, npmPath, args, environment.IsWindows());
+
+        return startInfo;
+    }
+
+    /// <summary>
+    /// Tries to extract the version string from npm view output. When a version range
+    /// matches multiple versions, npm returns multi-line output in the format
+    /// <c>@scope/pkg@version 'version'</c> per line, sorted ascending. This method
+    /// returns the last (highest) version from such output, or the trimmed output
+    /// when it contains a single version.
+    /// </summary>
+    internal static bool TryExtractLastVersion(string npmOutput, [NotNullWhen(true)] out string? version)
+    {
+        version = null;
+
+        var lastLine = npmOutput
+            .Split(['\n', '\r'], StringSplitOptions.RemoveEmptyEntries)
+            .LastOrDefault()?
+            .Trim();
+
+        if (string.IsNullOrEmpty(lastLine))
+        {
+            return false;
+        }
+
+        // Multi-version format: "@scope/pkg@version 'version'" — extract the quoted version.
+        // Single-version format: just "version" — return as-is.
+        var quoteStart = lastLine.IndexOf('\'');
+        if (quoteStart >= 0)
+        {
+            var quoteEnd = lastLine.IndexOf('\'', quoteStart + 1);
+            if (quoteEnd > quoteStart)
+            {
+                version = lastLine[(quoteStart + 1)..quoteEnd];
+                return !string.IsNullOrEmpty(version);
+            }
+        }
+
+        version = lastLine;
+        return true;
+    }
+
+    private async Task<string?> RunNpmCommandInDirectoryAsync(string npmPath, string[] args, string workingDirectory, CancellationToken cancellationToken)
+    {
+        var argsString = string.Join(" ", args);
+        logger.LogDebug("Running npm {Args} in {WorkingDirectory}", argsString, workingDirectory);
+
+        try
+        {
+            using var nullInput = File.OpenNullHandle();
+            var startInfo = CreateNpmProcessStartInfo(npmPath, args, workingDirectory, environment, nullInput);
+
+            using var activity = profilingTelemetry.StartNpmCommand(npmPath, args, workingDirectory);
+            var result = await Process.RunAndCaptureTextAsync(startInfo, cancellationToken).ConfigureAwait(false);
+            activity.SetProcessId(result.ProcessId);
+            activity.SetProcessExitCode(result.ExitStatus.ExitCode);
+
+            if (result.ExitStatus.ExitCode != 0)
+            {
+                activity.SetError($"npm exited with code {result.ExitStatus.ExitCode}.");
+                logger.LogDebug("npm {Args} returned non-zero exit code {ExitCode}: {Error}", argsString, result.ExitStatus.ExitCode, result.StandardError.Trim());
+                return null;
+            }
+
+            return result.StandardOutput;
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            logger.LogDebug(ex, "Failed to run npm {Args}", argsString);
+            return null;
+        }
+    }
+
+}

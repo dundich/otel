@@ -1,0 +1,121 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+using System.Collections.Immutable;
+using System.Xml.Linq;
+using Aspire.Dashboard.Resources;
+using Microsoft.Extensions.Localization;
+using Microsoft.FluentUI.AspNetCore.Components;
+using Microsoft.FluentUI.AspNetCore.Components.Extensions;
+
+namespace Aspire.Dashboard.Model.ResourceGraph;
+
+public static class ResourceGraphMapper
+{
+    // The text of the game's DOM controls. What the game draws on its canvas stays in English: its bitmap font only has ASCII.
+    internal static GraphGameStringsDto GetGameStrings(IStringLocalizer<Aspire.Dashboard.Resources.Resources> loc) => new(
+        Instructions: loc[nameof(Aspire.Dashboard.Resources.Resources.ResourceGraphGameInstructions)].Value,
+        Exit: loc[nameof(Aspire.Dashboard.Resources.Resources.ResourceGraphGameExit)].Value,
+        ExitLabel: loc[nameof(Aspire.Dashboard.Resources.Resources.ResourceGraphGameExitLabel)].Value,
+        SoundOn: loc[nameof(Aspire.Dashboard.Resources.Resources.ResourceGraphGameSoundOn)].Value,
+        SoundOff: loc[nameof(Aspire.Dashboard.Resources.Resources.ResourceGraphGameSoundOff)].Value,
+        ModeNormal: loc[nameof(Aspire.Dashboard.Resources.Resources.ResourceGraphGameModeNormal)].Value,
+        ModeHardCore: loc[nameof(Aspire.Dashboard.Resources.Resources.ResourceGraphGameModeHardCore)].Value,
+        HardCoreWarning: loc[nameof(Aspire.Dashboard.Resources.Resources.ResourceGraphGameHardCoreWarning)].Value,
+        HardCoreStopped: loc[nameof(Aspire.Dashboard.Resources.Resources.ResourceGraphGameHardCoreStopped)].Value);
+
+    public static ResourceDto MapResource(ResourceViewModel r, IEnumerable<ResourceViewModel> graphResources, IDictionary<string, ResourceViewModel> resourcesByName, IStringLocalizer<Columns> columnsLoc, bool showHiddenResources, IconResolver iconResolver)
+    {
+        var resolvedNames = new List<string>();
+
+        // Remove relationships back to the current resource. The graph doesn't display self referential relationships.
+        var filteredRelationships = r.Relationships.Where(relationship => relationship.ResourceName != r.DisplayName);
+
+        foreach (var resourceRelationships in filteredRelationships.GroupBy(r => r.ResourceName, StringComparers.ResourceName))
+        {
+            var matches = graphResources
+                .Where(r => string.Equals(r.DisplayName, resourceRelationships.Key, StringComparisons.ResourceName))
+                .Where(r => !r.IsResourceHidden(showHiddenResources))
+                .ToList();
+
+            foreach (var match in matches)
+            {
+                resolvedNames.Add(match.Name);
+            }
+        }
+
+        var endpoint = ResourceUrlHelpers.GetUrls(r, includeInternalUrls: false, includeNonEndpointUrls: false).FirstOrDefault()
+            ?? ResourceUrlHelpers.GetUrls(r, includeInternalUrls: false, includeNonEndpointUrls: true).FirstOrDefault();
+        var resolvedEndpointText = r.IsParameter ? null : ResolvedEndpointText(endpoint);
+        var resourceName = ResourceViewModel.GetResourceName(r, resourcesByName);
+        var color = ColorGenerator.Instance.GetColorVariableByKey(resourceName);
+
+        var icon = GetIconPathData(ResourceIconHelpers.GetIconForResource(iconResolver, r, IconSize.Size24));
+
+        var stateIcon = ResourceStateViewModel.GetStateViewModel(r, columnsLoc);
+
+        var dto = new ResourceDto
+        {
+            Name = r.Name,
+            ResourceType = r.ResourceType,
+            DisplayName = ResourceViewModel.GetResourceName(r, resourcesByName),
+            Uid = r.Uid,
+            ResourceIcon = new IconDto
+            {
+                Path = icon,
+                Color = color,
+                Tooltip = r.ResourceTypeDisplayName
+            },
+            StateIcon = new IconDto
+            {
+                Path = GetIconPathData(stateIcon.Icon),
+                Color = stateIcon.Color.ToAttributeValue()!,
+                Tooltip = stateIcon.Text ?? r.State
+            },
+            ReferencedNames = resolvedNames.Distinct().OrderBy(n => n).ToImmutableArray(),
+            EndpointUrl = r.IsParameter ? null : endpoint?.Url,
+            EndpointText = resolvedEndpointText,
+            // Resources marked hidden are included only while "Show hidden resources" is enabled.
+            // Preserve that distinction for graph rendering, where there is no row treatment.
+            IsHidden = r.IsResourceHidden(showHiddenResources: false)
+        };
+
+        return dto;
+    }
+
+    private static string ResolvedEndpointText(DisplayedUrl? endpoint)
+    {
+        var text = endpoint?.OriginalUrlString;
+        if (string.IsNullOrEmpty(text))
+        {
+            return ControlsStrings.ResourceGraphNoEndpoints;
+        }
+
+        if (Uri.TryCreate(text, UriKind.Absolute, out var uri))
+        {
+            return $"{uri.Host}:{uri.Port}";
+        }
+
+        return text;
+    }
+
+    public static string GetIconPathData(Icon icon)
+    {
+        // Fluent UI icon content is an SVG fragment. Most icons contain one path:
+        //   <path d="M..." />
+        // Some icons, such as DocumentMultiple, contain sibling paths:
+        //   <path d="M..." /><path d="M..." />
+        // Wrap the fragment so XML parsing accepts both shapes, then combine the path data into one compound SVG path.
+        var iconContent = XElement.Parse($"<svg>{icon.Content}</svg>");
+        var pathData = iconContent.Elements()
+            .Select(e => e.Attribute("d")?.Value ?? throw new InvalidOperationException($"Icon '{icon.Name}' contains an element without path data."))
+            .ToArray();
+
+        if (pathData.Length == 0)
+        {
+            throw new InvalidOperationException($"Icon '{icon.Name}' doesn't contain path data.");
+        }
+
+        return string.Join(' ', pathData);
+    }
+}

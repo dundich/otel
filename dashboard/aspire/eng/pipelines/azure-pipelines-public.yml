@@ -1,0 +1,32 @@
+schedules:
+- cron: "0 0 * * 1" # Run at midnight (UTC) on Monday each week
+  displayName: Weekly Monday build
+  branches:
+    include:
+    - main
+    - release/*
+  always: true # Run even when there are no code changes
+
+# Excluding normal trigger as we're now using schedules
+trigger: none
+
+pr:
+  branches:
+    include:
+    - main
+    - release/*
+    - feature/*
+  paths:
+    include:
+      - '*'
+    exclude:
+      - '**.md'
+      - eng/Version.Details.xml
+      - .github/*
+      - docs/*
+      - LICENSE.TXT
+      - PATENTS.TXT
+      - THIRD-PARTY-NOTICES.TXT
+
+extends:
+  template: /eng/pipelines/templates/public-pipeline-template.yml

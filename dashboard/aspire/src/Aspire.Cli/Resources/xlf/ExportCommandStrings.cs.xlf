@@ -1,0 +1,77 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="cs" original="../ExportCommandStrings.resx">
+    <body>
+      <trans-unit id="DashboardNotAvailable">
+        <source>Dashboard is not available. Telemetry data (structured logs, traces) will not be included in the export.</source>
+        <target state="translated">Řídicí panel není k dispozici. Do exportu se nezahrnou telemetrická data (strukturované protokoly, trasování).</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="Description">
+        <source>Export telemetry and resource data to a zip file</source>
+        <target state="translated">Exportovat telemetrii a data prostředků do souboru ZIP</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ExportComplete">
+        <source>Export saved to {0}</source>
+        <target state="translated">Export se uložil do {0}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FailedToExport">
+        <source>Failed to export resource and telemetry data: {0}</source>
+        <target state="translated">Nepovedlo se vyexportovat data o prostředku a telemetrii: {0}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GatheringConsoleLogs">
+        <source>Gathering console logs...</source>
+        <target state="translated">Shromažďují se protokoly konzoly...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GatheringResources">
+        <source>Gathering resource data...</source>
+        <target state="translated">Shromažďují se data prostředků...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GatheringStructuredLogs">
+        <source>Gathering structured logs...</source>
+        <target state="translated">Shromažďují se strukturované protokoly...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GatheringTraces">
+        <source>Gathering traces...</source>
+        <target state="translated">Shromažďují se trasování...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="IncludeHiddenOptionDescription">
+        <source>Include hidden resources in the output</source>
+        <target state="translated">Zahrnout skryté prostředky do výstupu</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="NoResourcesFound">
+        <source>No resources found.</source>
+        <target state="translated">Nenašly se žádné prostředky.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="OutputOptionDescription">
+        <source>The output file path for the export zip file</source>
+        <target state="translated">Cesta k výstupnímu souboru exportovaného souboru ZIP</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceNotFound">
+        <source>Resource '{0}' not found.</source>
+        <target state="translated">Prostředek {0} nebyl nalezen.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceOptionDescription">
+        <source>Export data only for the specified resource</source>
+        <target state="translated">Exportovat data pouze pro zadaný prostředek</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SelectAppHostAction">
+        <source>export data from</source>
+        <target state="translated">exportovat data z</target>
+        <note />
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

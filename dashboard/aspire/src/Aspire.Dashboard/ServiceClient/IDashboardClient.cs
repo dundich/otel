@@ -1,0 +1,139 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+using System.Collections.Immutable;
+using Aspire.Dashboard.Model;
+using Aspire.DashboardService.Proto.V1;
+using Google.Protobuf.WellKnownTypes;
+
+namespace Aspire.Dashboard.ServiceClient;
+
+/// <summary>
+/// Provides data about active resources to external components, such as the dashboard.
+/// </summary>
+public interface IDashboardClient : IResourceRepository, IAsyncDisposable
+{
+    Task WhenConnected { get; }
+
+    /// <summary>
+    /// Gets a task that completes when the initial resource snapshot has been received and persisted
+    /// to the current run's resource repository. Historical runs are already ready.
+    /// </summary>
+    /// <remarks>
+    /// Resource-stream recovery resets readiness until its replacement snapshot is persisted.
+    /// Interaction-stream recovery does not reset resource readiness.
+    /// </remarks>
+    Task WhenResourcesReady { get; }
+
+    /// <summary>
+    /// Gets whether the client object is enabled for use.
+    /// </summary>
+    /// <remarks>
+    /// Users of <see cref="IDashboardClient"/> client should check <see cref="IsEnabled"/> before calling
+    /// any other members of this interface, to avoid exceptions.
+    /// </remarks>
+    bool IsEnabled { get; }
+
+    /// <summary>
+    /// Gets whether the selected dashboard data source is read-only.
+    /// </summary>
+    bool IsReadOnly => false;
+
+    /// <summary>
+    /// Gets the current connection state of the client to the resource service.
+    /// </summary>
+    DashboardConnectionState ConnectionState { get; }
+
+    /// <summary>
+    /// An event raised when the connection state changes. Subscribers receive the new state.
+    /// </summary>
+    event Action<DashboardConnectionState>? ConnectionStateChanged;
+
+    /// <summary>
+    /// Explicitly triggers a reconnection attempt to the resource service.
+    /// </summary>
+    Task ReconnectAsync();
+
+    /// <summary>
+    /// Gets the application name advertised by the server.
+    /// </summary>
+    /// <remarks>
+    /// Intended for display in the UI.
+    /// </remarks>
+    string ApplicationName { get; }
+
+    /// <summary>
+    /// Gets the minimum dashboard version required by the connected AppHost,
+    /// or <see langword="null"/> if not yet known.
+    /// </summary>
+    string? MinRequiredVersion { get; }
+
+    IAsyncEnumerable<WatchInteractionsResponseUpdate> SubscribeInteractionsAsync(CancellationToken cancellationToken);
+
+    Task SendInteractionRequestAsync(WatchInteractionsRequestUpdate request, CancellationToken cancellationToken);
+
+    Task<ResourceCommandResponseViewModel> ExecuteResourceCommandAsync(string resourceName, string resourceType, CommandViewModel command, ExecuteResourceCommandOptions options, CancellationToken cancellationToken);
+
+    Task<string> UploadFileAsync(Stream fileStream, string fileName, long expectedSize, int interactionId, string inputName, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Opens a duplex byte stream to an AppHost-owned terminal.
+    /// </summary>
+    /// <remarks>
+    /// Used by terminal interactions, docked terminals, and detached terminal windows.
+    /// The returned stream carries HMP1 frames between the dashboard and the AppHost. The dashboard's terminal
+    /// replica bridges this stream to the browser's HWT1 WebSocket connection.
+    /// </remarks>
+    Task<Stream> AttachTerminalAsync(string terminalId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Watches the set of AppHost-owned terminals shown as tabs in the dashboard's terminal dock.
+    /// </summary>
+    /// <remarks>
+    /// The first update is always a snapshot; subsequent updates are individual changes. Interaction terminals are
+    /// deliberately excluded — they belong to a dialog, not to the dock.
+    /// </remarks>
+    IAsyncEnumerable<WatchTerminalsUpdate> SubscribeTerminalsAsync(CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Asks the AppHost to close a terminal, terminating its workload.
+    /// </summary>
+    Task CloseTerminalAsync(string terminalId, CancellationToken cancellationToken);
+}
+
+/// <summary>
+/// Options for executing a resource command through the dashboard client.
+/// </summary>
+public sealed class ExecuteResourceCommandOptions
+{
+    /// <summary>
+    /// Gets the invocation arguments supplied to the command, keyed by argument name.
+    /// </summary>
+    public IReadOnlyDictionary<string, Value>? Arguments { get; init; }
+
+    /// <summary>
+    /// Gets a value indicating whether command execution should fail instead of prompting for missing input.
+    /// </summary>
+    public bool NonInteractive { get; init; }
+}
+
+public sealed record ResourceViewModelSubscription(
+    ImmutableArray<ResourceViewModel> InitialState,
+    IAsyncEnumerable<IReadOnlyList<ResourceViewModelChange>> Subscription);
+
+public sealed record ResourceViewModelChange(
+    ResourceViewModelChangeType ChangeType,
+    ResourceViewModel Resource);
+
+public enum ResourceViewModelChangeType
+{
+    /// <summary>
+    /// The object was added if new, or updated if not.
+    /// </summary>
+    Upsert,
+
+    /// <summary>
+    /// The object was deleted.
+    /// </summary>
+    Delete
+}

@@ -1,0 +1,72 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="tr" original="../PsCommandStrings.resx">
+    <body>
+      <trans-unit id="Description">
+        <source>List running AppHosts</source>
+        <target state="translated">Çalışan AppHost’ları listele</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FollowOptionDescription">
+        <source>Keep running and emit updates as running AppHosts change. JSON output uses newline-delimited changed AppHost records by default, or full snapshots with --output snapshot.</source>
+        <target state="translated">Çalışan AppHost’lar değiştikçe çalışmaya devam edin ve güncelleştirmeleri yayımlayın. JSON çıktısı varsayılan değer olarak yeni satırla ayrılmış değişen AppHost kayıtlarını kullanır veya --output snapshot ile tam anlık görüntüler kullanır.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FollowRequiresJson">
+        <source>The --follow option only supports JSON output. Use --format json.</source>
+        <target state="translated">--follow seçeneği yalnızca JSON çıktısını destekler. --format json kullanın.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="HeaderCliPid">
+        <source>CLI PID</source>
+        <target state="translated">CLI PID</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="HeaderDashboard">
+        <source>Dashboard</source>
+        <target state="translated">Pano</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="HeaderPath">
+        <source>Path</source>
+        <target state="translated">Yol</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="HeaderPid">
+        <source>PID</source>
+        <target state="translated">PID</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="HeaderSdk">
+        <source>SDK</source>
+        <target state="translated">SDK</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InvalidOutputMode">
+        <source>The --output option must be default or snapshot.</source>
+        <target state="translated">--output seçeneği varsayılan veya anlık görüntü olmalıdır.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="JsonOptionDescription">
+        <source>Output format (Table or Json)</source>
+        <target state="translated">Çıktı biçimi (Tablo veya Json)</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="OutputOptionDescription">
+        <source>Output mode: default preserves the standard AppHost output; snapshot emits full AppHost snapshots with resource health, heartbeats, and errors. Snapshot requires --follow --format json.</source>
+        <target state="translated">Çıktı modu: varsayılan, standart AppHost çıktısını korur; anlık görüntü ise kaynak durumu, kalp atışları ve hatalarla birlikte tam AppHost anlık görüntülerini yayınlar. Anlık görüntü için --follow --format json gerekir.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SnapshotRequiresFollowJson">
+        <source>The --output snapshot option requires --follow --format json.</source>
+        <target state="translated">--output snapshot seçeneği için --follow --format json gerekir.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="UnknownPath">
+        <source>Unknown</source>
+        <target state="translated">Bilinmiyor</target>
+        <note />
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

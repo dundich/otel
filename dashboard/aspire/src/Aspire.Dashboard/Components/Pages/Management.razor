@@ -1,0 +1,131 @@
+@page "/management"
+@page "/management/resource/{ResourceName}"
+@layout ResourcesLayout
+
+@using Aspire.Dashboard.Components.Layout
+
+<PageTitle>Управление</PageTitle>
+
+<div class="page-content-container">
+    <AspirePageContentLayout>
+        <PageTitleSection>
+            <h1 class="page-header">Управление</h1>
+        </PageTitleSection>
+
+        <ToolbarSection>
+            <div class="management-toolbar" role="toolbar" aria-label="Управление панелями">
+                <label class="management-filter">
+                    <span>Приложение</span>
+                    <select value="@_selectedSource" @onchange="OnFilterChanged" aria-label="Фильтр по приложению">
+                        <option value="">Все приложения</option>
+                        @foreach (var source in Sources)
+                        {
+                            <option value="@source">@source</option>
+                        }
+                    </select>
+                </label>
+
+                <button type="button" class="management-button" @onclick="LoadAsync" disabled="@_loading">
+                    Обновить
+                </button>
+            </div>
+        </ToolbarSection>
+
+        <MainSection>
+            <div class="management-content">
+                @if (_loading)
+                {
+                    <p class="management-muted">Загрузка панелей…</p>
+                }
+                else if (_loadError is not null)
+                {
+                    <div class="management-error">
+                        Не удалось загрузить панели: @_loadError
+                        <div class="management-muted">Проверьте, что app2 доступен по @ApiBase.</div>
+                    </div>
+                }
+
+                @if (!_loading && _loadError is null && !VisibleStates.Any())
+                {
+                    <p class="management-muted">
+                        @(string.IsNullOrEmpty(_selectedSource)
+                            ? "Панели не найдены."
+                            : $"У приложения {_selectedSource} нет панелей.")
+                    </p>
+                }
+
+                @foreach (var state in VisibleStates)
+                {
+                    <details class="management-panel" open @key="state">
+                        <summary>
+                            <span>@state.Panel.Title</span>
+                            <span class="management-summary-meta">
+                                <span class="management-source">@state.Source</span>
+                                <code class="management-version">v@(state.Panel.Version)</code>
+                            </span>
+                        </summary>
+
+                        <div class="management-panel-body">
+                            @if (!string.IsNullOrWhiteSpace(state.Panel.Description))
+                            {
+                                <p class="management-muted">@state.Panel.Description</p>
+                            }
+
+                            <div class="management-fields">
+                                @foreach (var field in state.Panel.Fields)
+                                {
+                                    <label class="management-field">
+                                        <span>@field.Label</span>
+                                        @if (field.InputType == "bool")
+                                        {
+                                            <span class="management-check">
+                                                <input type="checkbox"
+                                                       checked="@state.Bools.GetValueOrDefault(field.Name)"
+                                                       @onchange="e => SetBool(state, field, e)" />
+                                                <span>@(state.Bools.GetValueOrDefault(field.Name) ? "Да" : "Нет")</span>
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <input type="@GetInputType(field)"
+                                                   step="@GetStep(field)"
+                                                   value="@state.Text.GetValueOrDefault(field.Name)"
+                                                   placeholder="@field.Placeholder"
+                                                   required="@field.Required"
+                                                   @oninput="e => SetText(state, field, e)" />
+                                        }
+                                    </label>
+                                }
+                            </div>
+
+                            <div class="management-action-row">
+                                <div class="management-actions">
+                                    @foreach (var action in state.Panel.Actions)
+                                    {
+                                        <button type="button"
+                                                class="management-action"
+                                                disabled="@state.Busy"
+                                                title="@action.Description"
+                                                @onclick="() => RunAsync(state, action)">
+                                            @action.Label
+                                        </button>
+                                    }
+                                </div>
+
+                                <div class="management-connection">
+                                    <span>Public: <code>@state.PublicUrl</code></span>
+                                    <span>Internal: <code>@state.DnsName @(state.Addresses.Count > 0 ? $"({string.Join(", ", state.Addresses)})" : "")</code></span>
+                                </div>
+                            </div>
+
+                            @if (!string.IsNullOrEmpty(state.Status))
+                            {
+                                <div class="management-status @(state.Success ? "ok" : "error")">@state.Status</div>
+                            }
+                        </div>
+                    </details>
+                }
+            </div>
+        </MainSection>
+    </AspirePageContentLayout>
+</div>

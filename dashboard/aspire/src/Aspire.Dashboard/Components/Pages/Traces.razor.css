@@ -1,0 +1,53 @@
+::deep .trace-row-error {
+    background-color: var(--log-error);
+}
+
+.trace-id {
+    color: var(--colorNeutralForeground3);
+    padding-left: 0.5rem;
+    font-size: var(--aspire-font-size-secondary);
+    font-weight: var(--aspire-font-weight-regular);
+}
+
+::deep .trace-name-container {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+::deep .trace-name-content {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+}
+
+.trace-tag {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--colorNeutralStroke1);
+    padding: 2px 7px;
+    font-size: var(--aspire-font-size-secondary);
+    background-color: var(--colorNeutralBackground1);
+    color: var(--colorNeutralForeground1);
+}
+
+.trace-service-tag {
+    border-left-width: 15px;
+    margin-right: 7px;
+}
+
+::deep .duration-container {
+    display: flex;
+    align-items: center;
+}
+
+::deep .duration-ring {
+    width: 20px;
+    height: 20px;
+}
+
+::deep .trace-duration {
+    padding-left: 10px;
+}

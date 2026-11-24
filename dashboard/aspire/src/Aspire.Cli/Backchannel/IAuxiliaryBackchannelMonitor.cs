@@ -1,0 +1,44 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+namespace Aspire.Cli.Backchannel;
+
+/// <summary>
+/// Monitors the auxiliary backchannel directory and maintains connections to running AppHost instances.
+/// </summary>
+internal interface IAuxiliaryBackchannelMonitor
+{
+    /// <summary>
+    /// Gets all active AppHost connections.
+    /// </summary>
+    IEnumerable<IAppHostAuxiliaryBackchannel> Connections { get; }
+
+    /// <summary>
+    /// Gets or sets the path to the selected AppHost. When set, this AppHost will be used for MCP operations.
+    /// </summary>
+    string? SelectedAppHostPath { get; set; }
+
+    /// <summary>
+    /// Gets all connections that are within the scope of the specified working directory.
+    /// </summary>
+    /// <param name="workingDirectory">The working directory to check against.</param>
+    /// <returns>A list of in-scope connections.</returns>
+    IReadOnlyList<IAppHostAuxiliaryBackchannel> GetConnectionsForWorkingDirectory(DirectoryInfo workingDirectory);
+
+    /// <summary>
+    /// Triggers an immediate scan of the backchannels directory for new/removed AppHosts.
+    /// </summary>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <param name="pruneOrphanedSockets">Whether to delete sockets whose owning process has exited.</param>
+    /// <param name="throwOnDiscoveryFailure">Whether directory discovery failures must propagate to the caller.</param>
+    /// <returns>A task representing the scan operation.</returns>
+    Task ScanAsync(CancellationToken cancellationToken = default, bool pruneOrphanedSockets = true, bool throwOnDiscoveryFailure = false);
+
+    /// <summary>
+    /// Yields the initial active connection set and subsequent connection reference changes.
+    /// </summary>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <param name="readOnly">Whether to avoid filesystem cleanup and report discovery failures instead of ignoring them.</param>
+    /// <returns>The active connections after the initial scan and after each observed change.</returns>
+    IAsyncEnumerable<IReadOnlyList<IAppHostAuxiliaryBackchannel>> WatchConnectionsAsync(CancellationToken cancellationToken = default, bool readOnly = false);
+}

@@ -1,0 +1,152 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="zh-Hant" original="../MessageStrings.resx">
+    <body>
+      <trans-unit id="ContainerMountAnonymousVolumesReadOnlyExceptionMessage">
+        <source>Anonymous volumes cannot be read-only.</source>
+        <target state="translated">匿名磁碟區不可為唯讀。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ContainerMountBindMountsRequireRootedPaths">
+        <source>Bind mounts must specify an absolute path.</source>
+        <target state="translated">繫結裝載必須指定絕對路徑。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ContainerMountBindMountsRequireSourceExceptionMessage">
+        <source>Bind mounts must specify a source path.</source>
+        <target state="translated">繫結裝載必須指定來源路徑。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DcpDependencyCheckFailedMessage">
+        <source>Application orchestrator dependency check returned an error: {0}</source>
+        <target state="translated">應用程式協調器相依性檢查已傳回錯誤: {0}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DcpVersionCheckTooLowMessage">
+        <source>Newer version of the Aspire.Hosting.AppHost package is required to run the application. Ensure you are referencing at least version '{0}'.</source>
+        <target state="translated">執行應用程式需要較新版本的 Aspire.Hosting.AppHost 套件。請確保您參考的版本至少為 '{0}'。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InstallationInstructions">
+        <source>Installation instructions</source>
+        <target state="translated">安裝指示</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="MissingCommandNotificationTitle">
+        <source>Missing command</source>
+        <target state="translated">遺漏命令</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="PersistentContainerWithoutUserSecrets">
+        <source>Resource '{0}' has a persistent lifetime but the AppHost project does not have user secrets configured. Generated parameter values (such as passwords) may change on each restart, causing persistent containers to be recreated. Run 'aspire secret set' to initialize user secrets.</source>
+        <target state="translated">資源 '{0}' 具有持久生命週期，但 AppHost 專案尚未設定使用者祕密。產生的參數值 (例如密碼) 可能會在每次重啟時變更，導致持久容器被重新建立。請執行 'aspire secret set' 以初始化使用者祕密。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="PublishModeNotSupportedByRunCommand">
+        <source>The AppHost is in publish mode and cannot be started with 'aspire run'. Use 'aspire publish' instead.</source>
+        <target state="translated">AppHost 處於發佈模式，無法使用 'aspire run' 啟動。請改用 'aspire publish'。</target>
+        <note>Do not translate the command names 'aspire run' and 'aspire publish'.</note>
+      </trans-unit>
+      <trans-unit id="RequiredCommandNotFound">
+        <source>Required command '{0}' was not found on PATH or at the specified location.</source>
+        <target state="translated">在 PATH 或指定的位置找不到必要的命令 '{0}'。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="RequiredCommandNotFoundWithLink">
+        <source>Required command '{0}' was not found on PATH or at the specified location. For installation instructions, see: {1}</source>
+        <target state="translated">在 PATH 或指定的位置找不到必要的命令 '{0}'。如需安裝指示，請參閱: {1}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="RequiredCommandValidationFailed">
+        <source>Command '{0}' validation failed: {1}</source>
+        <target state="translated">命令 '{0}' 驗證失敗: {1}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="RequiredCommandValidationFailedWithLink">
+        <source>Command '{0}' validation failed: {1}. For installation instructions, see: {2}</source>
+        <target state="translated">命令 '{0}' 驗證失敗: {1}。如需安裝指示，請參閱: {2}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceMayFailToStart">
+        <source>Resource '{0}' may fail to start: {1}</source>
+        <target state="translated">資源 '{0}' 可能無法啟動: {1}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyContainerArgumentsDisplayName">
+        <source>Container arguments</source>
+        <target state="translated">容器引數</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyContainerCommandDisplayName">
+        <source>Container command</source>
+        <target state="translated">容器命令</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyContainerIdDisplayName">
+        <source>Container ID</source>
+        <target state="translated">容器識別碼</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyContainerImageDisplayName">
+        <source>Container image</source>
+        <target state="translated">容器映像</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyContainerLifetimeDisplayName">
+        <source>Container lifetime</source>
+        <target state="translated">容器存留期</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyContainerPortsDisplayName">
+        <source>Container ports</source>
+        <target state="translated">容器連接埠</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyExecutableArgumentsDisplayName">
+        <source>Executable arguments</source>
+        <target state="translated">可執行檔變數</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyExecutablePathDisplayName">
+        <source>Executable path</source>
+        <target state="translated">可執行檔路徑</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyExecutableProcessIdDisplayName">
+        <source>Process ID</source>
+        <target state="translated">程序識別碼</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyExecutableWorkingDirectoryDisplayName">
+        <source>Working directory</source>
+        <target state="translated">工作目錄</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyParameterValueDisplayName">
+        <source>Value</source>
+        <target state="translated">值</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyProjectLaunchProfileDisplayName">
+        <source>Launch profile</source>
+        <target state="translated">啟動設定檔</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyProjectPathDisplayName">
+        <source>Project path</source>
+        <target state="translated">專案路徑</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyToolPackageDisplayName">
+        <source>Tool package</source>
+        <target state="translated">工具套件</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyToolVersionDisplayName">
+        <source>Tool version</source>
+        <target state="translated">工具版本</target>
+        <note />
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

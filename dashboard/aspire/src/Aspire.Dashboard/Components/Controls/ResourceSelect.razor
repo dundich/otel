@@ -1,0 +1,20 @@
+﻿@using Aspire.Dashboard.Resources
+
+<label for="@_selectId" class="@LabelClass">@Loc[nameof(ControlsStrings.ResourceLabel)]</label>
+
+<FluentSelect TOption="SelectViewModel<ResourceTypeDetails>" TValue="SelectViewModel<ResourceTypeDetails>" Items="Resources"
+              Disabled="@(Resources is null)"
+              @key="@Resources?.Count()"
+              Id="@_selectId"
+              OptionText="@((SelectViewModel<ResourceTypeDetails>? c) => c?.Name)"
+              OptionDisabled="@((SelectViewModel<ResourceTypeDetails>? c) => !CanSelectGrouping && c?.Id?.Type is Otlp.Model.OtlpResourceType.ResourceGrouping)"
+              @bind-Value="SelectedResource"
+              @bind-Value:after="SelectedResourceChangedCore"
+              AriaLabel="@AriaLabel"
+              Class="resource-list"
+              Height="@GetPopupHeight()">
+    <OptionTemplate>
+        <span hidden data-tooltip-option="@DashboardUIHelpers.ResolveTooltip(context.Name)"></span>
+        <ResourceSelectOptionTemplate ViewModel="@context" />
+    </OptionTemplate>
+</FluentSelect>

@@ -1,0 +1,752 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="it" original="../ControlsStrings.resx">
+    <body>
+      <trans-unit id="ActionStructuredLogsText">
+        <source>Structured logs</source>
+        <target state="translated">Log strutturati</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ActionViewDetailsText">
+        <source>View details</source>
+        <target state="translated">Visualizza dettagli</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ActionsButtonText">
+        <source>Actions</source>
+        <target state="translated">Azioni</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ActionsColumnHeader">
+        <source>Actions</source>
+        <target state="translated">Azioni</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ApplicationLower">
+        <source>application</source>
+        <target state="translated">applicazione</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ChartContainerAllTags">
+        <source>All tags</source>
+        <target state="translated">Tutti i tag</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ChartContainerFilteredTags">
+        <source>Filtered tags</source>
+        <target state="translated">Tag filtrati</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ChartContainerFiltersHeader">
+        <source>Filters</source>
+        <target state="translated">Filtri</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ChartContainerGraphAccessibleLabel">
+        <source>Graph. For an accessible view please navigate to the Table tab</source>
+        <target state="translated">Grafo. Per una visualizzazione accessibile, passa alla scheda Tabella</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ChartContainerGraphTab">
+        <source>Graph</source>
+        <target state="translated">Grafo</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ChartContainerIncompatibleHistogramBounds">
+        <source>Some histograms have no shared bucket boundaries. Percentiles cannot be calculated for those intervals. Use Show count to view observation counts.</source>
+        <target state="translated">Alcuni istogrammi non hanno limiti di bucket condivisi. Non è possibile calcolare i percentili per tali intervalli. Usa Mostra conteggio per visualizzare il conteggio delle osservazioni.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ChartContainerOptionsHeader">
+        <source>Options</source>
+        <target state="translated">Opzioni</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ChartContainerOverflowDescription">
+        <source>Some dimensions for the metric have been dropped by the OpenTelemetry SDK.</source>
+        <target state="translated">Alcune dimensioni per la metrica sono state eliminate dal SDK di OpenTelemetry.</target>
+        <note>OpenTelemetry is the name of the standard.</note>
+      </trans-unit>
+      <trans-unit id="ChartContainerOverflowLink">
+        <source>For more information, see &lt;a href="{0}" target="_blank"&gt;OpenTelemetry specification cardinality limits&lt;/a&gt;.</source>
+        <target state="translated">Per alte informazioni, consulta &lt;a href="{0}" target="_blank"&gt;Limiti di cardinalità della specifica OpenTelemetry&lt;/a&gt;.</target>
+        <note>OpenTelemetry is the name of the standard.</note>
+      </trans-unit>
+      <trans-unit id="ChartContainerOverflowTitle">
+        <source>Cardinality capping has been detected</source>
+        <target state="translated">È stata rilevata una limitazione della cardinalità</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ChartContainerShowChangePerIntervalLabel">
+        <source>Show change per interval</source>
+        <target state="new">Show change per interval</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ChartContainerShowCountLabel">
+        <source>Show count</source>
+        <target state="translated">Mostra conteggio</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ChartContainerTableTab">
+        <source>Table</source>
+        <target state="translated">Tabella</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ChartContainerUnableToDisplay">
+        <source>Unable to display chart</source>
+        <target state="translated">Non è possibile visualizzare il grafico</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ChartContainerUnitPerInterval">
+        <source>{0} per interval</source>
+        <target state="new">{0} per interval</target>
+        <note>{0} is the instrument's unit, e.g. "Requests"</note>
+      </trans-unit>
+      <trans-unit id="ClearAllResources">
+        <source>Remove all telemetry</source>
+        <target state="translated">Rimuovi tutta la telemetria</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ClearPendingSelectedResource">
+        <source>Remove telemetry for resource</source>
+        <target state="translated">Rimuovi telemetria per la risorsa</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ClearSelectedResource">
+        <source>Remove telemetry for {0}</source>
+        <target state="translated">Rimuovi telemetria per {0}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ClearSignalsButtonTitle">
+        <source>Remove data</source>
+        <target state="translated">Rimuovi dati</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="CollapseAllSpansText">
+        <source>Collapse all</source>
+        <target state="translated">Comprimi tutto</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DetailsColumnHeader">
+        <source>Details</source>
+        <target state="translated">Dettagli</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="Download">
+        <source>Download</source>
+        <target state="translated">Scarica</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DurationColumnHeader">
+        <source>Duration</source>
+        <target state="translated">Durata</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="EndpointNameColumnHeader">
+        <source>Endpoint name</source>
+        <target state="translated">Nome endpoint</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="EventColumnHeader">
+        <source>Event</source>
+        <target state="translated">Evento</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ExceptionDetailsTitle">
+        <source>Exception details</source>
+        <target state="translated">Dettagli eccezione</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ExpandAllSpansText">
+        <source>Expand all</source>
+        <target state="translated">Espandi tutto</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ExportEnv">
+        <source>Export .env</source>
+        <target state="translated">Esporta .env</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="OverviewGraphAccessibleLabel">
+        <source>Resource graph. The resource list shows the same resources in an accessible format</source>
+        <target state="new">Resource graph. The resource list shows the same resources in an accessible format</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ParameterDeleteValueAction">
+        <source>Delete value</source>
+        <target state="new">Delete value</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcesContainerGraphAccessibleLabel">
+        <source>Graph. For an accessible view please navigate to the Resources tab</source>
+        <target state="translated">Grafo. Per una visualizzazione accessibile, passare alla scheda Risorse</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcesContainerGraphTab">
+        <source>Graph</source>
+        <target state="translated">Grafo</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcesContainerParametersTab">
+        <source>Parameters</source>
+        <target state="translated">Parametri</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcesContainerTableTab">
+        <source>Resources</source>
+        <target state="translated">Risorse</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ScrollToBottom">
+        <source>Scroll to bottom</source>
+        <target state="translated">Scorrere verso il basso</target>
+        <note>Accessible name and tooltip for the floating button that jumps a large scroll region to the bottom.</note>
+      </trans-unit>
+      <trans-unit id="SummaryDetailsViewCloseViewWithShortcut">
+        <source>Close (Esc)</source>
+        <target state="new">Close (Esc)</target>
+        <note>Tooltip of a close button that the Escape key also triggers. Esc is the label of the Escape key on keyboards.</note>
+      </trans-unit>
+      <trans-unit id="TextVisualizerContentLabel">
+        <source>Text content</source>
+        <target state="translated">Contenuto di testo</target>
+        <note>Accessible name for the scrollable text/code region in the text visualizer.</note>
+      </trans-unit>
+      <trans-unit id="ViewJson">
+        <source>View JSON</source>
+        <target state="translated">Visualizza JSON</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FilterPlaceholder">
+        <source>Filter...</source>
+        <target state="translated">Filtro...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="EnvironmentVariablesFilterToggleShowAll">
+        <source>Show all properties</source>
+        <target state="translated">Mostra tutte le proprietà</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="EnvironmentVariablesFilterToggleShowSpecOnly">
+        <source>Show core properties</source>
+        <target state="translated">Mostra proprietà principali</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="EnvironmentVariablesHideVariableValues">
+        <source>Hide sensitive values</source>
+        <target state="translated">Nascondi valori sensibili</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="EnvironmentVariablesShowVariableValues">
+        <source>Show sensitive values</source>
+        <target state="translated">Mostra valori sensibili</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FluentDataGridHeaderCellGrowAriaLabelText">
+        <source>Grow column width</source>
+        <target state="translated">Aumenta larghezza colonna</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FluentDataGridHeaderCellResetAriaLabelText">
+        <source>Reset column widths</source>
+        <target state="translated">Reimposta larghezze colonne</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FluentDataGridHeaderCellResizeButtonText">
+        <source>Resize</source>
+        <target state="translated">Ridimensiona</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FluentDataGridHeaderCellResizeDiscreteLabel">
+        <source>Column width</source>
+        <target state="translated">Larghezza colonna</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FluentDataGridHeaderCellResizeLabel">
+        <source>Column width (in pixels)</source>
+        <target state="translated">Larghezza colonna (in pixel)</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FluentDataGridHeaderCellShrinkAriaLabelText">
+        <source>Shrink column width</source>
+        <target state="translated">Riduci larghezza colonna</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FluentDataGridHeaderCellSortAscendingButtonText">
+        <source>Sort (ascending)</source>
+        <target state="translated">Ordinamento (crescente)</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FluentDataGridHeaderCellSortButtonText">
+        <source>Sort</source>
+        <target state="translated">Ordinamento</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FluentDataGridHeaderCellSortDescendingButtonText">
+        <source>Sort (descending)</source>
+        <target state="translated">Ordinamento (decrescente)</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FluentDataGridHeaderCellSubmitAriaLabelText">
+        <source>Set column widths</source>
+        <target state="translated">Imposta larghezze colonne</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GenAIDetailsTitle">
+        <source>GenAI details</source>
+        <target state="translated">Dettagli IA generativa</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GridValueCopied">
+        <source>Copied!</source>
+        <target state="translated">Copia completata.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GridValueCopyToClipboard">
+        <source>Copy to clipboard</source>
+        <target state="translated">Copia negli Appunti</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GridValueMaskHideValue">
+        <source>Hide value</source>
+        <target state="translated">Nascondi valore</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GridValueMaskShowValue">
+        <source>Show value</source>
+        <target state="translated">Mostra valore</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="HideHiddenResources">
+        <source>Hide hidden resources</source>
+        <target state="translated">Nascondi risorse nascoste</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="LabelAll">
+        <source>(All)</source>
+        <target state="translated">(Tutti)</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="LabelEmpty">
+        <source>(Empty)</source>
+        <target state="translated">(Vuoto)</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="LabelNone">
+        <source>(None)</source>
+        <target state="translated">(Nessuno)</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="LabelOther">
+        <source>(Other)</source>
+        <target state="translated">(Altro)</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="LabelValueUnset">
+        <source>(Unset)</source>
+        <target state="translated">(Annulla)</target>
+        <note>Unset is a noun, not a verb, to indicate that the value has not been set.</note>
+      </trans-unit>
+      <trans-unit id="LinkAddressColumnHeader">
+        <source>Address</source>
+        <target state="translated">Indirizzo</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="LinkTextColumnHeader">
+        <source>Text</source>
+        <target state="translated">Testo</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="Loading">
+        <source>Loading...</source>
+        <target state="translated">Caricamento in corso...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="MetricTableExemplarsColumnHeader">
+        <source>Exemplars</source>
+        <target state="translated">Esemplari</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="MetricTableNoMetricsFound">
+        <source>No metrics data found</source>
+        <target state="translated">Nessun dato delle metriche trovato</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="MetricTableShowOnlyValueChanges">
+        <source>Only show value updates</source>
+        <target state="translated">Mostra solo gli aggiornamenti dei valori</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="MetricTableStartColumnHeader">
+        <source>Time</source>
+        <target state="translated">Orario</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="MetricTableValueDecreased">
+        <source>Value decreased</source>
+        <target state="translated">Valore diminuito</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="MetricTableValueIncreased">
+        <source>Value increased</source>
+        <target state="translated">Valore aumentato</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="MetricTableValueNoChange">
+        <source>Value did not change</source>
+        <target state="translated">Il valore non è stato modificato</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="MetricTableViewExemplarsLabel">
+        <source>View exemplars</source>
+        <target state="translated">Visualizza gli esemplari</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="NameColumnHeader">
+        <source>Name</source>
+        <target state="translated">Nome</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="PageToolbarLandmark">
+        <source>Page toolbar</source>
+        <target state="translated">Barra degli strumenti della pagina</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ParameterSetValueAction">
+        <source>Click to set parameter value</source>
+        <target state="translated">Fare clic per impostare il valore del parametro</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ParameterValueNotSet">
+        <source>Value not set</source>
+        <target state="translated">Valore non impostato</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="PauseButtonTitle">
+        <source>Pause incoming data</source>
+        <target state="translated">Metti in pausa i dati in ingresso</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="PauseWarningTitle">
+        <source>Capture paused</source>
+        <target state="translated">Acquisizione in pausa</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="PlotlyChartCount">
+        <source>Count</source>
+        <target state="translated">Numero</target>
+        <note>Count is the name of a plot y-axis label</note>
+      </trans-unit>
+      <trans-unit id="PlotlyChartExemplar">
+        <source>Exemplar</source>
+        <target state="translated">Esemplare</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="PlotlyChartExemplars">
+        <source>Exemplars</source>
+        <target state="translated">Esemplari</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="PlotlyChartLength">
+        <source>Length</source>
+        <target state="translated">Lunghezza</target>
+        <note>Length is the name of a plot y-axis label</note>
+      </trans-unit>
+      <trans-unit id="PlotlyChartTime">
+        <source>Time</source>
+        <target state="translated">Ora</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="PlotlyChartTrace">
+        <source>Trace</source>
+        <target state="translated">Traccia</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="PlotlyChartValue">
+        <source>Value</source>
+        <target state="translated">Valore</target>
+        <note>Value is the name of a plot y-axis label</note>
+      </trans-unit>
+      <trans-unit id="PropertyGridValueColumnHeader">
+        <source>Value</source>
+        <target state="translated">Valore</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceActions">
+        <source>Resource actions</source>
+        <target state="translated">Azioni delle risorse</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceDetailsBackReferences">
+        <source>Back references</source>
+        <target state="translated">Riferimenti indietro</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceDetailsEnvironmentVariablesHeader">
+        <source>Environment variables</source>
+        <target state="translated">Variabili di ambiente</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceDetailsReferences">
+        <source>References</source>
+        <target state="translated">Riferimenti</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceDetailsResourceHeader">
+        <source>Resource</source>
+        <target state="translated">Risorsa</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceDetailsStateDescriptionHeader">
+        <source>State details</source>
+        <target state="translated">Dettagli sullo stato</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceDetailsTypeHeader">
+        <source>Type</source>
+        <target state="translated">Tipo</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceDetailsUrlsHeader">
+        <source>URLs</source>
+        <target state="translated">URL</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceDetailsVolumesHeader">
+        <source>Volumes</source>
+        <target state="translated">Volumi</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceDropdownReplicaAccessibleTitle">
+        <source>{0} (replica of {1})</source>
+        <target state="translated">{0} (replica di {1})</target>
+        <note>{0} is a resource name, {1} is a replica set name</note>
+      </trans-unit>
+      <trans-unit id="ResourceGraphNoEndpoints">
+        <source>No endpoints</source>
+        <target state="translated">Nessun endpoint</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceHealthChecksHeader">
+        <source>Health checks</source>
+        <target state="translated">Controlli integrità</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceLabel">
+        <source>Resource</source>
+        <target state="translated">Risorsa</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResumeButtonTitle">
+        <source>Resume incoming data</source>
+        <target state="translated">Riprendi i dati in ingresso</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SelectAResource">
+        <source>Select a resource</source>
+        <target state="translated">Seleziona una risorsa</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ShowHiddenResources">
+        <source>Show hidden resources</source>
+        <target state="translated">Mostra risorse nascoste</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SpanDetailsBacklinksHeader">
+        <source>Backlinks</source>
+        <target state="translated">Backlink</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SpanDetailsContextHeader">
+        <source>Context</source>
+        <target state="translated">Contesto</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SpanDetailsDetailsColumnHeader">
+        <source>Details</source>
+        <target state="translated">Dettagli</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SpanDetailsDurationLabel">
+        <source>Duration</source>
+        <target state="translated">Durata</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SpanDetailsEventsHeader">
+        <source>Events</source>
+        <target state="translated">Eventi</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SpanDetailsLinksHeader">
+        <source>Links</source>
+        <target state="translated">Collegamenti</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SpanDetailsResourceHeader">
+        <source>Resource</source>
+        <target state="translated">Risorsa</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SpanDetailsResourceLabel">
+        <source>Resource</source>
+        <target state="translated">Risorsa</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SpanDetailsSpanColumnHeader">
+        <source>Span</source>
+        <target state="translated">Span</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SpanDetailsSpanHeader">
+        <source>Span</source>
+        <target state="translated">Span</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SpanDetailsSpanPrefix">
+        <source>Span</source>
+        <target state="translated">Span</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SpanDetailsStartTimeLabel">
+        <source>Start time</source>
+        <target state="translated">Ora di inizio</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SpanTypeCloud">
+        <source>Cloud</source>
+        <target state="translated">Cloud</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SpanTypeDatabase">
+        <source>Database</source>
+        <target state="translated">Database</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SpanTypeGenAI">
+        <source>Gen AI</source>
+        <target state="translated">IA generativa</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SpanTypeHttp">
+        <source>HTTP</source>
+        <target state="translated">HTTP</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SpanTypeMessaging">
+        <source>Messaging</source>
+        <target state="translated">Messaggistica</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SpanTypeRpc">
+        <source>RPC</source>
+        <target state="translated">RPC</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="StateColumnHeader">
+        <source>State</source>
+        <target state="translated">Stato</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="StructuredLogsDetailsContextHeader">
+        <source>Context</source>
+        <target state="translated">Contesto</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="StructuredLogsDetailsExceptionHeader">
+        <source>Exception</source>
+        <target state="translated">Eccezione</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="StructuredLogsDetailsLogEntryHeader">
+        <source>Log entry</source>
+        <target state="translated">Voce di log</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="StructuredLogsDetailsResourceHeader">
+        <source>Resource</source>
+        <target state="translated">Risorsa</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="StructuredLogsDetailsResourceLabel">
+        <source>Resource</source>
+        <target state="translated">Risorsa</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="StructuredLogsDetailsTimestampLabel">
+        <source>Timestamp</source>
+        <target state="translated">Timestamp</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="TimeOffsetColumnHeader">
+        <source>Time offset</source>
+        <target state="translated">Differenza di tempo</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="TimestampColumnHeader">
+        <source>Timestamp</source>
+        <target state="translated">Timestamp</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ToggleNesting">
+        <source>Toggle nesting</source>
+        <target state="translated">Attiva/Disattiva annidamento</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ViewAction">
+        <source>View</source>
+        <target state="translated">Visualizza</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ViewLogsLink">
+        <source>View logs</source>
+        <target state="translated">Visualizza log</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SummaryDetailsViewCloseView">
+        <source>Close</source>
+        <target state="translated">Chiudi</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SummaryDetailsViewSplitHorizontal">
+        <source>Split horizontal</source>
+        <target state="translated">Dividi in orizzontale</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SummaryDetailsViewSplitVertical">
+        <source>Split vertical</source>
+        <target state="translated">Dividi in verticale</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ViewStructuredLogsText">
+        <source>View structured logs</source>
+        <target state="translated">Visualizza log strutturati</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="VolumeMountTypeColumnHeader">
+        <source>Mount type</source>
+        <target state="translated">Tipo di montaggio</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="VolumeMountTypeReadOnlyTitle">
+        <source>Read-only</source>
+        <target state="new">Read-only</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="VolumePathColumnHeader">
+        <source>Path</source>
+        <target state="translated">Percorso</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="VolumeRevealFailed">
+        <source>Couldn't open '{0}'. It may not exist on this machine.</source>
+        <target state="new">Couldn't open '{0}'. It may not exist on this machine.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="VolumeRevealInFileExplorer">
+        <source>Reveal in file explorer</source>
+        <target state="new">Reveal in file explorer</target>
+        <note />
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json.schemastore.org/template",
+  "author": "Microsoft",
+  "generatorVersions": "1.0.0.0",
+  "classifications": [
+    "Common",
+    "Aspire",
+    "Cloud",
+    "Web",
+    "Web API",
+    "API",
+    "Service"
+  ],
+  "name": "Aspire Service Defaults",
+  "defaultName": "ServiceDefaults",
+  "description": "A project template for creating an Aspire service defaults project.",
+  "shortName": "aspire-servicedefaults",
+  "sourceName": "Aspire.ServiceDefaults1",
+  "preferNameDirectory": true,
+  "tags": {
+    "language": "C#",
+    "type": "project"
+  },
+  "precedence": "9000",
+  "identity": "Aspire.ServiceDefaults.CSharp.!!REPLACE_WITH_LATEST_MAJOR_MINOR_VERSION!!",
+  "thirdPartyNotices": "https://aka.ms/aspire/third-party-notices",
+  "groupIdentity": "Aspire.ServiceDefaults",
+  "sources": [
+    {
+      "source": "./",
+      "target": "./"
+    }
+  ],
+  "symbols": {
+    "Framework": {
+      "type": "parameter",
+      "description": "The target framework for the project.",
+      "datatype": "choice",
+      "choices": [
+        {
+          "choice": "net10.0",
+          "description": "Target net10.0"
+        },
+        {
+          "choice": "net11.0",
+          "description": "Target net11.0"
+        }
+      ],
+      "replaces": "net10.0",
+      "defaultValue": "net10.0"
+    },
+    "hostIdentifier": {
+      "type": "bind",
+      "binding": "HostIdentifier"
+    },
+    "skipRestore": {
+      "type": "parameter",
+      "datatype": "bool",
+      "description": "If specified, skips the automatic restore of the project on create.",
+      "defaultValue": "false"
+    }
+  },
+  "primaryOutputs": [
+    {
+      "path": "Aspire.ServiceDefaults1.csproj"
+    }
+  ],
+  "postActions": [
+    {
+      "id": "restore",
+      "condition": "(!skipRestore)",
+      "description": "Restore NuGet packages required by this project.",
+      "manualInstructions": [
+        {
+          "text": "Run 'dotnet restore'"
+        }
+      ],
+      "actionId": "210D431B-A78B-4D2F-B762-4ED3E3EA9025",
+      "continueOnError": true
+    }
+  ]
+}

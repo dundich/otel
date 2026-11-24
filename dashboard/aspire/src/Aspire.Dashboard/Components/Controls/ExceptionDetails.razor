@@ -1,0 +1,36 @@
+﻿@namespace Aspire.Dashboard.Components
+
+@using Aspire.Dashboard.Components.Dialogs
+@using Aspire.Dashboard.Resources
+
+@inject IStringLocalizer<ControlsStrings> Loc
+
+@if (!string.IsNullOrWhiteSpace(ExceptionText))
+{
+    <FluentButton Appearance="ButtonAppearance.Transparent"
+                  IconOnly="true"
+                  OnClick="OnExceptionDetailsClickedAsync"
+                  data-tooltip="@Loc[nameof(ControlsStrings.ExceptionDetailsTitle)]" aria-label="@Loc[nameof(ControlsStrings.ExceptionDetailsTitle)]"
+                  Class="exception-details-button">
+        <FluentIcon Icon="Icons.Filled.Size16.DocumentError"
+                    Color="Color.Primary" />
+    </FluentButton>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public required string ExceptionText { get; set; }
+
+    [Inject]
+    public required DashboardDialogService DialogService { get; init; }
+
+    private async Task OnExceptionDetailsClickedAsync()
+    {
+        await TextVisualizerDialog.OpenDialogAsync(new OpenTextVisualizerDialogOptions
+        {
+            DialogService = DialogService,
+            ValueDescription = Loc[nameof(ControlsStrings.ExceptionDetailsTitle)],
+            Value = ExceptionText
+        });
+    }
+}

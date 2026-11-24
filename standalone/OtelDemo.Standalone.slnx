@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="../src/Dashboard.Client/Dashboard.Client.csproj" />
+    <Project Path="../src/App1.Api/App1.Api.csproj" />
+    <Project Path="../src/App2.Counter/App2.Counter.csproj" />
+  </Folder>
+</Solution>

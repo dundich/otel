@@ -1,0 +1,77 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="pt-BR" original="../CertificatesCommandStrings.resx">
+    <body>
+      <trans-unit id="CleanCancelled">
+        <source>Certificate clean operation was cancelled by the user.</source>
+        <target state="translated">A operação de limpeza de certificado foi cancelada pelo usuário.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="CleanDescription">
+        <source>Remove all HTTPS development certificates</source>
+        <target state="translated">Remover todos os certificados de desenvolvimento HTTPS</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="CleanFailure">
+        <source>Failed to clean HTTPS development certificates.</source>
+        <target state="translated">Falha ao limpar certificados de desenvolvimento HTTPS.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="CleanFailureDetailsFormat">
+        <source>Certificate clean operation failed: {0}</source>
+        <target state="translated">Falha na operação de limpeza do certificado: {0}</target>
+        <note>{0} is the error message from the failed operation</note>
+      </trans-unit>
+      <trans-unit id="CleanProgress">
+        <source>Cleaning development certificates (may require elevated permissions)...</source>
+        <target state="translated">Limpando certificados de desenvolvimento (pode exigir permissões elevadas)...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="CleanSuccess">
+        <source>All HTTPS development certificates cleaned successfully.</source>
+        <target state="translated">Todos os certificados de desenvolvimento HTTPS foram limpos com sucesso.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="Description">
+        <source>Manage HTTPS development certificates</source>
+        <target state="translated">Gerenciar certificados de desenvolvimento HTTPS</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="TrustCancelled">
+        <source>Certificate trust operation was cancelled by the user.</source>
+        <target state="translated">A operação de confiança do certificado foi cancelada pelo usuário.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="TrustDescription">
+        <source>Trust the HTTPS development certificate, creating one if necessary</source>
+        <target state="translated">Confie no certificado de desenvolvimento HTTPS, criando um se necessário</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="TrustFailure">
+        <source>Failed to trust HTTPS development certificate.</source>
+        <target state="translated">Falha ao confiar no certificado de desenvolvimento HTTPS.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="TrustFailureDetailsFormat">
+        <source>Certificate trust operation returned: {0}</source>
+        <target state="translated">Operação de confiança de certificado retornada: {0}</target>
+        <note>{0} is the EnsureCertificateResult value</note>
+      </trans-unit>
+      <trans-unit id="TrustPartialSuccess">
+        <source>HTTPS development certificate was partially trusted. Continuing because partial trust is usable for CLI HTTPS diagnostics on Linux; browser trust may still be incomplete.</source>
+        <target state="translated">O certificado de desenvolvimento HTTPS era parcialmente confiável. Continuando porque a confiança parcial é utilizável para o diagnóstico CLI HTTPS no Linux; a confiança do navegador ainda pode estar incompleta.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="TrustProgress">
+        <source>Trusting development certificate (may require elevated permissions)...</source>
+        <target state="translated">Confiando no certificado de desenvolvimento (pode exigir permissões elevadas)...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="TrustSuccess">
+        <source>HTTPS development certificate trusted successfully.</source>
+        <target state="translated">Certificado de desenvolvimento HTTPS marcado como confiável com sucesso.</target>
+        <note />
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

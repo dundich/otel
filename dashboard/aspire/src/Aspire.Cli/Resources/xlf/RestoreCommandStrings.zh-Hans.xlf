@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="zh-Hans" original="../RestoreCommandStrings.resx">
+    <body>
+      <trans-unit id="Description">
+        <source>Restore dependencies and generate SDK code for an AppHost</source>
+        <target state="translated">还原依赖项并为 AppHost 生成 SDK 代码</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="UnrecognizedAppHostType">
+        <source>Unrecognized AppHost type.</source>
+        <target state="translated">无法识别的 AppHost 类型。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="RestoringSdkCode">
+        <source>Restoring SDK code...</source>
+        <target state="translated">正在还原 SDK 代码...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="RestoreSucceeded">
+        <source>SDK code restored successfully for {0}.</source>
+        <target state="translated">已成功还原 {0} 的 SDK 代码。</target>
+        <note>{0} is the AppHost project file name.</note>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

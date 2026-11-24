@@ -1,0 +1,269 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+using System.Text;
+using System.Text.Json;
+using Aspire.Shared.ConsoleLogs;
+using Microsoft.Extensions.Logging;
+
+namespace Aspire.Hosting.Dcp;
+
+/// <summary>
+/// Helper class for parsing DCP-formatted log lines.
+/// DCP log format: &lt;date&gt;\t&lt;level&gt;\t&lt;category&gt;\t&lt;log message&gt;
+/// </summary>
+internal static class DcpLogParser
+{
+    /// <summary>
+    /// Tries to parse a DCP-formatted log line.
+    /// </summary>
+    /// <param name="line">The log line to parse (as bytes).</param>
+    /// <param name="message">The extracted message.</param>
+    /// <param name="logLevel">The extracted log level.</param>
+    /// <param name="category">The extracted category.</param>
+    /// <returns>True if the line was successfully parsed as a DCP log; false otherwise.</returns>
+    public static bool TryParseDcpLog(ReadOnlySpan<byte> line, out string message, out LogLevel logLevel, out string category)
+    {
+        return TryParseDcpLog(line, out message, out logLevel, out category, out _);
+    }
+
+    /// <summary>
+    /// Tries to parse a DCP-formatted log line.
+    /// </summary>
+    /// <param name="line">The log line to parse (as bytes).</param>
+    /// <param name="message">The extracted message.</param>
+    /// <param name="logLevel">The extracted log level.</param>
+    /// <param name="category">The extracted category.</param>
+    /// <param name="timestamp">The extracted timestamp, if present and valid.</param>
+    /// <returns>True if the line was successfully parsed as a DCP log; false otherwise.</returns>
+    public static bool TryParseDcpLog(ReadOnlySpan<byte> line, out string message, out LogLevel logLevel, out string category, out DateTimeOffset? timestamp)
+    {
+        message = string.Empty;
+        logLevel = LogLevel.Information;
+        category = string.Empty;
+        timestamp = null;
+
+        try
+        {
+            // The log format is
+            // <date>\t<level>\t<category>\t<log message>
+            // e.g. 2023-09-19T20:40:50.509-0700      info    dcp.ServiceReconciler       service /apigateway is now in state Ready       {"ServiceName": {"name":"apigateway"}}
+
+            var tab = line.IndexOf((byte)'\t');
+            if (tab < 0)
+            {
+                return false;
+            }
+
+            var timestampBytes = line[..tab];
+            line = line[(tab + 1)..];
+
+            tab = line.IndexOf((byte)'\t');
+            if (tab < 0)
+            {
+                return false;
+            }
+
+            var level = line[..tab];
+            line = line[(tab + 1)..];
+
+            tab = line.IndexOf((byte)'\t');
+            if (tab < 0)
+            {
+                return false;
+            }
+
+            var categorySpan = line[..tab];
+            line = line[(tab + 1)..];
+
+            // Trim trailing carriage return.
+            if (line.Length > 0 && line[^1] == '\r')
+            {
+                line = line[0..^1];
+            }
+
+            var messageSpan = line;
+
+            var timestampText = Encoding.UTF8.GetString(timestampBytes);
+            if (TimestampParser.TryParseConsoleTimestamp(timestampText, out var timestampParseResult))
+            {
+                timestamp = timestampParseResult.Value.Timestamp;
+            }
+
+            // Parse log level
+            if (level.SequenceEqual("info"u8))
+            {
+                logLevel = LogLevel.Information;
+            }
+            else if (level.SequenceEqual("error"u8))
+            {
+                logLevel = LogLevel.Error;
+            }
+            else if (level.SequenceEqual("warning"u8))
+            {
+                logLevel = LogLevel.Warning;
+            }
+            else if (level.SequenceEqual("debug"u8))
+            {
+                logLevel = LogLevel.Debug;
+            }
+            else if (level.SequenceEqual("trace"u8))
+            {
+                logLevel = LogLevel.Trace;
+            }
+
+            message = Encoding.UTF8.GetString(messageSpan);
+            category = Encoding.UTF8.GetString(categorySpan);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Tries to parse a DCP-formatted log line from a string.
+    /// </summary>
+    /// <param name="line">The log line to parse (as string).</param>
+    /// <param name="message">The extracted message.</param>
+    /// <param name="logLevel">The extracted log level.</param>
+    /// <param name="isErrorLevel">True if the log level indicates an error.</param>
+    /// <returns>True if the line was successfully parsed as a DCP log; false otherwise.</returns>
+    public static bool TryParseDcpLog(string line, out string message, out LogLevel logLevel, out bool isErrorLevel)
+    {
+        return TryParseDcpLog(line, out message, out logLevel, out isErrorLevel, out _);
+    }
+
+    /// <summary>
+    /// Tries to parse a DCP-formatted log line from a string.
+    /// </summary>
+    /// <param name="line">The log line to parse (as string).</param>
+    /// <param name="message">The extracted message.</param>
+    /// <param name="logLevel">The extracted log level.</param>
+    /// <param name="isErrorLevel">True if the log level indicates an error.</param>
+    /// <param name="timestamp">The extracted timestamp, if present and valid.</param>
+    /// <returns>True if the line was successfully parsed as a DCP log; false otherwise.</returns>
+    public static bool TryParseDcpLog(string line, out string message, out LogLevel logLevel, out bool isErrorLevel, out DateTimeOffset? timestamp)
+    {
+        var bytes = Encoding.UTF8.GetBytes(line);
+        var result = TryParseDcpLog(bytes.AsSpan(), out message, out logLevel, out _, out timestamp);
+        isErrorLevel = logLevel == LogLevel.Error;
+        return result;
+    }
+
+    /// <summary>
+    /// Formats a system-level log message by parsing JSON metadata and applying the [sys] prefix format.
+    /// </summary>
+    /// <param name="message">The raw message which may contain a text portion and JSON metadata.</param>
+    /// <param name="additionalFields">Additional fields to append after the message and any fields extracted from JSON metadata.</param>
+    /// <returns>The formatted message with [sys] prefix and human-readable format.</returns>
+    public static string FormatSystemLog(string message, IReadOnlyList<KeyValuePair<string, string?>>? additionalFields = null)
+    {
+        const string SystemLogPrefix = "[sys] ";
+
+        // Try to find JSON portion in the message (starts with a tab followed by '{')
+        var jsonStart = message.IndexOf('\t');
+        if (jsonStart < 0)
+        {
+            return FormatSystemLogMessage(message, additionalFields);
+        }
+
+        var textPart = message[..jsonStart];
+        var jsonPart = message[(jsonStart + 1)..];
+
+        // Try to parse the JSON metadata
+        try
+        {
+            using var doc = JsonDocument.Parse(jsonPart);
+            var root = doc.RootElement;
+
+            // Process failures are emitted as:
+            //   Failed to start a process\t{"Cmd":"pwsh","Args":[],"error":"..."}
+            var fields = new List<KeyValuePair<string, string?>>
+            {
+                new("Cmd", root.TryGetProperty("Cmd", out var cmdProp) ? cmdProp.GetString() : null),
+                new("Args", root.TryGetProperty("Args", out var argsProp) ? argsProp.ToString() : null),
+                new("ContainerName", root.TryGetProperty("ContainerName", out var containerNameProp) ? containerNameProp.GetString() : null),
+                new("ContainerId", root.TryGetProperty("ContainerID", out var containerIdProp) ? containerIdProp.GetString() : null)
+            };
+
+            if (additionalFields is not null)
+            {
+                fields.AddRange(additionalFields);
+            }
+
+            fields.Add(new("Error", root.TryGetProperty("error", out var errorProp) ? errorProp.GetString() : null));
+
+            return FormatSystemLogMessage(
+                string.IsNullOrWhiteSpace(textPart) ? string.Empty : textPart,
+                fields);
+        }
+        catch
+        {
+            // Preserve malformed metadata for diagnostics while still adding caller-provided context.
+            return FormatSystemLogMessage(message, additionalFields);
+        }
+
+        static string FormatSystemLogMessage(
+            string text,
+            IEnumerable<KeyValuePair<string, string?>>? fields)
+        {
+            var sb = new StringBuilder();
+            sb.Append(SystemLogPrefix);
+            sb.Append(text);
+
+            var hasAddedField = false;
+            if (fields is null)
+            {
+                return sb.ToString();
+            }
+
+            foreach (var (name, value) in fields)
+            {
+                if (string.IsNullOrWhiteSpace(value))
+                {
+                    continue;
+                }
+
+                // Handle multi-line values
+                if (value.Contains('\n'))
+                {
+                    if (sb.Length > SystemLogPrefix.Length || hasAddedField)
+                    {
+                        sb.Append(':');
+                    }
+                    sb.Append('\n');
+                    // Prefix each line with [sys]
+                    var lines = value.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+                    for (int i = 0; i < lines.Length; i++)
+                    {
+                        sb.Append(SystemLogPrefix);
+                        sb.Append(lines[i].Trim());
+                        // Only add newline if not the last line
+                        if (i < lines.Length - 1)
+                        {
+                            sb.Append('\n');
+                        }
+                    }
+                }
+                else
+                {
+                    // Add delimiter
+                    if (sb.Length > SystemLogPrefix.Length)
+                    {
+                        sb.Append(hasAddedField ? ", " : ": ");
+                    }
+
+                    // Add field in format "Name = Value"
+                    sb.Append(name);
+                    sb.Append(" = ");
+                    sb.Append(value);
+                    hasAddedField = true;
+                }
+            }
+
+            return sb.ToString();
+        }
+    }
+}

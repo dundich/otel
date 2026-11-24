@@ -1,0 +1,152 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="ja" original="../MessageStrings.resx">
+    <body>
+      <trans-unit id="ContainerMountAnonymousVolumesReadOnlyExceptionMessage">
+        <source>Anonymous volumes cannot be read-only.</source>
+        <target state="translated">匿名ボリュームを読み取り専用にすることはできません。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ContainerMountBindMountsRequireRootedPaths">
+        <source>Bind mounts must specify an absolute path.</source>
+        <target state="translated">バインド マウントでは絶対パスを指定する必要があります。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ContainerMountBindMountsRequireSourceExceptionMessage">
+        <source>Bind mounts must specify a source path.</source>
+        <target state="translated">バインド マウントでは、ソース パスを指定する必要があります。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DcpDependencyCheckFailedMessage">
+        <source>Application orchestrator dependency check returned an error: {0}</source>
+        <target state="translated">アプリケーション オーケストレーターの依存関係チェックでエラー {0} が返されました。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DcpVersionCheckTooLowMessage">
+        <source>Newer version of the Aspire.Hosting.AppHost package is required to run the application. Ensure you are referencing at least version '{0}'.</source>
+        <target state="translated">アプリケーションを実行するには、Aspire.Hosting.AppHost パッケージの新しいバージョンが必要です。少なくともバージョン '{0}' を参照していることを確認してください。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InstallationInstructions">
+        <source>Installation instructions</source>
+        <target state="translated">インストール手順</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="MissingCommandNotificationTitle">
+        <source>Missing command</source>
+        <target state="translated">コマンドがありません</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="PersistentContainerWithoutUserSecrets">
+        <source>Resource '{0}' has a persistent lifetime but the AppHost project does not have user secrets configured. Generated parameter values (such as passwords) may change on each restart, causing persistent containers to be recreated. Run 'aspire secret set' to initialize user secrets.</source>
+        <target state="translated">リソース '{0}' には永続的な有効期間がありますが、AppHost プロジェクトでユーザー シークレットが構成されていません。生成されるパラメーター値 (パスワードなど) は再起動のたびに変わる可能性があるため、永続コンテナーが再作成されることになります。'aspire secret set' を実行してユーザー シークレットを初期化します。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="PublishModeNotSupportedByRunCommand">
+        <source>The AppHost is in publish mode and cannot be started with 'aspire run'. Use 'aspire publish' instead.</source>
+        <target state="translated">AppHost は発行モードであるため、'aspire run' では起動できません。代わりに 'aspire publish' を使用してください。</target>
+        <note>Do not translate the command names 'aspire run' and 'aspire publish'.</note>
+      </trans-unit>
+      <trans-unit id="RequiredCommandNotFound">
+        <source>Required command '{0}' was not found on PATH or at the specified location.</source>
+        <target state="translated">必要なコマンド '{0}' が PATH または指定された場所に見つかりませんでした。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="RequiredCommandNotFoundWithLink">
+        <source>Required command '{0}' was not found on PATH or at the specified location. For installation instructions, see: {1}</source>
+        <target state="translated">必要なコマンド '{0}' が PATH または指定された場所に見つかりませんでした。インストール手順については、次を参照: {1}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="RequiredCommandValidationFailed">
+        <source>Command '{0}' validation failed: {1}</source>
+        <target state="translated">コマンド '{0}' 検証に失敗しました: {1}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="RequiredCommandValidationFailedWithLink">
+        <source>Command '{0}' validation failed: {1}. For installation instructions, see: {2}</source>
+        <target state="translated">コマンド '{0}' 検証に失敗しました: {1}。インストール手順については、次を参照: {2}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceMayFailToStart">
+        <source>Resource '{0}' may fail to start: {1}</source>
+        <target state="translated">リソース '{0}' の開始に失敗する可能性があります: {1}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyContainerArgumentsDisplayName">
+        <source>Container arguments</source>
+        <target state="translated">コンテナー引数</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyContainerCommandDisplayName">
+        <source>Container command</source>
+        <target state="translated">コンテナー コマンド</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyContainerIdDisplayName">
+        <source>Container ID</source>
+        <target state="translated">コンテナー ID</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyContainerImageDisplayName">
+        <source>Container image</source>
+        <target state="translated">コンテナー イメージ</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyContainerLifetimeDisplayName">
+        <source>Container lifetime</source>
+        <target state="translated">コンテナーの有効期間</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyContainerPortsDisplayName">
+        <source>Container ports</source>
+        <target state="translated">コンテナー ポート</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyExecutableArgumentsDisplayName">
+        <source>Executable arguments</source>
+        <target state="translated">実行可能な引数</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyExecutablePathDisplayName">
+        <source>Executable path</source>
+        <target state="translated">実行可能ファイルのパス</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyExecutableProcessIdDisplayName">
+        <source>Process ID</source>
+        <target state="translated">プロセス ID</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyExecutableWorkingDirectoryDisplayName">
+        <source>Working directory</source>
+        <target state="translated">作業ディレクトリ</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyParameterValueDisplayName">
+        <source>Value</source>
+        <target state="translated">値</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyProjectLaunchProfileDisplayName">
+        <source>Launch profile</source>
+        <target state="translated">起動プロファイル</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyProjectPathDisplayName">
+        <source>Project path</source>
+        <target state="translated">プロジェクト パス</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyToolPackageDisplayName">
+        <source>Tool package</source>
+        <target state="translated">ツール パッケージ</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourcePropertyToolVersionDisplayName">
+        <source>Tool version</source>
+        <target state="translated">ツールのバージョン</target>
+        <note />
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

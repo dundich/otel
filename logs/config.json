@@ -1,0 +1,6 @@
+{
+  "service": "app1",
+  "enabled": true,
+  "ports": [8080, 8081],
+  "nested": { "version": "1.0.0" }
+}

@@ -1,0 +1,132 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="ja" original="../ConsoleLogs.resx">
+    <body>
+      <trans-unit id="ConsoleLogsErrorWatchingLogs">
+        <source>Error watching logs</source>
+        <target state="translated">ログの監視中にエラーが発生しました</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsFinishedWatchingLogs">
+        <source>Finished watching logs</source>
+        <target state="translated">ログの監視が完了しました</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsHeader">
+        <source>Console logs</source>
+        <target state="translated">コンソール ログ</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsLoadingResources">
+        <source>Loading resources ...</source>
+        <target state="translated">リソースを読み込んでいます ...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsLogsNotYetAvailable">
+        <source>Logs not yet available</source>
+        <target state="translated">ログはまだ使用できません</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsNoLogsFound">
+        <source>No logs found</source>
+        <target state="translated">ログが見つかりません</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsNoLogsMatchFilter">
+        <source>No logs match the filter</source>
+        <target state="translated">フィルターに一致するログはありません</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsNoResourceSelected">
+        <source>No resource selected</source>
+        <target state="translated">リソースが選択されていません</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsNoWrapLogs">
+        <source>Don't wrap log lines</source>
+        <target state="translated">ログ行を折り返さない</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsNotCapturedForRun">
+        <source>Console logs weren't captured for this run. Console logs are only captured if this page is visited while the AppHost is running.</source>
+        <target state="translated">この実行ではコンソール ログがキャプチャされませんでした。コンソール ログは、AppHost の実行中にこのページにアクセスした場合にのみキャプチャされます。</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsPageTitle">
+        <source>{0} console logs</source>
+        <target state="translated">{0} のコンソール ログ</target>
+        <note>{0} is an application name</note>
+      </trans-unit>
+      <trans-unit id="ConsoleLogsPauseActive">
+        <source>&lt;Log capture paused at {0}, {1} log(s) filtered out&gt;</source>
+        <target state="translated">&lt;ログ キャプチャが {0} で一時停止されました。{1} 件のログがフィルターで除外されました&gt;</target>
+        <note>{0} is a date, {1} is a number</note>
+      </trans-unit>
+      <trans-unit id="ConsoleLogsPauseDetails">
+        <source>&lt;Log capture paused between {0} and {1}, {2} log(s) filtered out&gt;</source>
+        <target state="translated">&lt;ログ キャプチャが {0} と {1} の間で一時停止されました。{2} 件のログがフィルターで除外されました&gt;</target>
+        <note>{0} is a date, {1} is a date, {2} is a number.</note>
+      </trans-unit>
+      <trans-unit id="ConsoleLogsSelectResourceToolbar">
+        <source>Select resource</source>
+        <target state="translated">リソースの選択</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsSettings">
+        <source>Settings</source>
+        <target state="translated">設定</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsTextFilter">
+        <source>Console logs filter</source>
+        <target state="translated">コンソール ログのフィルター</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsTimestampHide">
+        <source>Hide timestamps</source>
+        <target state="translated">タイムスタンプを非表示</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsTimestampShow">
+        <source>Show timestamps</source>
+        <target state="translated">タイムスタンプを表示</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsTimestampShowUtc">
+        <source>UTC timestamps</source>
+        <target state="translated">UTC タイムスタンプ</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsUnknownState">
+        <source>Unknown state</source>
+        <target state="translated">不明な状態</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsWatchingLogs">
+        <source>Watching logs...</source>
+        <target state="translated">ログを監視しています...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ConsoleLogsWrapLogs">
+        <source>Wrap log lines</source>
+        <target state="translated">ログ行を折り返す</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DownloadLogs">
+        <source>Download logs</source>
+        <target state="translated">ログのダウンロード</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="LogStatusLabel">
+        <source>Service log status</source>
+        <target state="translated">サービス ログの状態</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="PauseInProgressText">
+        <source>Console logs capture paused at {0}</source>
+        <target state="translated">コンソール ログ キャプチャが {0} で一時停止されました</target>
+        <note>{0} is a time</note>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

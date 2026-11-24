@@ -1,0 +1,52 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="ko" original="../DoCommandStrings.resx">
+    <body>
+      <trans-unit id="Description">
+        <source>Execute a specific pipeline step and its dependencies</source>
+        <target state="translated">특정 파이프라인 단계 및 해당 종속성 실행</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GeneratingArtifacts">
+        <source>Executing pipeline...</source>
+        <target state="translated">파이프라인을 실행하는 중...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ListStepsRequiresStep">
+        <source>The 'step' argument is required when using --list-steps. Example: 'aspire do deploy --list-steps'. Common starting steps are 'build', 'publish' and 'deploy'. See https://aspire.dev/reference/cli/commands/aspire-do/ for the full list of pipeline steps.</source>
+        <target state="translated">--list-steps를 사용할 때는 'step' 인수가 필수입니다. 예: 'aspire do deploy --list-steps'. 일반적인 시작 단계로는 'build', 'publish', 'deploy'가 있습니다. 파이프라인 단계의 전체 목록은 https://aspire.dev/reference/cli/commands/aspire-do/에서 확인하세요.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="OperationCanceled">
+        <source>The operation was canceled.</source>
+        <target state="translated">작업이 취소되었습니다.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="OperationCompletedPrefix">
+        <source>OPERATION COMPLETED</source>
+        <target state="translated">작업이 완료됨</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="OperationFailedPrefix">
+        <source>OPERATION FAILED</source>
+        <target state="translated">작업 실패</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="OutputPathArgumentDescription">
+        <source>The optional output path for artifacts</source>
+        <target state="translated">아티팩트용 선택적 출력 경로</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="StepArgumentDescription">
+        <source>The name of the step to execute</source>
+        <target state="translated">실행할 단계의 이름</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="StepArgumentRequired">
+        <source>The 'step' argument is required.</source>
+        <target state="translated">'step' 인수는 필수입니다.</target>
+        <note />
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

@@ -1,0 +1,78 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+using System.Collections.Concurrent;
+using Aspire.Dashboard.Model;
+using Aspire.Dashboard.Resources;
+using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Localization;
+
+namespace Aspire.Dashboard.Components;
+
+public partial class ResourceActions : ComponentBase
+{
+    private AspireMenuButton? _menuButton;
+
+    [Inject]
+    public required ResourceMenuBuilder ResourceMenuBuilder { get; init; }
+
+    [Inject]
+    public required IStringLocalizer<ControlsStrings> ControlLoc { get; init; }
+
+    [Inject]
+    public required IconResolver IconResolver { get; init; }
+
+    [Inject]
+    public required IDashboardClient DashboardClient { get; init; }
+
+    [Parameter]
+    public required EventCallback<CommandViewModel> CommandSelected { get; set; }
+
+    [Parameter]
+    public required Func<ResourceViewModel, CommandViewModel, bool> IsCommandExecuting { get; set; }
+
+    [Parameter]
+    public required EventCallback<string?> OnViewDetails { get; set; }
+
+    [Parameter]
+    public required ResourceViewModel Resource { get; set; }
+
+    [Parameter]
+    public required int MaxHighlightedCount { get; set; }
+
+    [Parameter]
+    public required ConcurrentDictionary<string, ResourceViewModel> ResourceByName { get; set; }
+
+    [CascadingParameter]
+    public required ViewportInformation ViewportInformation { get; set; }
+
+    private readonly List<CommandViewModel> _highlightedCommands = new();
+
+    protected override void OnParametersSet()
+    {
+        _highlightedCommands.Clear();
+
+        if (ViewportInformation.IsDesktop)
+        {
+            _highlightedCommands.AddRange(Resource.Commands.Where(c => c.IsHighlighted && c.State != CommandViewModelState.Hidden).Take(MaxHighlightedCount));
+        }
+    }
+
+    private IList<MenuButtonItem> GetMenuItems()
+    {
+        var menuItems = new List<MenuButtonItem>();
+        ResourceMenuBuilder.AddMenuItems(
+            menuItems,
+            Resource,
+            ResourceByName,
+            EventCallback.Factory.Create(this, () => OnViewDetails.InvokeAsync(_menuButton?.MenuButtonId)),
+            CommandSelected,
+            IsCommandExecuting,
+            showViewDetails: true,
+            showTerminalItem: true,
+            showConsoleLogsItem: true,
+            showUrls: false);
+
+        return menuItems;
+    }
+}

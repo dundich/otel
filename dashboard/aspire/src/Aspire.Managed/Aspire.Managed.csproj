@@ -1,0 +1,66 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <ApplicationIcon>$(MSBuildThisFileDirectory)..\Shared\Aspire.ico</ApplicationIcon>
+    <AssemblyName>aspire-managed</AssemblyName>
+
+    <!-- Not a shippable package -->
+    <IsPackable>false</IsPackable>
+    <EnablePackageValidation>false</EnablePackageValidation>
+    <UsePublicApiAnalyzers>false</UsePublicApiAnalyzers>
+
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+
+    <!-- Don't generate web.config or include IIS hosting -->
+    <IsTransformWebConfigDisabled>true</IsTransformWebConfigDisabled>
+
+    <!-- Embed the native .NET runtime libraries. Windows PTY sidecars remain external in the bundle. -->
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Aspire.Hosting.RemoteHost\Aspire.Hosting.RemoteHost.csproj" />
+    <ProjectReference Include="..\Aspire.Hosting.CodeGeneration.TypeScript\Aspire.Hosting.CodeGeneration.TypeScript.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="$(SharedDir)BundleDiscovery.cs" Link="Shared\BundleDiscovery.cs" />
+    <Compile Include="$(SharedDir)BundleVersionLease.cs" Link="Shared\BundleVersionLease.cs" />
+    <Compile Include="$(SharedDir)HeldFileLease.cs" Link="Shared\HeldFileLease.cs" />
+    <Compile Include="$(SharedDir)KnownConfigNames.cs" Link="Shared\KnownConfigNames.cs" />
+    <Compile Include="$(SharedDir)ParentProcessWatchdog.cs" Link="Shared\ParentProcessWatchdog.cs" />
+    <Compile Include="$(SharedDir)ProcessStartTimeHelper.cs" Link="Shared\ProcessStartTimeHelper.cs" />
+    <Compile Include="$(SharedDir)ParentProcessLivenessMonitor.cs" Link="Shared\ParentProcessLivenessMonitor.cs" />
+    <Compile Include="$(SharedDir)NativeProviderContractReader.cs" Link="Shared\NativeProviderContractReader.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Aspire.Managed.Tests" />
+  </ItemGroup>
+
+  <!-- Exclude unwanted files from publish output -->
+  <Target Name="RemoveUnwantedPublishFiles" AfterTargets="ComputeResolvedFilesToPublishList">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(RelativePath)' == 'appsettings.json'" />
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="$([System.String]::Copy('%(RelativePath)').StartsWith('appsettings.'))" />
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Extension)' == '.xml'" />
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(RelativePath)' == 'web.config'" />
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(RelativePath)' == 'aspnetcorev2_inprocess.dll'" />
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="$([System.String]::Copy('%(RelativePath)').EndsWith('.runtimeconfig.json'))" />
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="$([System.String]::Copy('%(RelativePath)').EndsWith('.staticwebassets.endpoints.json'))" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="ValidateSingleFilePublishConfiguration" BeforeTargets="PrepareForPublish">
+    <Error Condition="'$(PublishSingleFile)' == 'true' and '$(IncludeNativeLibrariesForSelfExtract)' != 'true'"
+           Text="Aspire.Managed single-file publishing must embed native libraries." />
+  </Target>
+
+</Project>

@@ -1,0 +1,331 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+using System.CommandLine;
+using System.CommandLine.Help;
+using Microsoft.Extensions.Logging;
+using Spectre.Console;
+
+using Aspire.Cli.Bundles;
+using Aspire.Cli.Commands.Sdk;
+using Aspire.Cli.Interaction;
+using Aspire.Cli.Resources;
+using Aspire.Cli.Utils;
+using BaseRootCommand = System.CommandLine.RootCommand;
+
+namespace Aspire.Cli.Commands;
+
+internal sealed class RootCommand : BaseRootCommand
+{
+    internal const int DefaultCaptureProfileDelaySeconds = 5;
+
+    public static readonly Option<bool> DebugOption = new(CommonOptionNames.Debug, CommonOptionNames.DebugShort)
+    {
+        Description = RootCommandStrings.DebugArgumentDescription,
+        Recursive = true,
+        Hidden = true // Hidden for backward compatibility, use --log-level instead
+    };
+
+    public static readonly Option<LogLevel?> DebugLevelOption = new("--log-level", "-l")
+    {
+        Description = RootCommandStrings.DebugLevelArgumentDescription,
+        Recursive = true
+    };
+
+    public static readonly Option<bool> NonInteractiveOption = new(CommonOptionNames.NonInteractive)
+    {
+        Description = RootCommandStrings.NonInteractiveArgumentDescription,
+        Recursive = true
+    };
+
+    public static readonly Option<bool> NoLogoOption = new(CommonOptionNames.NoLogo)
+    {
+        Description = RootCommandStrings.NoLogoArgumentDescription,
+        Recursive = true
+    };
+
+    public static readonly Option<bool> BannerOption = new(CommonOptionNames.Banner)
+    {
+        Description = RootCommandStrings.BannerArgumentDescription,
+        Recursive = true
+    };
+
+    public static readonly Option<bool> WaitForDebuggerOption = new(CommonOptionNames.WaitForDebugger)
+    {
+        Description = RootCommandStrings.WaitForDebuggerArgumentDescription,
+        Recursive = true,
+        DefaultValueFactory = _ => false
+    };
+
+    public static readonly Option<bool> CliWaitForDebuggerOption = new(CommonOptionNames.CliWaitForDebugger)
+    {
+        Description = RootCommandStrings.CliWaitForDebuggerArgumentDescription,
+        Recursive = true,
+        Hidden = true,
+        DefaultValueFactory = _ => false
+    };
+
+    public static readonly Option<bool> StartDebugSessionOption = new(CommonOptionNames.StartDebugSession)
+    {
+        Description = RunCommandStrings.StartDebugSessionArgumentDescription,
+        Recursive = true,
+        DefaultValueFactory = _ => false
+    };
+
+    public static readonly Option<bool> CaptureProfileOption = new("--capture-profile")
+    {
+        Recursive = true,
+        Hidden = true,
+        DefaultValueFactory = _ => false
+    };
+
+    public static readonly Option<FileInfo?> CaptureProfileOutputOption = new("--capture-profile-output")
+    {
+        Recursive = true,
+        Hidden = true
+    };
+
+    public static readonly Option<int> CaptureProfileDelayOption = new("--capture-profile-delay")
+    {
+        Recursive = true,
+        Hidden = true,
+        DefaultValueFactory = _ => DefaultCaptureProfileDelaySeconds
+    };
+
+    internal static readonly Option<string?> s_logFileOption = new("--log-file")
+    {
+        Recursive = true,
+        Hidden = true
+    };
+
+    internal static IReadOnlyList<Option> GlobalOptions { get; } =
+    [
+        DebugOption, DebugLevelOption, NonInteractiveOption, NoLogoOption, BannerOption,
+        WaitForDebuggerOption, CliWaitForDebuggerOption, CaptureProfileOption,
+        CaptureProfileOutputOption, CaptureProfileDelayOption, s_logFileOption
+    ];
+
+    internal static bool MatchesCommandPath(string[] args, params string[] commandPath)
+    {
+        var commandIndex = 0;
+        // Inspect real option arities before services exist. For example, the value in
+        // "--log-file template" is not a command, while "--nologo template" is.
+        for (var index = 0; index < args.Length; index++)
+        {
+            var token = args[index];
+            var separator = token.IndexOfAny(['=', ':']);
+            var name = separator < 0 ? token : token[..separator];
+            if (name is CommonOptionNames.Version or CommonOptionNames.VersionShort or
+                CommonOptionNames.Help or CommonOptionNames.HelpShort or CommonOptionNames.HelpAlt or
+                CommonOptionNames.HelpSlash or CommonOptionNames.HelpAltSlash)
+            {
+                continue;
+            }
+            if (!token.StartsWith('-'))
+            {
+                if (commandIndex >= commandPath.Length || token != commandPath[commandIndex++])
+                {
+                    return false;
+                }
+                if (commandIndex == commandPath.Length)
+                {
+                    return true;
+                }
+                continue;
+            }
+
+            var option = GlobalOptions.Append(StartDebugSessionOption)
+                .FirstOrDefault(option => option.Name == name || option.Aliases.Contains(name));
+            if (option is null)
+            {
+                return false;
+            }
+            if (separator < 0 && option.Arity.MaximumNumberOfValues > 0 &&
+                (option is not Option<bool> || index + 1 < args.Length && bool.TryParse(args[index + 1], out _)))
+            {
+                index++;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Global options that should be passed through to child CLI processes when spawning.
+    /// Add new global options here to ensure they are forwarded during detached mode execution.
+    /// </summary>
+    private static readonly (Option Option, Func<ParseResult, string[]?> GetArgs)[] s_childProcessOptions =
+    [
+        (DebugOption, pr => pr.GetValue(DebugOption) ? ["--debug"] : null),
+        (DebugLevelOption, pr =>
+        {
+            var level = pr.GetValue(DebugLevelOption);
+            return level.HasValue ? ["--log-level", level.Value.ToString()] : null;
+        }),
+        (WaitForDebuggerOption, pr => pr.GetValue(WaitForDebuggerOption) ? ["--wait-for-debugger"] : null),
+    ];
+
+    /// <summary>
+    /// Gets the command-line arguments for global options that should be passed to a child CLI process.
+    /// </summary>
+    /// <param name="parseResult">The parse result from the current command invocation.</param>
+    /// <returns>Arguments to pass to the child process.</returns>
+    public static IEnumerable<string> GetChildProcessArgs(ParseResult parseResult)
+    {
+        foreach (var (_, getArgs) in s_childProcessOptions)
+        {
+            var args = getArgs(parseResult);
+            if (args is not null)
+            {
+                foreach (var arg in args)
+                {
+                    yield return arg;
+                }
+            }
+        }
+    }
+
+    private readonly IAnsiConsole _ansiConsole;
+
+    public RootCommand(
+        NewCommand newCommand,
+        InitCommand initCommand,
+        RunCommand runCommand,
+        StopCommand stopCommand,
+        StartCommand startCommand,
+        WaitCommand waitCommand,
+        LsCommand lsCommand,
+        ResourceCommand commandCommand,
+        PsCommand psCommand,
+        DescribeCommand describeCommand,
+        LogsCommand logsCommand,
+        IntegrationCommand integrationCommand,
+        TerminalCommand terminalCommand,
+        AddCommand addCommand,
+        PublishCommand publishCommand,
+        DeployCommand deployCommand,
+        DestroyCommand destroyCommand,
+        DoCommand doCommand,
+        ConfigCommand configCommand,
+        TemplateManagementCommand templateManagementCommand,
+        CompletionsCommand completionsCommand,
+        CacheCommand cacheCommand,
+        CertificatesCommand certificatesCommand,
+        DoctorCommand doctorCommand,
+        UpdateCommand updateCommand,
+        McpCommand mcpCommand,
+        AgentCommand agentCommand,
+        TelemetryCommand telemetryCommand,
+        ExportCommand exportCommand,
+        DashboardCommand dashboardCommand,
+        TrayCommand trayCommand,
+        DocsCommand docsCommand,
+        SecretCommand secretCommand,
+        SdkCommand sdkCommand,
+        RestoreCommand restoreCommand,
+        SetupCommand setupCommand,
+#if DEBUG
+        RenderCommand renderCommand,
+#endif
+        ExtensionInternalCommand extensionInternalCommand,
+        IBundleService bundleService,
+        IInteractionService interactionService,
+        IAnsiConsole ansiConsole,
+        CliExecutionContext executionContext)
+        : base(RootCommandStrings.Description)
+    {
+        _ansiConsole = ansiConsole;
+
+        foreach (var option in GlobalOptions)
+        {
+            Options.Add(option);
+        }
+        if (ExtensionHelper.IsExtensionHost(interactionService, out _, out _))
+        {
+            Options.Add(StartDebugSessionOption);
+        }
+
+        // Handle standalone 'aspire' or 'aspire --banner' (no subcommand)
+        this.SetAction((Func<ParseResult, CancellationToken, Task<int>>)((context, cancellationToken) =>
+        {
+            var bannerRequested = context.GetValue(BannerOption);
+            if (bannerRequested)
+            {
+                // If --banner was passed, we've already shown it in Main, just exit successfully
+                return Task.FromResult((int)CliExitCodes.Success);
+            }
+
+            // No subcommand provided - show grouped help but return InvalidCommand to signal usage error
+            var writer = _ansiConsole.Profile.Out.Writer;
+            var consoleWidth = _ansiConsole.Profile.Width;
+            GroupedHelpWriter.WriteHelp(this, writer, consoleWidth);
+            return Task.FromResult((int)CliExitCodes.InvalidCommand);
+        }));
+
+        Subcommands.Add(newCommand);
+        Subcommands.Add(initCommand);
+        Subcommands.Add(runCommand);
+        Subcommands.Add(stopCommand);
+        Subcommands.Add(startCommand);
+        Subcommands.Add(waitCommand);
+        Subcommands.Add(lsCommand);
+        Subcommands.Add(commandCommand);
+        Subcommands.Add(psCommand);
+        Subcommands.Add(describeCommand);
+        Subcommands.Add(logsCommand);
+        Subcommands.Add(integrationCommand);
+        Subcommands.Add(terminalCommand);
+        Subcommands.Add(addCommand);
+        Subcommands.Add(publishCommand);
+        Subcommands.Add(configCommand);
+        Subcommands.Add(templateManagementCommand);
+        Subcommands.Add(completionsCommand);
+        Subcommands.Add(cacheCommand);
+        Subcommands.Add(certificatesCommand);
+        Subcommands.Add(doctorCommand);
+        Subcommands.Add(deployCommand);
+        Subcommands.Add(destroyCommand);
+        Subcommands.Add(doCommand);
+        Subcommands.Add(updateCommand);
+        Subcommands.Add(extensionInternalCommand);
+        Subcommands.Add(mcpCommand);
+        Subcommands.Add(agentCommand);
+        Subcommands.Add(telemetryCommand);
+        Subcommands.Add(exportCommand);
+        Subcommands.Add(docsCommand);
+        Subcommands.Add(dashboardCommand);
+        Subcommands.Add(trayCommand);
+        Subcommands.Add(secretCommand);
+
+#if DEBUG
+        Subcommands.Add(renderCommand);
+#endif
+
+        if (bundleService.IsBundle)
+        {
+            Subcommands.Add(setupCommand);
+        }
+
+        Subcommands.Add(sdkCommand);
+        Subcommands.Add(restoreCommand);
+
+        // Replace the default --help action with grouped help output.
+        // Add -v as a short alias for --version.
+        foreach (var option in Options)
+        {
+            if (option is HelpOption helpOption)
+            {
+                helpOption.Action = new GroupedHelpAction(this, _ansiConsole);
+            }
+            else if (option is VersionOption versionOption)
+            {
+                versionOption.Aliases.Add("-v");
+                // Report the resolved identity version so --version honors ASPIRE_CLI_VERSION /
+                // the install sidecar. Without an override this resolves to the assembly's
+                // informational version, matching the built-in action's output.
+                versionOption.Action = new IdentityVersionAction(executionContext);
+            }
+        }
+
+    }
+}

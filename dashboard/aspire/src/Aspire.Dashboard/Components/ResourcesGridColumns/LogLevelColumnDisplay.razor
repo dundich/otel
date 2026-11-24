@@ -1,0 +1,39 @@
+﻿@namespace Aspire.Dashboard.Components
+
+@using Aspire.Dashboard.Resources
+@using Aspire.Dashboard.Otlp.Storage
+@using Microsoft.Extensions.Logging
+@using Microsoft.FluentUI.AspNetCore.Components
+
+@{
+    var severity = LogEntry.Severity;
+
+    Icon icon = severity switch
+    {
+        LogLevel.Trace => new Icons.Regular.Size16.Code(),
+        LogLevel.Debug => new Icons.Regular.Size16.Bug(),
+        LogLevel.Information => new Icons.Regular.Size16.Info(),
+        LogLevel.Warning => new Icons.Filled.Size16.Warning(),
+        LogLevel.Error => new Icons.Filled.Size16.ErrorCircle(),
+        LogLevel.Critical => new Icons.Filled.Size16.ErrorCircle(),
+        _ => new Icons.Regular.Size16.Info()
+    };
+
+    var color = severity switch
+    {
+        LogLevel.Information => Color.Info,
+        LogLevel.Warning => Color.Warning,
+        LogLevel.Error => Color.Error,
+        LogLevel.Critical => Color.Error,
+        _ => Color.Default
+    };
+}
+
+<span class="severity-badge" title="@severity" aria-label="@severity" role="img">
+    <FluentIcon Value="@icon" Color="@color" Class="severity-icon" />
+</span>
+
+@code {
+    [Parameter, EditorRequired]
+    public required LogSummary LogEntry { get; set; }
+}

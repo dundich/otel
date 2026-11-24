@@ -1,0 +1,117 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="cs" original="../ApiCommandStrings.resx">
+    <body>
+      <trans-unit id="ApiNotFound">
+        <source>API item '{0}' not found. Use 'aspire docs api search' or 'aspire docs api list &lt;scope&gt;' to find available identifiers.</source>
+        <target state="translated">Položka rozhraní API {0} se nenašla. Dostupné identifikátory najdete pomocí příkazu aspire docs api search nebo aspire docs api list &lt;scope&gt;.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="Description">
+        <source>Browse and search Aspire API reference documentation from aspire.dev</source>
+        <target state="translated">Procházet a prohledávat referenční dokumentaci k rozhraní API Aspire z webu aspire.dev</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FormatOptionDescription">
+        <source>Output format (Table or Json)</source>
+        <target state="translated">Výstupní formát (tabulka nebo JSON)</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FoundApiEntries">
+        <source>Found {0} API entries under '{1}'.</source>
+        <target state="translated">V oboru {1} se našel tento počet položek rozhraní API: {0}.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FoundSearchResults">
+        <source>Found {0} API results for '{1}'.</source>
+        <target state="translated">Pro {1} se našel tento počet výsledků hledání v rozhraní API: {0}.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GetDescription">
+        <source>Get the markdown for an API reference item by its identifier</source>
+        <target state="translated">Získat položku referenci k rozhraní API ve formátu Markdown podle jejího identifikátoru</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="HeaderGroup">
+        <source>Group</source>
+        <target state="translated">Skupina</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="HeaderId">
+        <source>Id</source>
+        <target state="translated">ID</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="HeaderKind">
+        <source>Kind</source>
+        <target state="translated">Druh</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="HeaderLanguage">
+        <source>Language</source>
+        <target state="translated">Jazyk</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="HeaderName">
+        <source>Name</source>
+        <target state="translated">Název</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="HeaderScore">
+        <source>Score</source>
+        <target state="translated">Skóre</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="IdArgumentDescription">
+        <source>The API identifier (for example, 'csharp/aspire.azure.ai.inference/aspireazureaiinferenceextensions')</source>
+        <target state="translated">Identifikátor rozhraní API (například csharp/aspire.azure.ai.inference/aspireazureaiinferenceextensions)</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="LanguageOptionDescription">
+        <source>Limit results to a specific API language</source>
+        <target state="translated">Omezit výsledky na konkrétní jazyk rozhraní API</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="LimitOptionDescription">
+        <source>Maximum number of search results to return (default: 5, max: 10)</source>
+        <target state="translated">Maximální počet výsledků hledání, které se mají vrátit (výchozí: 5, max.: 10)</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ListDescription">
+        <source>List API entries under a parent scope</source>
+        <target state="translated">Vypsat položky rozhraní API v nadřazeném oboru</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="LoadingApiDocumentation">
+        <source>Loading API documentation...</source>
+        <target state="translated">Načítá se dokumentace k rozhraní API...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="NoApiEntriesFound">
+        <source>No API entries found under '{0}'.</source>
+        <target state="translated">V oboru {0} se nenašly žádné položky rozhraní API.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="NoResultsFound">
+        <source>No API results found for '{0}'. Try different search terms.</source>
+        <target state="translated">Pro {0} se nenašly žádné výsledky hledání v rozhraní API. Zkuste použít jiné hledané termíny.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="QueryArgumentDescription">
+        <source>The search query</source>
+        <target state="translated">Vyhledávací dotaz</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ScopeArgumentDescription">
+        <source>The parent API scope to browse (for example, 'csharp' or 'typescript/aspire.hosting.azure.appconfiguration')</source>
+        <target state="translated">Nadřazený obor rozhraní API, který chcete procházet (například csharp nebo typescript/aspire.hosting.azure.appconfiguration)</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SearchDescription">
+        <source>Search Aspire API reference documentation by keywords</source>
+        <target state="translated">Prohledat referenční dokumentaci k rozhraní API Aspire podle klíčových slov</target>
+        <note />
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

@@ -1,0 +1,787 @@
+// Fluent menu items invoke their primary action for activation events originating anywhere in the
+// item, including interactive content in the end slot. Customize the registered element class so
+// every instance leaves secondary-action activation to the nested button.
+const customElementsDefine = customElements.define.bind(customElements);
+const fluentDropdownStyleSheet = new CSSStyleSheet();
+fluentDropdownStyleSheet.replaceSync(`
+    .control {
+        background-color: var(--colorNeutralBackground1);
+        border: 1px solid var(--colorNeutralStroke1);
+        box-shadow: none !important;
+        min-width: var(--aspire-dropdown-min-width, 160px);
+    }
+
+    .control:hover {
+        border-color: var(--colorNeutralStroke1Hover);
+    }
+
+    .control:active {
+        border-color: var(--colorNeutralStroke1Pressed);
+    }
+
+    :host(:where(:focus-within)) .control {
+        outline: 2px solid var(--colorBrandStroke1);
+        outline-offset: -2px;
+    }
+
+    .control::before, .control::after {
+        display: none;
+    }
+`);
+
+let isDropdownCustomized = false;
+let isMenuItemCustomized = false;
+
+customElements.define = function (name, constructor, options) {
+    if (name === "fluent-dropdown") {
+        const connectedCallback = constructor.prototype.connectedCallback;
+
+        constructor.prototype.connectedCallback = function () {
+            connectedCallback.call(this);
+
+            // Fluent v5 doesn't expose the dropdown control as a CSS part, so add the
+            // application's border recipe directly to the component's shadow root.
+            if (!this.shadowRoot.adoptedStyleSheets.includes(fluentDropdownStyleSheet)) {
+                this.shadowRoot.adoptedStyleSheets.push(fluentDropdownStyleSheet);
+            }
+        };
+
+        isDropdownCustomized = true;
+    }
+
+    if (name === "fluent-menu-item") {
+        const secondaryActionCustomized = Symbol("secondaryActionCustomized");
+        const connectedCallback = constructor.prototype.connectedCallback;
+
+        constructor.prototype.connectedCallback = function () {
+            if (!this[secondaryActionCustomized]) {
+                for (const handlerName of ["handleMenuItemClick", "handleMenuItemKeyDown"]) {
+                    const handler = this[handlerName];
+                    this[handlerName] = event => {
+                        const isSecondaryAction = event.composedPath().some(element =>
+                            element instanceof HTMLElement &&
+                            element.classList.contains("aspire-menu-secondary-action"));
+
+                        if (isSecondaryAction) {
+                            if (handlerName === "handleMenuItemKeyDown") {
+                                event.stopPropagation();
+                            }
+
+                            return false;
+                        }
+
+                        return handler.call(this, event);
+                    };
+                }
+
+                this[secondaryActionCustomized] = true;
+            }
+
+            connectedCallback.call(this);
+        };
+
+        isMenuItemCustomized = true;
+    }
+
+    customElementsDefine(name, constructor, options);
+
+    if (isDropdownCustomized && isMenuItemCustomized) {
+        delete customElements.define;
+    }
+};
+
+function isElementTagName(element, tagName) {
+    return element.tagName.toLowerCase() === tagName;
+}
+
+function getFluentMenuItemForTarget(element) {
+    // User could have clicked on either a path or svg (the image on the item) or the item itself
+    if (isElementTagName(element, "path")) {
+        return getFluentMenuItemForTarget(element.parentElement);
+    }
+
+    // in between the svg and fluent-menu-item is a span for the icon slot
+    const possibleMenuItem = element.parentElement?.parentElement;
+    if (possibleMenuItem && (isElementTagName(possibleMenuItem, "fluent-menu-item") || isElementTagName(possibleMenuItem, "button"))) {
+        return element.parentElement.parentElement;
+    }
+
+    if (isElementTagName(element, "fluent-menu-item") || isElementTagName(element, "button")) {
+        return element;
+    }
+
+    return null;
+}
+
+// File inputs bubble cancel when the picker is dismissed (or the same file is selected).
+// Stop it before Fluent's shadow-DOM dialog handler treats it as a dialog cancellation.
+// Native dialog cancel events, including Escape, must still reach Fluent.
+// https://developer.mozilla.org/en-US/docs/Web/API/HTMLInputElement/cancel_event
+document.addEventListener("cancel", function (event) {
+    if (event.target instanceof HTMLInputElement && event.target.type === "file" &&
+        event.target.closest("fluent-dialog, fluent-drawer")) {
+        event.stopPropagation();
+    }
+}, true);
+
+// AspireTooltip renders fluent-tooltip as manual popovers so they don't light-dismiss open menus.
+// beforetoggle doesn't bubble, so listen in the capture phase.
+// https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/beforetoggle_event
+document.addEventListener("beforetoggle", function (event) {
+    const target = event.target;
+    if (event.newState !== "open" || !(target instanceof HTMLElement)) {
+        return;
+    }
+
+    // A menu opening hides tooltips, e.g. the tooltip of the button that was just clicked to open it.
+    if (target.matches("fluent-menu-list")) {
+        hideAspireTooltips(null);
+        return;
+    }
+
+    if (!target.matches("fluent-tooltip.aspire-tooltip")) {
+        return;
+    }
+
+    const tooltip = target;
+    const anchor = document.getElementById(tooltip.getAttribute("anchor") ?? "");
+
+    // Don't cover a menu with the tooltip of the button that opened it.
+    if (anchor?.getAttribute("aria-expanded") === "true") {
+        event.preventDefault();
+        return;
+    }
+
+    // Opening a menu focuses an item, which would immediately show that item's tooltip. Menu item tooltips are
+    // shown on hover only, like the title attribute they replace. Screen readers still announce them through
+    // the aria-describedby that fluent-tooltip sets on the item.
+    if (anchor?.matches("fluent-menu-item") && !anchor.matches(":hover")) {
+        event.preventDefault();
+        return;
+    }
+
+    // fluent-tooltip names its anchor (anchor-name: --<anchor id>) when it connects, but fluent-menu later
+    // renames its trigger to --anchor-<trigger id>. Follow the anchor's current name so the tooltip isn't
+    // positioned at the viewport origin.
+    const anchorName = anchor?.style.anchorName;
+    if (anchorName) {
+        tooltip.style.positionAnchor = anchorName;
+    }
+
+    // Manual popovers don't close each other. Keep a single tooltip visible, e.g. when a menu item's tooltip
+    // is shown because the item has focus while the pointer hovers another item or the item's action button.
+    hideAspireTooltips(tooltip);
+}, true);
+
+function hideAspireTooltips(except) {
+    for (const tooltip of document.querySelectorAll("fluent-tooltip.aspire-tooltip:popover-open")) {
+        if (tooltip !== except) {
+            tooltip.hidePopover();
+        }
+    }
+}
+
+// Register a global click event listener to handle copy/open button clicks.
+// Required because an "onclick" attribute is denied by CSP.
+document.addEventListener("click", function (e) {
+    // The copy 'button' could either be a button or a menu item.
+    const targetElement = e.target.closest("fluent-button") ?? getFluentMenuItemForTarget(e.target);
+    if (targetElement) {
+        if (targetElement.getAttribute("data-copybutton")) {
+            buttonCopyTextToClipboard(targetElement);
+        } else if (targetElement.getAttribute("data-openbutton")) {
+            buttonOpenLink(targetElement);
+        }
+        e.stopPropagation();
+    }
+});
+
+window.buttonOpenLink = function (element) {
+    const url = element.getAttribute("data-url");
+    const target = element.getAttribute("data-target");
+
+    window.open(url, target, "noopener,noreferrer");
+}
+
+window.buttonCopyTextToClipboard = function(element) {
+    const text = element.getAttribute("data-text");
+    const precopy = element.getAttribute("data-precopy");
+    const postcopy = element.getAttribute("data-postcopy");
+
+    copyTextToClipboard(element.getAttribute("id"), text, precopy, postcopy);
+}
+
+window.copyTextToClipboard = function (id, text, precopy, postcopy) {
+    const button = document.getElementById(id);
+
+    // If there is a pending timeout then clear it. Otherwise the pending timeout will prematurely reset values.
+    if (button.dataset.copyTimeout) {
+        clearTimeout(button.dataset.copyTimeout);
+        delete button.dataset.copyTimeout;
+    }
+
+    // An earlier clipboard request may still be pending when the same button is clicked again.
+    const request = Symbol();
+    button.copyRequest = request;
+    const copyIcon = button.querySelector('.copy-icon');
+    const checkmarkIcon = button.querySelector('.checkmark-icon');
+    const copyStatus = button.nextElementSibling?.classList.contains('terminal-copy-status')
+        ? button.nextElementSibling : null;
+    if (copyStatus) {
+        copyStatus.textContent = '';
+    }
+    const anchoredTooltip = document.querySelector(`fluent-tooltip[anchor="${id}"]`);
+    const tooltipDiv = anchoredTooltip ? anchoredTooltip.children[0] : null;
+    if (tooltipDiv) {
+        tooltipDiv.innerText = precopy;
+    }
+    if (copyIcon && checkmarkIcon) {
+        copyIcon.style.display = '';
+        checkmarkIcon.style.display = 'none';
+    }
+    navigator.clipboard.writeText(text)
+        .then(() => {
+            if (button.copyRequest !== request) {
+                return;
+            }
+            if (copyStatus) {
+                copyStatus.textContent = postcopy;
+            }
+            if (tooltipDiv) {
+                tooltipDiv.innerText = postcopy;
+            }
+            if (copyIcon && checkmarkIcon) {
+                copyIcon.style.display = 'none';
+                checkmarkIcon.style.display = '';
+            }
+        })
+        .catch(error => {
+            if (button.copyRequest !== request) {
+                return;
+            }
+            if (copyStatus) {
+                copyStatus.textContent = button.getAttribute('data-copyfailed');
+            }
+            if (tooltipDiv) {
+                tooltipDiv.innerText = button.getAttribute('data-copyfailed') || 'Could not access clipboard';
+            } else {
+                console.warn("Dashboard clipboard copy failed.", error);
+            }
+        })
+        .finally(() => {
+            if (button.copyRequest !== request) {
+                return;
+            }
+            button.dataset.copyTimeout = setTimeout(function () {
+                if (copyStatus) {
+                    copyStatus.textContent = '';
+                }
+                if (tooltipDiv) {
+                    tooltipDiv.innerText = precopy;
+                }
+
+                if (copyIcon && checkmarkIcon) {
+                    copyIcon.style.display = '';
+                    checkmarkIcon.style.display = 'none';
+                }
+                delete button.dataset.copyTimeout;
+            }, Number(button.dataset.copyDuration) || 1500);
+        });
+};
+
+window.copyText = function (text) {
+    return navigator.clipboard.writeText(text);
+};
+
+window.copyTextAndOpen = async function (text, url) {
+    window.open(url, '_blank', 'noopener,noreferrer');
+    try {
+        await navigator.clipboard.writeText(text);
+        return true;
+    } catch {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        textarea.style.pointerEvents = 'none';
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+            return typeof document.execCommand === 'function' && document.execCommand('copy');
+        } finally {
+            textarea.remove();
+        }
+    }
+};
+
+window.setDashboardExperience = function (experience, targetPath) {
+    const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie = `Aspire_Dashboard_Experience=${experience}; Path=/; Max-Age=31536000; SameSite=Lax${secure}`;
+    // replace() keeps the page being left out of the history, so Back can't return to the other experience.
+    window.location.replace(targetPath);
+};
+
+function isActiveElementInput() {
+    let currentElement = document.activeElement;
+    // Hex1b can focus a non-editable <div class="hex1b-terminal" tabindex="-1">
+    // for canvas keyboard input. The whole viewport owns those keys, not only its textarea.
+    if (currentElement.closest(".terminal-container")) {
+        return true;
+    }
+
+    // Document.activeElement is the shadow host when Hex1b's textarea has
+    // focus. Follow focused shadow roots so printable keys remain terminal
+    // input rather than triggering dashboard navigation shortcuts. Stop at
+    // Fluent dropdowns so their host-level input semantics are preserved.
+    // https://developer.mozilla.org/en-US/docs/Web/API/Document/activeElement
+    while (currentElement.shadowRoot?.activeElement && !currentElement.closest("fluent-dropdown")) {
+        currentElement = currentElement.shadowRoot.activeElement;
+    }
+
+    // Fluent v5 renders the dropdown's focusable control as a light-DOM button. Treat the control
+    // and popup options as input elements so global shortcuts don't run while a dropdown is active.
+    if (currentElement.closest("fluent-dropdown")) {
+        return true;
+    }
+
+    const tagName = currentElement.tagName.toLowerCase();
+
+    // fluent components may have shadow roots that contain inputs
+    return currentElement.isContentEditable || tagName === "select" ||
+        ((tagName === "input" || tagName === "textarea" || tagName.startsWith("fluent")) && isInputElement(currentElement, false));
+}
+
+function isInputElement(element, isRoot, isShadowRoot) {
+    const tag = element.tagName.toLowerCase();
+    // comes from https://developer.mozilla.org/en-US/docs/Web/API/Element/input_event
+    if (tag === "input" || tag === "textarea" || tag === "select" || tag === "fluent-dropdown") {
+        return true;
+    }
+
+    if (isShadowRoot || isRoot) {
+        const elementChildren = element.children;
+        for (let i = 0; i < elementChildren.length; i++) {
+            if (isInputElement(elementChildren[i], false, isShadowRoot)) {
+                return true;
+            }
+        }
+    }
+
+    const shadowRoot = element.shadowRoot;
+    if (shadowRoot) {
+        const shadowRootChildren = shadowRoot.children;
+        for (let i = 0; i < shadowRootChildren.length; i++) {
+            if (isInputElement(shadowRootChildren[i], false, true)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+window.registerGlobalKeydownListener = function (shortcutManager) {
+    function hasNoModifiers(keyboardEvent) {
+        return !keyboardEvent.altKey && !keyboardEvent.ctrlKey && !keyboardEvent.metaKey && !keyboardEvent.shiftKey;
+    }
+
+    // Shift in some but not all, keyboard layouts, is used for + and -
+    function modifierKeysExceptShiftNotPressed(keyboardEvent) {
+        return !keyboardEvent.altKey && !keyboardEvent.ctrlKey && !keyboardEvent.metaKey;
+    }
+
+    function calculateShortcut(e) {
+        if (modifierKeysExceptShiftNotPressed(e)) {
+            /* general shortcuts */
+            switch (e.key) {
+                case "?": // help
+                    return 100;
+                case "S": // settings
+                    return 110;
+
+                /* panel shortcuts */
+                case "T": // toggle panel orientation
+                    return 300;
+                case "X": // close panel
+                    return 310;
+                case "R": // reset panel sizes
+                    return 320;
+                case "+": // increase panel size
+                    return 330;
+                case "_": // decrease panel size
+                case "-":
+                    return 340;
+            }
+        }
+
+        if (hasNoModifiers(e)) {
+            // Match the unmodified physical Backquote key across keyboard layouts, not the produced character.
+            // The focused-input guard runs before this, so terminal and text inputs still receive their keys.
+            // To toggle from terminal input, press F6 first to focus its controls.
+            // https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code
+            if (e.code === "Backquote") {
+                return 400;
+            }
+
+            switch (e.key) {
+                case "r": // go to resources
+                    return 200;
+                case "c": // go to console logs
+                    return 210;
+                case "s": // go to structured logs
+                    return 220;
+                case "t": // go to traces
+                    return 230;
+                case "m": // go to metrics
+                    return 240;
+                case "e": // go to terminals
+                    return 250;
+                case "p": // go to parameters
+                    return 270;
+                case "g": // go to graph
+                    return 280;
+                case "x": // go to extensions
+                    return 290;
+                case "o": // go to telemetry sources (observability)
+                    return 295;
+            }
+        }
+
+        return null;
+    }
+
+    const keydownListener = function (e) {
+        if (e.defaultPrevented || e.isComposing || isActiveElementInput()) {
+            return;
+        }
+
+        // list of shortcut enum codes is in src/Aspire.Dashboard/Model/IGlobalKeydownListener.cs
+        // to serialize an enum from js->dotnet, we must pass the enum's integer value, not its name
+        let shortcut = calculateShortcut(e);
+
+        if (shortcut) {
+            shortcutManager.invokeMethodAsync('OnGlobalKeyDown', shortcut);
+        }
+    }
+
+    window.document.addEventListener('keydown', keydownListener);
+
+    return {
+        keydownListener: keydownListener,
+    }
+};
+
+window.unregisterGlobalKeydownListener = function (obj) {
+    window.document.removeEventListener('keydown', obj.keydownListener);
+};
+
+window.getBrowserInfo = function () {
+    const options = Intl.DateTimeFormat(undefined, { hour: 'numeric' }).resolvedOptions();
+
+    return {
+        timeZone: options.timeZone,
+        userAgent: navigator.userAgent,
+        is24HourTime: options.hourCycle === "h23" || options.hourCycle === "h24"
+    };
+};
+
+window.focusElement = function (selector, suppressFocusVisible) {
+    const element = document.getElementById(selector);
+    if (element) {
+        if (suppressFocusVisible) {
+            element.focus({ focusVisible: false });
+        } else {
+            element.focus();
+        }
+    }
+};
+
+window.initializeMobileNavMenuKeyboardNavigation = function (dotnetHelper, menuId) {
+    const menu = document.getElementById(menuId);
+
+    const keydownListener = function (event) {
+        if (event.key === "Escape") {
+            event.preventDefault();
+            dotnetHelper.invokeMethodAsync("CloseMobileNavMenuFromKeyboardAsync");
+        }
+    };
+
+    const focusoutListener = function (event) {
+        if (!menu.contains(event.relatedTarget)) {
+            dotnetHelper.invokeMethodAsync("CloseMobileNavMenuFromFocusLossAsync");
+        }
+    };
+
+    // Keep Escape-to-close available as soon as the menu opens, including while
+    // focus is still on the navigation button that opened this inline menu.
+    // Do not trap Tab: focusout closes the menu after focus naturally leaves it.
+    document.addEventListener("keydown", keydownListener, true);
+    menu?.addEventListener("focusout", focusoutListener);
+
+    return {
+        keydownListener,
+        focusoutListener,
+        menu
+    };
+};
+
+window.disposeMobileNavMenuKeyboardNavigation = function (obj) {
+    document.removeEventListener("keydown", obj.keydownListener, true);
+    obj.menu?.removeEventListener("focusout", obj.focusoutListener);
+};
+
+// Fluent buttons and checkboxes render as focusable custom elements without exposing their native roles,
+// so assistive technology receives their names but not their control types or checked state. Keep the host
+// semantics explicit until Fluent exposes them itself. Related upstream accessibility history:
+// https://github.com/microsoft/fluentui-blazor/issues/2671
+function updateFluentButtonSemantics(button) {
+    button.setAttribute("role", "button");
+    if (button.disabled) {
+        button.setAttribute("aria-disabled", "true");
+    } else {
+        button.removeAttribute("aria-disabled");
+    }
+}
+
+function updateFluentCheckboxSemantics(checkbox) {
+    checkbox.setAttribute("role", "checkbox");
+    checkbox.setAttribute("aria-checked", checkbox.indeterminate ? "mixed" : String(checkbox.checked));
+    if (checkbox.disabled) {
+        checkbox.setAttribute("aria-disabled", "true");
+    } else {
+        checkbox.removeAttribute("aria-disabled");
+    }
+}
+
+function applyFluentControlRoles(root) {
+    // Mutation records also report text nodes and the document, which have no matches().
+    if (root.matches?.("fluent-button")) {
+        updateFluentButtonSemantics(root);
+    }
+    if (root.matches?.("fluent-checkbox")) {
+        updateFluentCheckboxSemantics(root);
+    }
+
+    root.querySelectorAll?.("fluent-button").forEach(updateFluentButtonSemantics);
+    root.querySelectorAll?.("fluent-checkbox").forEach(updateFluentCheckboxSemantics);
+}
+
+applyFluentControlRoles(document);
+
+// The observer sees every node the dashboard adds, including streamed console log lines and grid rows, which can be
+// thousands per second. Scanning each added subtree as it arrives puts that work on the busiest paths, so added
+// elements are collected and scanned together a little later. Text nodes, which most log output is, are skipped
+// without any work. A timer is used rather than requestAnimationFrame because animation frames don't run in a
+// background tab, where the pending set would otherwise keep growing.
+const pendingFluentControlRoots = new Set();
+let pendingFluentControlTimer = null;
+
+function applyPendingFluentControlRoles() {
+    pendingFluentControlTimer = null;
+    for (const root of pendingFluentControlRoots) {
+        // Rows of a virtualized grid or log viewer are often removed again before the scan runs.
+        if (root.isConnected) {
+            applyFluentControlRoles(root);
+        }
+    }
+    pendingFluentControlRoots.clear();
+}
+
+new MutationObserver(records => {
+    for (const record of records) {
+        if (record.type === "attributes") {
+            // Only "disabled" is observed, and it changes the semantics of the element itself, not its children.
+            if (record.target.matches("fluent-button")) {
+                updateFluentButtonSemantics(record.target);
+            } else if (record.target.matches("fluent-checkbox")) {
+                updateFluentCheckboxSemantics(record.target);
+            }
+            continue;
+        }
+
+        for (const node of record.addedNodes) {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+                pendingFluentControlRoots.add(node);
+            }
+        }
+    }
+
+    if (pendingFluentControlRoots.size > 0 && pendingFluentControlTimer === null) {
+        pendingFluentControlTimer = setTimeout(applyPendingFluentControlRoles, 50);
+    }
+}).observe(document.body, { attributes: true, attributeFilter: ["disabled"], childList: true, subtree: true });
+
+document.addEventListener("change", event => {
+    const checkbox = event.composedPath().find(element => element instanceof Element && element.matches("fluent-checkbox"));
+    if (checkbox) {
+        updateFluentCheckboxSemantics(checkbox);
+    }
+});
+
+window.getWindowDimensions = function() {
+    return {
+        width: window.innerWidth,
+        height: window.innerHeight
+    };
+}
+
+window.listenToWindowResize = function(dotnetHelper) {
+    function throttle(func, timeout) {
+        let currentTimeout = null;
+        return function () {
+            if (currentTimeout) {
+                return;
+            }
+            const context = this;
+            const args = arguments;
+            const later = () => {
+                func.call(context, ...args);
+                currentTimeout = null;
+            }
+            currentTimeout = setTimeout(later, timeout);
+        }
+    }
+
+    const throttledResizeListener = throttle(() => {
+        dotnetHelper.invokeMethodAsync('OnResizeAsync', { width: window.innerWidth, height: window.innerHeight });
+    }, 150)
+
+    window.addEventListener('load', throttledResizeListener);
+
+    window.addEventListener('resize', throttledResizeListener);
+}
+
+window.setCellTextClickHandler = function (id) {
+    var cellTextElement = document.getElementById(id);
+    if (!cellTextElement) {
+        return;
+    }
+
+    cellTextElement.addEventListener('click', e => {
+        // Propagation behavior:
+        // - Link click stops. Link will open in a new window.
+        // - Any other text allows propagation. Potentially opens details view.
+        if (isElementTagName(e.target, 'a')) {
+            e.stopPropagation();
+        }
+    });
+};
+
+window.scrollToTop = function (selector) {
+    var element = document.querySelector(selector);
+    if (element) {
+        element.scrollTop = 0;
+    }
+};
+
+window.scrollToElement = function (elementId) {
+    var element = document.getElementById(elementId);
+    if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+    }
+};
+
+// ===== Data grid column auto-fit =====
+// Double-clicking a FluentDataGrid column's resize handle expands (or shrinks) that column so the
+// widest visible cell content fits, then animates the change. FluentDataGrid renders as
+// <table class="fluent-data-grid"> laid out with display:grid; the column widths live in the
+// table's inline grid-template-columns, e.g.:
+//   grid-template-columns: 1.5fr 1.25fr 1fr 2.25fr 2.25fr minmax(150px, 1.5fr);
+// We measure a column's natural content width by momentarily setting just that track to
+// max-content, read the resolved width, then animate the fully-resolved px template from the old
+// width to the fitted width.
+//
+// This is intentionally self-contained (it does not rely on Fluent's internal resize JS) so it
+// keeps working across Fluent UI Blazor upgrades, and it's wired as a document-level listener so it
+// survives Blazor SPA navigations and applies to every grid (Resources, Console, Structured,
+// Traces, Metrics).
+const AUTOFIT_ANIMATING_CLASS = "autofit-animating";
+const AUTOFIT_CONTENT_PADDING = 8; // a little breathing room past the measured content
+const AUTOFIT_MIN_WIDTH = 48;      // never collapse a column to nothing
+
+function autoFitGridColumn(handle) {
+    const grid = handle.closest("table.fluent-data-grid");
+    const header = handle.closest("th[cell-type='columnheader']");
+    if (!grid || !header) {
+        return;
+    }
+
+    const headers = Array.from(grid.querySelectorAll("th[cell-type='columnheader']"));
+    const columnIndex = headers.indexOf(header);
+    if (columnIndex < 0) {
+        return;
+    }
+
+    // Resolve the current tracks to concrete px so we have an explicit, animatable start state.
+    // getComputedStyle always returns used px values (fr / minmax resolved), space separated.
+    const startTracks = getComputedStyle(grid).gridTemplateColumns.split(" ");
+    // Guard against grids whose resolved track count doesn't line up with the header cells (e.g. an
+    // extra structural track); bailing avoids corrupting the layout with a misaligned template.
+    if (startTracks.length !== headers.length) {
+        return;
+    }
+
+    // Measure: let only this column grow to its content, read the resulting width, then restore.
+    // A grid max-content track sizes to the widest content contribution of the rendered cells,
+    // which is exactly "fit to the longest value currently on screen".
+    const measureTracks = startTracks.slice();
+    measureTracks[columnIndex] = "max-content";
+    grid.classList.remove(AUTOFIT_ANIMATING_CLASS);
+    grid.style.gridTemplateColumns = measureTracks.join(" ");
+    // Force layout so the max-content measurement reflects the real content width.
+    void grid.offsetWidth;
+
+    // Cap the fit so one very long value (e.g. a big URL/source) can't swallow the whole grid.
+    const maxWidth = Math.max(200, grid.clientWidth * 0.7);
+    const measured = header.getBoundingClientRect().width + AUTOFIT_CONTENT_PADDING;
+    const fitWidth = Math.min(Math.max(measured, AUTOFIT_MIN_WIDTH), maxWidth);
+
+    // Restore the start widths (still no transition) so the animation begins from the old size.
+    grid.style.gridTemplateColumns = startTracks.join(" ");
+    void grid.offsetWidth;
+
+    // Animate to the fitted width. Only this one track changes; the others stay pinned to their
+    // current px, so the grid grows/shrinks predictably - matching normal drag-resize behavior.
+    const targetTracks = startTracks.slice();
+    targetTracks[columnIndex] = `${fitWidth.toFixed(2)}px`;
+    grid.classList.add(AUTOFIT_ANIMATING_CLASS);
+    grid.style.gridTemplateColumns = targetTracks.join(" ");
+
+    const cleanup = function (e) {
+        // transitionend fires per animated property; only react to the one we drive.
+        if (e && e.propertyName !== "grid-template-columns") {
+            return;
+        }
+        grid.classList.remove(AUTOFIT_ANIMATING_CLASS);
+        grid.removeEventListener("transitionend", cleanup);
+    };
+    grid.addEventListener("transitionend", cleanup);
+    // Fallback in case transitionend never fires (no measurable change, reduced motion, or a
+    // browser that can't interpolate grid-template-columns and snaps instantly instead).
+    setTimeout(cleanup, 500);
+}
+
+// Register a global double-click listener for grid resize handles. Fluent UI v5 marks its
+// dynamically created handle with actual-resize-handle; keep the v4 class selectors so the
+// listener remains compatible with dashboard assets from older Fluent UI versions.
+document.addEventListener("dblclick", function (e) {
+    const handle = e.target.closest?.(".fluent-data-grid [actual-resize-handle], .fluent-data-grid .resize-handle, .fluent-data-grid .col-width-draghandle");
+    if (handle) {
+        // Prevent the double-click from selecting the header text while we resize.
+        e.preventDefault();
+        autoFitGridColumn(handle);
+    }
+});
+
+// taken from https://learn.microsoft.com/en-us/aspnet/core/blazor/file-downloads?view=aspnetcore-8.0#download-from-a-stream
+window.downloadStreamAsFile = async function (fileName, contentStreamReference) {
+    const arrayBuffer = await contentStreamReference.arrayBuffer();
+    const blob = new Blob([arrayBuffer]);
+    const url = URL.createObjectURL(blob);
+    const anchorElement = document.createElement('a');
+    anchorElement.href = url;
+    anchorElement.download = fileName ?? '';
+    anchorElement.click();
+    anchorElement.remove();
+    URL.revokeObjectURL(url);
+};

@@ -1,0 +1,82 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+using Aspire.Hosting.Azure;
+using Aspire.Hosting.Azure.Provisioning;
+using Aspire.Hosting.Azure.Provisioning.Internal;
+using Azure.ResourceManager;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+
+namespace Aspire.Hosting;
+
+/// <summary>
+/// Provides extension methods for adding support for generating Azure resources dynamically during application startup.
+/// </summary>
+public static class AzureProvisionerExtensions
+{
+    /// <summary>
+    /// Adds support for generating Azure resources dynamically during application startup.
+    /// The application must configure the appropriate Azure subscription and location before resources can be provisioned.
+    /// </summary>
+    /// <param name="builder">The distributed application builder.</param>
+    /// <returns>The distributed application builder.</returns>
+    [AspireExport]
+    public static IDistributedApplicationBuilder AddAzureProvisioning(this IDistributedApplicationBuilder builder)
+    {
+        // Always add the Azure environment, even if the user doesn't explicitly add it.
+        builder.AddAzureEnvironment();
+
+        builder.Services.TryAddSingleton<AzureResourcePreparer>();
+        builder.Services.TryAddSingleton<AzureProvisioner>();
+
+        // Attempt to read azure configuration from configuration
+        builder.Services.AddOptions<AzureProvisionerOptions>()
+            .BindConfiguration("Azure")
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        builder.Services.TryAddSingleton<ITokenCredentialProvider, DefaultTokenCredentialProvider>();
+
+        // Register ACR login service for container registry authentication
+        builder.Services.TryAddSingleton<IAcrLoginService, AcrLoginService>();
+
+        // Add named HTTP client for ACR OAuth2 exchange
+        // HTTP request logging can be controlled via logging configuration:
+        // "Logging": { "LogLevel": { "System.Net.Http.HttpClient.AcrLogin": "Debug" } }
+        builder.Services.AddHttpClient("AcrLogin");
+
+        builder.Services.AddHttpClient(); // Add default IHttpClientFactory
+
+        // Register BicepProvisioner via interface
+        builder.Services.TryAddSingleton<IBicepProvisioner, BicepProvisioner>();
+
+        // Register the new internal services for testability
+        builder.Services.TryAddSingleton<IArmClientProvider>(sp =>
+            new DefaultArmClientProvider(new ArmClientOptions(), sp.GetService<TimeProvider>() ?? TimeProvider.System));
+        builder.Services.TryAddSingleton<ISecretClientProvider, DefaultSecretClientProvider>();
+        builder.Services.TryAddSingleton<IBicepCompiler, BicepCliCompiler>();
+        builder.Services.TryAddSingleton<IAzurePrincipalProvider, DefaultAzurePrincipalProvider>();
+
+        if (builder.ExecutionContext.IsPublishMode)
+        {
+            builder.Services.TryAddSingleton<IProvisioningContextProvider, PublishModeProvisioningContextProvider>();
+        }
+        else
+        {
+            builder.Services.TryAddSingleton<RunModeProvisioningContextProvider>();
+            builder.Services.TryAddSingleton<IProvisioningContextProvider>(sp => sp.GetRequiredService<RunModeProvisioningContextProvider>());
+            builder.Services.TryAddSingleton<IAzureProvisioningOptionsManager>(sp => sp.GetRequiredService<RunModeProvisioningContextProvider>());
+        }
+
+        // The controller is registered unconditionally because AzureProvisioner is resolved by the run-mode
+        // Azure environment initialization. In publish mode, the controller's interactive features
+        // (change-context, change-location) are never invoked, but it must be resolvable.
+        builder.Services.TryAddSingleton<IAzureProvisioningOptionsManager, NoOpAzureProvisioningOptionsManager>();
+        builder.Services.TryAddSingleton<AzureProvisioningController>();
+
+        builder.Services.TryAddSingleton<IProcessRunner, DefaultProcessRunner>();
+
+        return builder;
+    }
+}

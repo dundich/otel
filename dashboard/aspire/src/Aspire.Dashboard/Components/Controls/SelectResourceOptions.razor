@@ -1,0 +1,32 @@
+﻿@namespace Aspire.Dashboard.Components
+
+@using System.Collections.Concurrent
+@using Aspire.Dashboard.Resources
+
+@inject IStringLocalizer<ControlsStrings> ControlsStringsLoc
+@inject IStringLocalizer<Resources> Loc
+
+@typeparam TValue where TValue : notnull
+
+<FluentStack Orientation="Orientation.Vertical" Id="@Id">
+    <FluentCheckbox Label="@ControlsStringsLoc[nameof(ControlsStrings.LabelAll)]"
+                    Class="aspire-checkbox"
+                    ThreeState="true"
+                    ShowIndeterminate="false"
+                    ThreeStateOrderUncheckToIntermediate="true"
+                    Value="@(GetCheckState(Values) is true)"
+                    @bind-CheckState:get="@GetCheckState(Values)"
+                    @bind-CheckState:set="@OnAllValuesCheckedChangedInternalAsync" />
+
+    @* OrderBy doesn't use thread safe APIs on ConcurrentDictionary. Call ToArray first. *@
+    @foreach (var (key, isChecked) in Values.ToArray().OrderBy(pair => pair.Key.ToString(), StringComparer.OrdinalIgnoreCase))
+    {
+        var label = string.IsNullOrEmpty(key.ToString()) ? Loc[nameof(Resources.ResourceFilterOptionEmpty)] : key.ToString();
+
+        <FluentCheckbox Label="@label"
+                        data-tooltip="@label"
+                        Class="aspire-checkbox"
+                        @bind-Value:get="@isChecked"
+                        @bind-Value:set="@(c => OnValueVisibilityChangedInternalAsync(key, c))" />
+    }
+</FluentStack>

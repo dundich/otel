@@ -1,0 +1,315 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="AtLeastOneTemplateFactoryMustBeProvided" xml:space="preserve">
+    <value>At least one template factory must be provided.</value>
+  </data>
+  <data name="AspireStarter_Description" xml:space="preserve">
+    <value>Starter App (ASP.NET Core/Blazor)</value>
+  </data>
+  <data name="AspireJsFrontendStarter_Description" xml:space="preserve">
+    <value>Starter App (ASP.NET Core/React, C# AppHost)</value>
+  </data>
+  <data name="AspireJavaStarter_Description" xml:space="preserve">
+    <value>Starter App (Java AppHost/Express/React)</value>
+  </data>
+  <data name="AspireEmpty_Description" xml:space="preserve">
+    <value>AppHost and service defaults</value>
+  </data>
+  <data name="AspireEmptyDotNetTemplate_Description" xml:space="preserve">
+    <value>Empty (C# AppHost, dotnet template)</value>
+  </data>
+  <data name="AspireAppHost_Description" xml:space="preserve">
+    <value>AppHost</value>
+  </data>
+  <data name="AspireServiceDefaults_Description" xml:space="preserve">
+    <value>Service defaults</value>
+  </data>
+  <data name="AspireAppHostSingleFile_Description" xml:space="preserve">
+    <value>Empty AppHost</value>
+  </data>
+  <data name="AspireMSTest_Description" xml:space="preserve">
+    <value>MSTest</value>
+  </data>
+  <data name="AspireNUnit_Description" xml:space="preserve">
+    <value>NUnit</value>
+  </data>
+  <data name="AspireXUnit_Description" xml:space="preserve">
+    <value>xUnit</value>
+  </data>
+  <data name="IntegrationTestsTemplate_Description" xml:space="preserve">
+    <value>Integration tests</value>
+  </data>
+  <data name="UseRedisCache_Prompt" xml:space="preserve">
+    <value>Use Redis Cache</value>
+  </data>
+  <data name="UseRedisCache_Description" xml:space="preserve">
+    <value>Configures whether to setup the application to use Redis for caching.</value>
+  </data>
+  <data name="Yes" xml:space="preserve">
+    <value>Yes</value>
+  </data>
+  <data name="No" xml:space="preserve">
+    <value>No</value>
+  </data>
+  <data name="UseRedisCache_UnexpectedChoice" xml:space="preserve">
+    <value>Unexpected choice for Redis Cache option</value>
+  </data>
+  <data name="UseRedisCache_UsingRedisCache" xml:space="preserve">
+    <value>Using Redis Cache for caching.</value>
+  </data>
+  <data name="PromptForTFMOptions_Prompt" xml:space="preserve">
+    <value>Do you want to create a test project?</value>
+  </data>
+  <data name="PromptForTFMOptions_Description" xml:space="preserve">
+    <value>Configures whether to create a project for integration tests using MSTest, NUnit, or xUnit.net.</value>
+  </data>
+  <data name="PromptForTFM_Prompt" xml:space="preserve">
+    <value>Select a test framework</value>
+  </data>
+  <data name="None" xml:space="preserve">
+    <value>None</value>
+  </data>
+  <data name="Skip" xml:space="preserve">
+    <value>Skip</value>
+  </data>
+  <data name="InvalidTemplateHostConfiguration" xml:space="preserve">
+    <value>Could not load template host configuration '{0}': {1}</value>
+    <comment>{0} is the host configuration path; {1} is the validation error.</comment>
+  </data>
+  <data name="InvalidTemplateHostConfigurationFormat" xml:space="preserve">
+    <value>Expected a JSON object. 'createNuGetConfig' must be a Boolean, and 'symbolInfo' must be an object. Symbol entries must be objects, 'isHidden' must be true or false, and 'displayName' must be a string.</value>
+  </data>
+  <data name="InvalidTemplateValueSource" xml:space="preserve">
+    <value>Computed value '{0}' must target a non-reserved string parameter and specify kind 'nugetPackageVersion', a valid 'packageId' and 'versionRange', an optional Boolean 'allowPrerelease', and an optional output-relative 'workingDirectory'.</value>
+    <comment>{0} is the template parameter name.</comment>
+  </data>
+  <data name="InvalidTemplatePromptDefault" xml:space="preserve">
+    <value>Prompt default '{0}' must target an optional, empty-default string parameter and reference its native coalesce symbol, depending only on the project name and regex/coalesce symbols. It cannot also specify a computed value source.</value>
+    <comment>{0} is the template parameter name.</comment>
+  </data>
+  <data name="ComputedTemplateParameterCondition" xml:space="preserve">
+    <value>Parameter '{0}' uses a NuGet-computed value in a prompting condition. Computed values are resolved after prompting and cannot control parameter conditions.</value>
+    <comment>{0} is the template parameter name.</comment>
+  </data>
+  <data name="TemplatePackageVersionLookupFailed" xml:space="preserve">
+    <value>Could not query the effective NuGet sources for package '{0}' to compute parameter '{1}'. Check the NuGet configuration, connectivity, and credentials.</value>
+    <comment>{0} is the package ID; {1} is the template parameter name.</comment>
+  </data>
+  <data name="TemplatePackageVersionNotFound" xml:space="preserve">
+    <value>No version of package '{0}' matches range '{1}' with allowPrerelease={2} in the effective NuGet sources for parameter '{3}'.</value>
+    <comment>{0} is the package ID; {1} is the version range; {2} is the prerelease Boolean; {3} is the template parameter name.</comment>
+  </data>
+  <data name="TemplateNuGetConfigurationChanged" xml:space="preserve">
+    <value>A computed value changed the generated NuGet configuration. NuGet-computed values must not control configuration contents, locations, or whether configuration files are generated.</value>
+  </data>
+  <data name="TemplateValueSourceWorkingDirectoryInvalid" xml:space="preserve">
+    <value>The computed value working directory '{0}' must name an existing directory within the generated output.</value>
+    <comment>{0} is the relative working directory.</comment>
+  </data>
+  <data name="TemplateStagingLinkNotSupported" xml:space="preserve">
+    <value>Templates with NuGet-computed values cannot generate symbolic links.</value>
+  </data>
+  <data name="Unknown" xml:space="preserve">
+    <value>Unknown</value>
+  </data>
+  <data name="PromptForTFM_UsingForTesting" xml:space="preserve">
+    <value>Using {0} for testing.</value>
+  </data>
+  <data name="EnterXUnitVersion_Prompt" xml:space="preserve">
+    <value>Enter the xUnit.net version to use</value>
+  </data>
+  <data name="EnterXUnitVersion_Description" xml:space="preserve">
+    <value>The version of xUnit.net to use for the test project.</value>
+  </data>
+  <data name="GettingTemplates" xml:space="preserve">
+    <value>Getting templates...</value>
+  </data>
+  <data name="TemplateInstallationFailed" xml:space="preserve">
+    <value>The template installation failed with exit code {0}.</value>
+    <comment>{0} is a number</comment>
+  </data>
+  <data name="UsingProjectTemplatesVersion" xml:space="preserve">
+    <value>Using project templates version: {0}</value>
+  </data>
+  <data name="CreatingNewProject" xml:space="preserve">
+    <value>Creating new Aspire project...</value>
+  </data>
+  <data name="ProjectCreationFailed" xml:space="preserve">
+    <value>Project creation failed with exit code {0}.</value>
+    <comment>{0} is a number</comment>
+  </data>
+  <data name="ProjectCreatedSuccessfully" xml:space="preserve">
+    <value>Project created successfully in {0}.</value>
+    <comment>{0} is a path</comment>
+  </data>
+  <data name="SearchingForAvailableTemplateVersions" xml:space="preserve">
+    <value>Searching for available project template versions...</value>
+  </data>
+  <data name="NoMatchingLocalTemplatePackage" xml:space="preserve">
+    <value>No matching local Aspire.ProjectTemplates package was found for Aspire CLI version '{0}'. Build and stage matching packages with localhive.sh (macOS/Linux) or localhive.ps1 (Windows), set ASPIRE_CLI_PACKAGES to a directory containing the package, or explicitly choose feed-backed templates with --channel, --source, or --version.</value>
+  </data>
+  <data name="TemplateVersionNotFound" xml:space="preserve">
+    <value>Template version '{0}' was not found.</value>
+  </data>
+  <data name="NoTemplateVersionsFound" xml:space="preserve">
+    <value>No template versions were found. Please check your internet connection or NuGet source configuration.</value>
+  </data>
+  <data name="ProjectAlreadyExists" xml:space="preserve">
+    <value>The new project cannot be created because it would overwrite existing files in the output folder. Please remove or move the conflicting files, or choose a different location.</value>
+  </data>
+  <data name="CreateNugetConfigConfirmation" xml:space="preserve">
+    <value>Create NuGet.config for selected channels?</value>
+  </data>
+  <data name="NuGetConfigCreatedConfirmationMessage" xml:space="preserve">
+    <value>Created NuGet.config for the selected package channel.</value>
+  </data>
+  <data name="UpdateNuGetConfigConfirmation" xml:space="preserve">
+    <value>Update NuGet.config to add missing package sources for the selected channel?</value>
+  </data>
+  <data name="NuGetConfigUpdatedConfirmationMessage" xml:space="preserve">
+    <value>Updated NuGet.config with required package sources.</value>
+  </data>
+  <data name="NuGetConfigCreatedOrUpdatedConfirmationMessage" xml:space="preserve">
+    <value>Created or updated NuGet.config in the project directory with required package sources.</value>
+  </data>
+  <data name="UseLocalhostTld_Prompt" xml:space="preserve">
+    <value>Use *.dev.localhost URLs</value>
+  </data>
+  <data name="UseLocalhostTld_UnexpectedChoice" xml:space="preserve">
+    <value>Unexpected choice for *.dev.localhost option</value>
+  </data>
+  <data name="UseLocalhostTld_UsingLocalhostTld" xml:space="preserve">
+    <value>Using *.dev.localhost URLs for local development.</value>
+  </data>
+  <data name="UseLocalhostTld_Description" xml:space="preserve">
+    <value>Configures whether to use *.dev.localhost URLs for local development.</value>
+  </data>
+  <data name="RunCdThenAspireRun" xml:space="preserve">
+    <value>Run 'cd "{0}"' and then 'aspire run' to start your AppHost.</value>
+    <comment>{0} is the relative path to the project directory</comment>
+  </data>
+  <data name="RunAspireRun" xml:space="preserve">
+    <value>Run 'aspire run' to start your AppHost.</value>
+  </data>
+  <data name="SourceOverrideNotPersistedWarning" xml:space="preserve">
+    <value>[yellow]--source was used for the initial scaffold restore only and is not persisted. Later 'aspire restore' / 'aspire add' will use the channel feeds configured for this project.[/]</value>
+    <comment>Do not translate [yellow] or [/]. Displayed after 'aspire new' (aspire-empty or aspire-starter) when --source was supplied for a non-C# language.</comment>
+  </data>
+</root>

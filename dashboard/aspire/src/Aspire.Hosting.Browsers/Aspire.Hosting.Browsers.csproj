@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>$(DefaultTargetFramework)</TargetFramework>
+    <IsPackable>true</IsPackable>
+    <PackageTags>aspire integration hosting browser browsers logs diagnostics</PackageTags>
+    <Description>Browser support for Aspire hosting.</Description>
+    <!-- In preview until the public API is validated. -->
+    <SuppressFinalPackageVersion>true</SuppressFinalPackageVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Aspire.Hosting\Aspire.Hosting.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="$(SharedDir)CustomResourceSnapshotExtensions.cs" Link="Utils\CustomResourceSnapshotExtensions.cs" />
+    <Compile Include="$(SharedDir)PathLookupHelper.cs" Link="Utils\PathLookupHelper.cs" />
+    <Compile Include="$(SharedDir)StringComparers.cs" Link="Utils\StringComparers.cs" />
+  </ItemGroup>
+
+</Project>

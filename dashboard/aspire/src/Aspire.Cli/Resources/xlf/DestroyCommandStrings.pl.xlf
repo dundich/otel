@@ -1,0 +1,42 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="pl" original="../DestroyCommandStrings.resx">
+    <body>
+      <trans-unit id="Description">
+        <source>Destroy a previously deployed AppHost environment</source>
+        <target state="translated">Usuń wcześniej wdrożone środowisko AppHost</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DestroyCanceled">
+        <source>The destroy operation was canceled.</source>
+        <target state="translated">Operacja usuwania została anulowana.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="NonInteractiveRequiresYes">
+        <source>The destroy command requires --yes when the --non-interactive option is specified.</source>
+        <target state="translated">Polecenie destroy wymaga opcji --yes, gdy określono opcję --non-interactive.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="OperationCompletedPrefix">
+        <source>Destroy completed</source>
+        <target state="translated">Usuwanie zakończone</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="OperationFailedPrefix">
+        <source>Destroy failed</source>
+        <target state="translated">Usuwanie nie powiodło się</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="OutputPathArgumentDescription">
+        <source>The output path containing the deployment artifacts to destroy</source>
+        <target state="translated">Ścieżka wyjściowa zawierająca artefakty wdrożenia przeznaczone do zniszczenia</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="YesOptionDescription">
+        <source>Do not prompt for confirmation before destroying resources</source>
+        <target state="translated">Nie wyświetlaj monitu o potwierdzenie przed zniszczeniem zasobów</target>
+        <note />
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

@@ -1,0 +1,127 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="cs" original="../MessageStrings.resx">
+    <body>
+      <trans-unit id="AuthenticationExpiredNotification">
+        <source>Dev tunnels authentication has expired. Restart the dev tunnel resources to re-authenticate.</source>
+        <target state="translated">Platnost ověření vývojových tunelů vypršela. Restartujte prostředky vývojového tunelu, aby se znovu ověřily.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="AuthenticationRequiredNotification">
+        <source>Dev tunnels requires authentication to continue:</source>
+        <target state="translated">Vývojové tunely vyžadují ověření, aby bylo možné pokračovat:</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DevTunnelHealthy">
+        <source>Dev tunnel '{0}' is active with {1} host connections and {2} ports.</source>
+        <target state="translated">Vývojový tunel {0} je aktivní s {1} připojeními hostitele a {2} porty.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DevTunnelHostDisconnected">
+        <source>The local host for dev tunnel '{0}' is disconnected.</source>
+        <target state="translated">Místní hostitel pro vývojový tunel {0} je odpojen.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DevTunnelHostHealthy">
+        <source>Dev tunnel '{0}' is connected and hosting all expected ports.</source>
+        <target state="translated">Vývojový tunel {0} je připojený a hostuje všechny očekávané porty.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DevTunnelHostNotReady">
+        <source>Waiting for dev tunnel '{0}' to connect and expose its ports.</source>
+        <target state="translated">Čeká se, až se vývojový tunel {0} připojí a zveřejní příslušné porty.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DevTunnelPortHealthy">
+        <source>Dev tunnel port '{0}' on dev tunnel '{1}' is active.</source>
+        <target state="translated">Port vývojového tunelu {0} ve vývojovém tunelu {1} je aktivní.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DevTunnelPortUnhealthy_Error">
+        <source>Failed to check port '{0}' on dev tunnel '{1}': {2}</source>
+        <target state="translated">Nepovedlo se zkontrolovat port {0} ve vývojovém tunelu {1}: {2}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DevTunnelPortUnhealthy_StatusUnknown">
+        <source>Dev tunnel port '{0}' on dev tunnel '{1}' status is not known.</source>
+        <target state="translated">Stav portu vývojového tunelu {0} ve vývojovém tunelu {1} není známý.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DevTunnelUnhealthy_Error">
+        <source>Failed to check dev tunnel '{0}': {1}</source>
+        <target state="translated">Nepovedlo se zkontrolovat vývojový tunel {0}: {1}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DevTunnelUnhealthy_NoActiveHostConnections">
+        <source>Dev tunnel '{0}' has no active host connections.</source>
+        <target state="translated">Vývojový tunel {0} nemá žádná aktivní připojení hostitele.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DevTunnelUnhealthy_PortInactive">
+        <source>Dev tunnel '{0}' port '{1}' is not active.</source>
+        <target state="translated">Port {1} vývojového tunelu {0} není aktivní.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DevtunnelCliVersionNotSupported">
+        <source>The installed devtunnel CLI version {0} is not supported. Version {1} or higher is required.</source>
+        <target state="translated">Nainstalovaná verze příkazového řádku devtunnel {0} není podporovaná. Vyžaduje se verze {1} nebo vyšší.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="LoginWithGitHub">
+        <source>Login with GitHub</source>
+        <target state="translated">Přihlásit se pomocí GitHubu</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="LoginWithMicrosoft">
+        <source>Login with Microsoft</source>
+        <target state="translated">Přihlásit se pomocí účtu Microsoft</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ShowTunnelUrlsCommandClose">
+        <source>Close</source>
+        <target state="translated">Zavřít</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ShowTunnelUrlsCommandDescription">
+        <source>Opens available public, inspect, and local URLs for the dev tunnel port.</source>
+        <target state="translated">Otevře dostupné adresy URL portu vývojového tunelu: veřejné, pro kontrolu provozu a místní.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ShowTunnelUrlsCommandDisplayName">
+        <source>Show tunnel URLs</source>
+        <target state="translated">Zobrazit adresy URL tunelu</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ShowTunnelUrlsCommandInspectUrlLabel">
+        <source>Inspect URL</source>
+        <target state="translated">Adresa URL pro kontrolu provozu</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ShowTunnelUrlsCommandInteractionUnavailable">
+        <source>Dev tunnel URLs can only be shown in an interactive environment.</source>
+        <target state="translated">Adresy URL vývojových tunelů lze zobrazit jen v interaktivním prostředí.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ShowTunnelUrlsCommandLocalEndpointUrlLabel">
+        <source>Local endpoint URL</source>
+        <target state="translated">Adresa URL místního koncového bodu</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ShowTunnelUrlsCommandResultHeading">
+        <source>Dev tunnel URLs</source>
+        <target state="translated">Adresy URL vývojových tunelů</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ShowTunnelUrlsCommandTunnelUrlLabel">
+        <source>Tunnel URL</source>
+        <target state="translated">Adresa URL tunelu</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ShowTunnelUrlsCommandUnavailable">
+        <source>Dev tunnel URLs are not available yet.</source>
+        <target state="translated">Adresy URL vývojových tunelů zatím nejsou k dispozici.</target>
+        <note />
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

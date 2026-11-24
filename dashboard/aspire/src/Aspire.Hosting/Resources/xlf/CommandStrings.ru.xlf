@@ -1,0 +1,107 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="ru" original="../CommandStrings.resx">
+    <body>
+      <trans-unit id="DeleteParameterDescription">
+        <source>Delete parameter value</source>
+        <target state="translated">Удалить значение параметра</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="DeleteParameterName">
+        <source>Delete parameter</source>
+        <target state="translated">Удалить параметр</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="RebuildDescription">
+        <source>Stop the resource, rebuild the project from source, and restart. Use this to apply source code changes.</source>
+        <target state="translated">Остановите ресурс, выполните заново сборку проекта из исходного кода, а затем перезапустите. Используйте этот способ, чтобы изменения в исходном коде вступили в силу.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="RebuildName">
+        <source>Rebuild</source>
+        <target state="translated">Выполнить сборку заново</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceDeletedParameter">
+        <source>Successfully deleted parameter '{0}'.</source>
+        <target state="translated">Параметр "{0}" успешно удален.</target>
+        <note>{0} is the resource name.</note>
+      </trans-unit>
+      <trans-unit id="ResourceRebuilt">
+        <source>Successfully rebuilt '{0}'.</source>
+        <target state="translated">Повторная сборка "{0}" выполнена успешно.</target>
+        <note>{0} is the resource name.</note>
+      </trans-unit>
+      <trans-unit id="ResourceRestarted">
+        <source>Successfully restarted '{0}'.</source>
+        <target state="translated">Перезагрузка "{0}" выполнена.</target>
+        <note>{0} is the resource name.</note>
+      </trans-unit>
+      <trans-unit id="ResourceSetParameter">
+        <source>Successfully set parameter '{0}'.</source>
+        <target state="translated">Параметр "{0}" успешно задан.</target>
+        <note>{0} is the resource name.</note>
+      </trans-unit>
+      <trans-unit id="ResourceStarted">
+        <source>Successfully started '{0}'.</source>
+        <target state="translated">Успешный запуск "{0}".</target>
+        <note>{0} is the resource name.</note>
+      </trans-unit>
+      <trans-unit id="ResourceStopped">
+        <source>Successfully stopped '{0}'.</source>
+        <target state="translated">Остановлено: "{0}".</target>
+        <note>{0} is the resource name.</note>
+      </trans-unit>
+      <trans-unit id="RestartDescription">
+        <source>Restart resource</source>
+        <target state="translated">Перезапустить ресурс</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="RestartName">
+        <source>Restart</source>
+        <target state="translated">Перезапустить</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="RestartProjectDescription">
+        <source>Restart resource. Source code is not recompiled.</source>
+        <target state="translated">Перезапустить ресурс. Исходный код не перекомпилирован.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SetParameterDescription">
+        <source>Set parameter value</source>
+        <target state="translated">Настройка значения параметра</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SetParameterName">
+        <source>Set parameter</source>
+        <target state="translated">Настройка параметра</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="StartDescription">
+        <source>Start resource</source>
+        <target state="translated">Запуск ресурса</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="StartName">
+        <source>Start</source>
+        <target state="translated">Начало</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="StopDescription">
+        <source>Stop resource</source>
+        <target state="translated">Остановить ресурс</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="StopName">
+        <source>Stop</source>
+        <target state="translated">Остановить</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="RebuilderResourceNotFound">
+        <source>Rebuilder resource for '{0}' not found.</source>
+        <target state="translated">Ресурс выполнения сборки заново для '{0}' не найден.</target>
+        <note />
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

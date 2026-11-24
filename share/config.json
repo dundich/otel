@@ -1,0 +1,8 @@
+{
+  "name": "РА-Монитор",
+  "feature": "file-browser",
+  "roots": {
+    "logs": "/workspace/logs",
+    "share": "/workspace/share"
+  }
+}

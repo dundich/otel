@@ -1,0 +1,61 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+namespace Aspire.Hosting.Pipelines;
+
+/// <summary>
+/// Provides deployment state management functionality.
+/// </summary>
+public interface IDeploymentStateManager
+{
+    /// <summary>
+    /// Gets the file path where deployment state is stored, if applicable.
+    /// </summary>
+    string? StateFilePath { get; }
+
+    /// <summary>
+    /// Acquires a specific section of the deployment state with version tracking for concurrency control.
+    /// The returned section is an immutable snapshot of the data at the time of acquisition.
+    /// </summary>
+    /// <param name="sectionName">The name of the section to acquire (e.g., "Parameters", "Azure").</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A StateSection containing the section data and version information.</returns>
+    Task<DeploymentStateSection> AcquireSectionAsync(string sectionName, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Acquires a specific section from the current deployment state without falling back to legacy state.
+    /// </summary>
+    /// <remarks>
+    /// Implementations that support legacy-state fallback must override this member. The default is provided
+    /// for compatibility with state managers whose <see cref="AcquireSectionAsync"/> already reads only current state.
+    /// </remarks>
+    /// <param name="sectionName">The name of the section to acquire (e.g., "Parameters", "Azure").</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A StateSection containing the current section data and version information.</returns>
+    Task<DeploymentStateSection> AcquireCurrentSectionAsync(string sectionName, CancellationToken cancellationToken = default)
+        => AcquireSectionAsync(sectionName, cancellationToken);
+
+    /// <summary>
+    /// Saves a section of deployment state with optimistic concurrency control.
+    /// The section must have a matching version number or a concurrency exception will be thrown.
+    /// </summary>
+    /// <param name="section">The section to save, including version information.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <exception cref="InvalidOperationException">Thrown when a version conflict is detected, indicating the section was modified after it was acquired.</exception>
+    Task SaveSectionAsync(DeploymentStateSection section, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Delete a section of deployment state with optimistic concurrency control.
+    /// The section must have a matching version number or a concurrency exception will be thrown.
+    /// </summary>
+    /// <param name="section">The section to delete, including version information.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <exception cref="InvalidOperationException">Thrown when a version conflict is detected, indicating the section was modified after it was acquired.</exception>
+    Task DeleteSectionAsync(DeploymentStateSection section, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Clears all deployment state, removing all sections and the underlying storage.
+    /// </summary>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    Task ClearAllStateAsync(CancellationToken cancellationToken = default);
+}

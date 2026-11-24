@@ -1,0 +1,7 @@
+service: app2
+enabled: true
+ports:
+  - 8080
+  - 8082
+nested:
+  version: 10.0.2

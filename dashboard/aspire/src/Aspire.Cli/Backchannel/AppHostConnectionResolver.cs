@@ -1,0 +1,379 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
+using Aspire.Cli.Git;
+using Aspire.Cli.Configuration;
+using Aspire.Cli.Interaction;
+using Aspire.Cli.Projects;
+using Aspire.Cli.Resources;
+using Aspire.Cli.Telemetry;
+using Aspire.Cli.Utils;
+using Aspire.Hosting.Backchannel;
+using Aspire.Hosting.Utils;
+using Microsoft.Extensions.Logging;
+using Spectre.Console;
+
+namespace Aspire.Cli.Backchannel;
+
+/// <summary>
+/// Result of resolving an AppHost connection.
+/// </summary>
+internal sealed class AppHostConnectionResult
+{
+    public IAppHostAuxiliaryBackchannel? Connection { get; init; }
+
+    [MemberNotNullWhen(true, nameof(Connection))]
+    [MemberNotNullWhen(false, nameof(ErrorMessage))]
+    public bool Success => Connection is not null;
+
+    public string? ErrorMessage { get; init; }
+
+    public int? ExitCode { get; init; }
+
+    [MemberNotNullWhen(true, nameof(ExitCode))]
+    public bool IsProjectResolutionError => ExitCode is CliExitCodes.FailedToFindProject or CliExitCodes.SdkNotInstalled;
+}
+
+/// <summary>
+/// Discovers and resolves connections to running AppHosts when the socket path is not known.
+/// Scans for running AppHosts and prompts the user to select one if multiple are found.
+/// Used by CLI commands (stop, resources, logs, telemetry) that need to find a running AppHost.
+/// For managing a specific instance when the socket path is known, use <see cref="Projects.RunningInstanceManager"/> instead.
+/// </summary>
+internal sealed class AppHostConnectionResolver(
+    IAuxiliaryBackchannelMonitor backchannelMonitor,
+    IInteractionService interactionService,
+    IProjectLocator projectLocator,
+    CliExecutionContext executionContext,
+    ICliHostEnvironment hostEnvironment,
+    ILogger<AppHostConnectionResolver> logger,
+    ProfilingTelemetry profilingTelemetry,
+    ConfigSourceService configSources,
+    Func<string, string, int, ILogger, IReadOnlyList<IAppHostSocket>>? findSockets = null)
+{
+    private readonly Func<string, string, int, ILogger, IReadOnlyList<IAppHostSocket>> _findSockets =
+        findSockets ?? AppHostSocketManager.FindSockets;
+
+    /// <summary>
+    /// Resolves all running AppHost connections using socket-first discovery.
+    /// Supports global discovery without project selection.
+    /// </summary>
+    /// <param name="scanningMessage">Message to display while scanning for AppHosts.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="pruneOrphanedSockets">Whether to delete unrelated orphaned sockets during discovery.</param>
+    /// <returns>All resolved connections, or an empty array if none found.</returns>
+    public async Task<AppHostConnectionResult[]> ResolveAllConnectionsAsync(
+        string scanningMessage,
+        CancellationToken cancellationToken,
+        bool pruneOrphanedSockets = true)
+    {
+        var connections = await interactionService.ShowStatusAsync(
+            scanningMessage,
+            async () =>
+            {
+                await backchannelMonitor.ScanAsync(cancellationToken, pruneOrphanedSockets).ConfigureAwait(false);
+                return backchannelMonitor.Connections.ToList();
+            });
+
+        if (connections.Count == 0)
+        {
+            return [];
+        }
+
+        return connections.Select(c => new AppHostConnectionResult { Connection = c }).ToArray();
+    }
+
+    /// <summary>
+    /// Resolves an AppHost connection using socket-first discovery.
+    /// </summary>
+    /// <param name="projectFile">Optional project file. If specified, uses fast path to find matching socket.</param>
+    /// <param name="scanningMessage">Message to display while scanning for AppHosts.</param>
+    /// <param name="selectPrompt">Prompt to display when multiple AppHosts are found.</param>
+    /// <param name="notFoundMessage">Message to display when no AppHosts are found.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="restrictToCurrentWorktree">
+    /// Whether AppHosts running in a different git worktree are hidden from interactive selection.
+    /// AppHosts elsewhere in the same worktree remain selectable.
+    /// </param>
+    /// <param name="appHostPid">
+    /// Optional process ID that restricts an explicit project lookup to one AppHost instance.
+    /// </param>
+    /// <returns>The resolved connection, or null with an error message.</returns>
+    public async Task<AppHostConnectionResult> ResolveConnectionAsync(
+        FileInfo? projectFile,
+        string scanningMessage,
+        string selectPrompt,
+        string notFoundMessage,
+        CancellationToken cancellationToken,
+        bool restrictToCurrentWorktree = false,
+        int? appHostPid = null)
+    {
+        // Fast path: If --apphost was specified, check directly for its socket
+        if (projectFile is not null)
+        {
+            var explicitDirectory = Directory.Exists(projectFile.FullName);
+
+            if (explicitDirectory)
+            {
+                try
+                {
+                    var searchResult = await projectLocator.UseOrFindAppHostProjectFileAsync(
+                        projectFile,
+                        MultipleAppHostProjectsFoundBehavior.Throw,
+                        createSettingsFile: false,
+                        cancellationToken).ConfigureAwait(false);
+
+                    projectFile = searchResult.SelectedProjectFile;
+                }
+                catch (ProjectLocatorException ex)
+                {
+                    var (exitCode, errorMessage) = ProjectLocatorErrorHelper.GetExitCodeAndMessage(ex, projectOptionSpecifiedAsDirectory: true);
+                    return new AppHostConnectionResult
+                    {
+                        ErrorMessage = errorMessage,
+                        ExitCode = exitCode,
+                    };
+                }
+
+                if (projectFile is null)
+                {
+                    return new AppHostConnectionResult
+                    {
+                        ErrorMessage = InteractionServiceStrings.ProjectOptionSpecifiedDirectoryContainsNoAppHosts,
+                        ExitCode = CliExitCodes.FailedToFindProject,
+                    };
+                }
+            }
+            else if (!projectFile.Exists)
+            {
+                return new AppHostConnectionResult
+                {
+                    ErrorMessage = InteractionServiceStrings.ProjectOptionDoesntExist,
+                    ExitCode = CliExitCodes.FailedToFindProject,
+                };
+            }
+
+            // Resolving a project for dynamic resource help may also check its configuration
+            // source. This is intentional: the check is advisory and does not apply settings.
+            configSources.CheckForConfigSourceUpdates(projectFile.Directory!, cancellationToken);
+            var matchingSockets = _findSockets(
+                projectFile.FullName,
+                executionContext.HomeDirectory.FullName,
+                Environment.ProcessId,
+                logger);
+
+            // Try each matching socket until we get a connection
+            foreach (var appHostSocket in matchingSockets)
+            {
+                try
+                {
+                    var connection = await AppHostAuxiliaryBackchannel.ConnectAsync(
+                        appHostSocket, logger, profilingTelemetry, cancellationToken).ConfigureAwait(false);
+                    if (connection is not null)
+                    {
+                        if (appHostPid is not null && connection.AppHostInfo?.ProcessId != appHostPid)
+                        {
+                            connection.Dispose();
+                            continue;
+                        }
+
+                        var result = new AppHostConnectionResult { Connection = connection };
+                        StoreAppHostCliLogFilePath(result);
+                        return result;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.LogDebug(ex, "Failed to connect to socket at {SocketPath}", appHostSocket.SocketPath);
+                }
+            }
+
+            // Display the path the user supplied (not the symlink-resolved lookup path) so the
+            // error message stays relative to the working directory and matches what they typed.
+            var displayPath = Path.GetRelativePath(executionContext.WorkingDirectory.FullName, projectFile.FullName);
+
+            return new AppHostConnectionResult
+            {
+                ErrorMessage = string.Format(CultureInfo.CurrentCulture, SharedCommandStrings.AppHostNotRunningAtPath, displayPath)
+            };
+        }
+
+        // Socket-first approach: Scan for running AppHosts via their sockets
+        // This is fast because it only looks at ~/.aspire/backchannels/ directory
+        // rather than recursively searching the entire directory tree for project files
+        var connections = await interactionService.ShowStatusAsync(
+            scanningMessage,
+            async () =>
+            {
+                await backchannelMonitor.ScanAsync(cancellationToken).ConfigureAwait(false);
+                return backchannelMonitor.Connections.ToList();
+            });
+
+        if (connections.Count == 0)
+        {
+            return new AppHostConnectionResult { ErrorMessage = notFoundMessage };
+        }
+
+        // Filter to in-scope AppHosts (within working directory)
+        var workingDirectory = executionContext.WorkingDirectory.FullName;
+        var inScopeConnections = connections.Where(c => c.IsInScope).ToList();
+        var outOfScopeConnections = connections.Where(c => !c.IsInScope).ToList();
+
+        IAppHostAuxiliaryBackchannel? selectedConnection = null;
+
+        if (inScopeConnections.Count == 1)
+        {
+            // Only one in-scope AppHost, use it
+            selectedConnection = inScopeConnections[0];
+        }
+        else if (inScopeConnections.Count > 1)
+        {
+            if (!hostEnvironment.SupportsInteractiveInput)
+            {
+                // Can't prompt the user to pick an AppHost in non-interactive mode;
+                // fail with an actionable message instead of letting the prompt throw.
+                return new AppHostConnectionResult
+                {
+                    ErrorMessage = SharedCommandStrings.MultipleAppHostsNonInteractive,
+                    ExitCode = CliExitCodes.FailedToFindProject,
+                };
+            }
+
+            selectedConnection = await PromptForAppHostSelectionAsync(
+                inScopeConnections,
+                SharedCommandStrings.MultipleInScopeAppHosts,
+                selectPrompt,
+                path => Path.GetRelativePath(workingDirectory, path),
+                cancellationToken);
+        }
+        else if (outOfScopeConnections.Count > 0)
+        {
+            // "Out of scope" combines two independent conditions: the AppHost is not under the
+            // working directory, and/or it belongs to a different git worktree. Strict callers
+            // (aspire stop) only want the worktree half enforced - an AppHost elsewhere in the
+            // same checkout is still theirs to act on, and hiding it silently breaks running
+            // `aspire stop` from a sibling directory such as repo/tests.
+            var selectableConnections = restrictToCurrentWorktree
+                ? outOfScopeConnections.Where(c => IsInWorktreeOfWorkingDirectory(c, workingDirectory)).ToList()
+                : outOfScopeConnections;
+
+            if (selectableConnections.Count == 0)
+            {
+                // Every running AppHost lives in a different worktree. "Use 'aspire run' to start
+                // one first" would be wrong here - one is already running - so point at the two
+                // escape hatches that can reach it instead.
+                return new AppHostConnectionResult
+                {
+                    ErrorMessage = SharedCommandStrings.AppHostNotRunningInCurrentWorktree,
+                    ExitCode = CliExitCodes.FailedToFindProject,
+                };
+            }
+
+            if (!hostEnvironment.SupportsInteractiveInput)
+            {
+                // Treat out-of-scope AppHosts as not found when the caller cannot prompt.
+                // Explicit --apphost and --all flows bypass this path.
+                return new AppHostConnectionResult
+                {
+                    ErrorMessage = notFoundMessage,
+                    ExitCode = CliExitCodes.FailedToFindProject,
+                };
+            }
+
+            selectedConnection = await PromptForAppHostSelectionAsync(
+                selectableConnections,
+                SharedCommandStrings.NoInScopeAppHostsShowingAll,
+                selectPrompt,
+                path => path,
+                cancellationToken);
+        }
+
+        if (selectedConnection is null)
+        {
+            return new AppHostConnectionResult { ErrorMessage = notFoundMessage };
+        }
+
+        var selectedResult = new AppHostConnectionResult { Connection = selectedConnection };
+        if (selectedConnection.AppHostInfo?.AppHostPath is { Length: > 0 } selectedPath)
+        {
+            configSources.CheckForConfigSourceUpdates(new FileInfo(selectedPath).Directory!, cancellationToken);
+        }
+        StoreAppHostCliLogFilePath(selectedResult);
+        return selectedResult;
+    }
+
+    /// <summary>
+    /// Whether an out-of-scope connection belongs to the same git worktree as the working
+    /// directory. This is the worktree half of
+    /// <see cref="AuxiliaryBackchannelMonitor.IsAppHostInScopeOfDirectory"/> without the
+    /// path-containment half, so callers can restrict selection to the current worktree
+    /// while still offering AppHosts that simply live outside the working directory.
+    /// </summary>
+    private static bool IsInWorktreeOfWorkingDirectory(IAppHostAuxiliaryBackchannel connection, string workingDirectory)
+    {
+        if (connection.AppHostInfo?.AppHostPath is not { Length: > 0 } appHostPath)
+        {
+            // A connection that never reported its path cannot be attributed to a worktree,
+            // so a caller asking for strict scope must not be offered it.
+            return false;
+        }
+
+        // Resolve symlinks on both operands for the same reason the in-scope check does: the OS
+        // reports a process working directory physically (macOS temp dirs under /var -> /private/var)
+        // while an AppHost reports its own path unresolved, and the worktree walk compares ancestors.
+        return GitWorktree.IsSameWorktreeScope(
+            PathNormalizer.ResolveSymlinks(appHostPath),
+            PathNormalizer.ResolveSymlinks(workingDirectory));
+    }
+
+    /// <summary>
+    /// Stores the app host's CLI log file path on the execution context so that
+    /// <see cref="Commands.BaseCommand"/> can display it alongside the current CLI's log path on failure.
+    /// </summary>
+    internal void StoreAppHostCliLogFilePath(AppHostConnectionResult result)
+    {
+        if (result.Success && result.Connection.AppHostInfo?.CliLogFilePath is { } cliLogFilePath)
+        {
+            executionContext.AppHostCliLogFilePath = cliLogFilePath;
+        }
+    }
+
+    /// <summary>
+    /// Displays an informational message, prompts the user to select from available AppHost connections,
+    /// and displays the selected AppHost with a success indicator.
+    /// </summary>
+    private async Task<IAppHostAuxiliaryBackchannel?> PromptForAppHostSelectionAsync(
+        List<IAppHostAuxiliaryBackchannel> candidateConnections,
+        string contextMessage,
+        string selectPrompt,
+        Func<string, string> formatPath,
+        CancellationToken cancellationToken)
+    {
+        interactionService.DisplayMessage(KnownEmojis.Information, contextMessage);
+
+        // Order by most recently started first
+        var choices = candidateConnections
+            .OrderByDescending(c => c.AppHostInfo?.StartedAt ?? DateTimeOffset.MinValue)
+            .Select(c =>
+            {
+                var appHostPath = c.AppHostInfo?.AppHostPath ?? "Unknown";
+                return (Display: formatPath(appHostPath), Connection: c);
+            })
+            .ToList();
+
+        var selectedDisplay = await interactionService.PromptForSelectionAsync(
+            selectPrompt,
+            choices.Select(c => c.Display).ToArray(),
+            c => c.EscapeMarkup(),
+            echoSelected: false,
+            cancellationToken: cancellationToken);
+
+        var selectedConnection = choices.FirstOrDefault(c => c.Display == selectedDisplay).Connection;
+
+        interactionService.DisplaySuccess(string.Format(CultureInfo.CurrentCulture, SharedCommandStrings.UsingAppHost, selectedDisplay));
+
+        return selectedConnection;
+    }
+}

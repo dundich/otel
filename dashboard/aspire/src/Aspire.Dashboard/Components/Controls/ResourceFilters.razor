@@ -1,0 +1,48 @@
+﻿@using System.Collections.Concurrent
+
+@inject IStringLocalizer<Dashboard.Resources.Resources> Loc
+
+<FluentStack Orientation="Orientation.Vertical" VerticalGap="15">
+    <fieldset class="filter-group">
+        <legend>@Loc[nameof(Resources.Resources.ResourcesResourceTypesHeader)]</legend>
+        <SelectResourceOptions
+            Id="resource-types"
+            Values="ResourceTypes"
+            OnAllValuesCheckedChangedAsync="OnAllFilterVisibilityCheckedChangedAsync"
+            OnValueVisibilityChangedAsync="OnResourceFilterVisibilityChangedAsync" />
+    </fieldset>
+    <fieldset class="filter-group">
+        <legend>@Loc[nameof(Resources.Resources.ResourcesResourceStatesHeader)]</legend>
+        <SelectResourceOptions
+            Id="resource-states"
+            Values="ResourceStates"
+            OnAllValuesCheckedChangedAsync="OnAllFilterVisibilityCheckedChangedAsync"
+            OnValueVisibilityChangedAsync="OnResourceFilterVisibilityChangedAsync"/>
+    </fieldset>
+    <fieldset class="filter-group">
+        <legend>@Loc[nameof(Resources.Resources.ResourcesDetailsHealthStateProperty)]</legend>
+        <SelectResourceOptions
+            Id="resource-health-states"
+            Values="ResourceHealthStates"
+            OnAllValuesCheckedChangedAsync="OnAllFilterVisibilityCheckedChangedAsync"
+            OnValueVisibilityChangedAsync="OnResourceFilterVisibilityChangedAsync"/>
+    </fieldset>
+</FluentStack>
+
+@code {
+
+    [Parameter, EditorRequired]
+    public required ConcurrentDictionary<string, bool> ResourceTypes { get; set; }
+
+    [Parameter, EditorRequired]
+    public required ConcurrentDictionary<string, bool> ResourceStates { get; set; }
+
+    [Parameter, EditorRequired]
+    public required ConcurrentDictionary<string, bool> ResourceHealthStates { get; set; }
+
+    [Parameter, EditorRequired]
+    public required Func<Task> OnAllFilterVisibilityCheckedChangedAsync { get; set; }
+
+    [Parameter, EditorRequired]
+    public required Func<string, bool, Task> OnResourceFilterVisibilityChangedAsync { get; set; }
+}

@@ -1,0 +1,22 @@
+﻿@using Aspire.Dashboard.Model
+@using Aspire.Dashboard.Resources
+
+@{
+    // Create view model every render. The resource state may have changed.
+    var vm = ResourceStateViewModel.GetStateViewModel(Resource, Loc);
+}
+
+<div class="state-column-cell">
+    @* Do this to trim significant whitespace so there isn't a space added between icon and text *@
+    @{
+        <FluentIcon Value="@vm.Icon"
+                    Color="@vm.Color"
+                    Class="severity-icon" />
+    }
+    <span>@vm.Text</span>
+
+    <UnreadLogErrorsBadge
+        UnviewedErrorCounts="UnviewedErrorCounts"
+        Resource="@Resource" />
+
+</div>

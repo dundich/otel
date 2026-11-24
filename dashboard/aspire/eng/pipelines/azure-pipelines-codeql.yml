@@ -1,0 +1,94 @@
+parameters:
+  # Optionally do not publish to TSA. Useful for e.g. verifying fixes before PR.
+- name: TSAEnabled
+  displayName: Publish results to TSA
+  type: boolean
+  default: true
+
+variables:
+- template: /eng/pipelines/common-variables.yml
+- template: /eng/common/templates/variables/pool-providers.yml
+  # CG is handled in the primary CI pipeline
+- name: skipComponentGovernanceDetection
+  value: true
+  # Force CodeQL enabled so it may be run on any branch
+- name: Codeql.Enabled
+  value: true
+  # Do not let CodeQL 3000 Extension gate scan frequency
+- name: Codeql.Cadence
+  value: 0
+  # CodeQL needs this plumbed along as a variable to enable TSA
+- name: Codeql.TSAEnabled
+  value: ${{ parameters.TSAEnabled }}
+
+  # Build variables
+- name: _BuildConfig
+  value: Release
+
+trigger: none
+
+schedules:
+  - cron: 0 12 * * 1
+    displayName: Weekly Monday CodeQL run
+    branches:
+      include:
+      - main
+      - release/13.2
+    always: true
+
+jobs:
+- job: codeql
+  displayName: CodeQL
+  pool:
+    name: $(DncEngInternalBuildPool)
+    demands: ImageOverride -equals 1es-windows-2022
+  timeoutInMinutes: 90
+
+  steps:
+
+  # Install Node.js, yarn, and vsce so the VS Code extension can be built
+  - task: UseNode@1
+    displayName: Install node.js
+    inputs:
+      version: '22.x'
+
+  - task: npmAuthenticate@0
+    displayName: NPM authenticate
+    inputs:
+      workingFile: $(Build.SourcesDirectory)\.npmrc
+
+  - task: PowerShell@2
+    displayName: Set .npmrc environment
+    inputs:
+      targetType: 'inline'
+      script: Write-Host "##vso[task.setvariable variable=NPM_CONFIG_USERCONFIG]$(Build.SourcesDirectory)\.npmrc"
+
+  - template: /eng/pipelines/templates/install-corepack.yml
+
+  - task: PowerShell@2
+    displayName: Install vsce
+    inputs:
+      targetType: 'inline'
+      script: |
+        # Pin Azure Identity explicitly so VSCE's transitive dependency graph
+        # remains stable across npm feed updates.
+        npm install -g @vscode/vsce@3.7.1 @azure/identity@4.13.1
+        vsce --version
+      workingDirectory: '$(Build.SourcesDirectory)'
+
+  - task: CodeQL3000Init@0
+    displayName: CodeQL Initialize
+
+  # build.cmd bootstraps the SDK from global.json. UseDotNet@2's global.json
+  # mode excludes prerelease SDKs and fails before that bootstrap runs.
+  - script: build.cmd
+      -restore -build
+      -configuration $(_BuildConfig)
+      -prepareMachine
+      -ci
+      /p:BuildExtension=true
+      /p:SkipNativeBuild=true
+    displayName: Build
+
+  - task: CodeQL3000Finalize@0
+    displayName: CodeQL Finalize

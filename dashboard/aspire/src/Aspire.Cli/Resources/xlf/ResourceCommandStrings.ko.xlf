@@ -1,0 +1,72 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="ko" original="../ResourceCommandStrings.resx">
+    <body>
+      <trans-unit id="ArgumentRequired">
+        <source>The '{0}' argument is required.</source>
+        <target state="translated">'{0}' 인수는 필수입니다.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="AvailableResourceCommands">
+        <source>Available resource commands:</source>
+        <target state="translated">사용 가능한 리소스 명령어:</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="CommandDescription">
+        <source>Execute a command on a resource (e.g. start, stop, restart)</source>
+        <target state="translated">리소스에서 명령 실행(예: 시작, 중지, 다시 시작)</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="CommandNameArgumentDescription">
+        <source>The name of the command to execute (e.g. start, stop, restart)</source>
+        <target state="translated">실행할 명령의 이름(예: 시작, 중지, 다시 시작)</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="CommandResourceArgumentDescription">
+        <source>The name of the resource to execute the command on</source>
+        <target state="translated">명령을 실행할 리소스의 이름입니다.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="CommandSpecificHelpAllowedValues">
+        <source>Allowed values: {0}.</source>
+        <target state="translated">허용되는 값: {0}.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="CommandSpecificHelpCommandOptions">
+        <source>Command options:</source>
+        <target state="translated">명령 옵션:</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="CommandSpecificHelpDefaultValue">
+        <source>Default: {0}.</source>
+        <target state="translated">기본값: {0}.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="CommandSpecificHelpDelimiterHint">
+        <source>Use `-- --{0}{1}` to pass this command option.</source>
+        <target state="translated">이 명령 옵션을 전달하려면 `-- --{0}{1}`을(를) 사용하세요.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="CommandSpecificHelpRequired">
+        <source>Required.</source>
+        <target state="translated">필수입니다.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="CommandSpecificHelpUsageSyntax">
+        <source>aspire resource {0} {1} [options] [[--] &lt;command-options&gt;...]</source>
+        <target state="translated">Aspire 리소스 {0} {1} [options] [[--] &lt;command-options&gt;...]</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="CommandSpecificHelpValuePlaceholder">
+        <source>value</source>
+        <target state="translated">값</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SelectAppHostAction">
+        <source>connect to</source>
+        <target state="translated">연결 대상</target>
+        <note />
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

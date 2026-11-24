@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>$(DefaultTargetFramework)</TargetFramework>
+    <IsPackable>true</IsPackable>
+    <PackageTags>aspire integration hosting sqlserver sql database data</PackageTags>
+    <Description>Microsoft SQL Server support for Aspire.</Description>
+    <PackageIconFullPath>$(SharedDir)SQL_256x.png</PackageIconFullPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="$(SharedDir)ContainerReplCommand.cs" Link="Utils\ContainerReplCommand.cs" />
+    <Compile Include="$(SharedDir)StringComparers.cs" Link="Utils\StringComparers.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AspNetCore.HealthChecks.SqlServer" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <ProjectReference Include="..\Aspire.Hosting\Aspire.Hosting.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Aspire.Hosting.SqlServer.Tests" />
+    <InternalsVisibleTo Include="Aspire.Hosting.Azure.Tests" />
+  </ItemGroup>
+
+</Project>

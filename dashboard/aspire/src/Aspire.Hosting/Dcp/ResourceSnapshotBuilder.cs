@@ -1,0 +1,667 @@
+// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
+
+#pragma warning disable ASPIREEXTENSION001 // Launch configuration metadata is experimental but needed for snapshot serialization.
+#pragma warning disable ASPIREPROJECTS001 // Project launch defaults supply the configuration of coordinated process launches.
+
+using System.Collections.Immutable;
+using Aspire.Dashboard.Model;
+using Aspire.Hosting.ApplicationModel;
+using Aspire.Hosting.Dashboard;
+using Aspire.Hosting.Dcp.Model;
+
+namespace Aspire.Hosting.Dcp;
+
+internal class ResourceSnapshotBuilder
+{
+    private readonly DcpResourceState _resourceState;
+
+    public ResourceSnapshotBuilder(DcpResourceState resourceState)
+    {
+        _resourceState = resourceState;
+    }
+
+    public CustomResourceSnapshot ToSnapshot(Container container, CustomResourceSnapshot previous)
+    {
+        var containerId = container.Status?.ContainerId;
+        var urls = GetUrls(container, container.Status?.State);
+        var volumes = GetVolumes(container);
+
+        var effectiveArgs = container.Status?.EffectiveArgs;
+        var environment = GetEnvironmentVariables(container.Status?.EffectiveEnv ?? container.Spec.Env, container.Spec.Env);
+        var state = container.Status?.State;
+
+        if (container.Spec.Start is false && (state == null || state == ContainerState.Pending))
+        {
+            state = KnownResourceStates.NotStarted;
+        }
+
+        var relationships = ImmutableArray<RelationshipSnapshot>.Empty;
+
+        (ImmutableArray<string> Args, ImmutableArray<int>? ArgsAreSensitive, bool IsSensitive)? launchArguments = null;
+
+        if (container.AppModelResourceName is not null &&
+            _resourceState.ApplicationModel.TryGetValue(container.AppModelResourceName, out var appModelResource))
+        {
+            relationships = ApplicationModel.ResourceSnapshotBuilder.BuildRelationships(appModelResource);
+            launchArguments = GetLaunchArgs(container, effectiveArgs);
+        }
+
+        return previous with
+        {
+            ResourceType = previous.ResourceType ?? KnownResourceTypes.Container,
+            State = state,
+            // Map a container exit code of -1 (unknown) to null
+            ExitCode = container.Status?.ExitCode is null or Conventions.UnknownExitCode ? null : container.Status.ExitCode,
+            Properties = previous.Properties.SetResourcePropertyRange([
+                ResourcePropertySnapshotMetadata.Create(KnownResourceTypes.Container, KnownProperties.Container.Image, container.Spec.Image),
+                ResourcePropertySnapshotMetadata.Create(KnownResourceTypes.Container, KnownProperties.Container.Id, containerId),
+                ResourcePropertySnapshotMetadata.Create(KnownResourceTypes.Container, KnownProperties.Container.Command, container.Spec.Command),
+                ResourcePropertySnapshotMetadata.Create(KnownResourceTypes.Container, KnownProperties.Container.Args, effectiveArgs ?? [], isSensitive: true),
+                ResourcePropertySnapshotMetadata.Create(KnownResourceTypes.Container, KnownProperties.Container.Ports, GetPorts()),
+                ResourcePropertySnapshotMetadata.Create(KnownResourceTypes.Container, KnownProperties.Container.Lifetime, GetContainerLifetime()),
+                new(KnownProperties.Resource.AppArgs, launchArguments?.Args) { IsSensitive = launchArguments?.IsSensitive ?? false },
+                new(KnownProperties.Resource.AppArgsSensitivity, launchArguments?.ArgsAreSensitive) { IsSensitive = launchArguments?.IsSensitive ?? false },
+            ]),
+            EnvironmentVariables = environment,
+            CreationTimeStamp = container.Metadata.CreationTimestamp?.ToUniversalTime(),
+            StartTimeStamp = container.Status?.StartupTimestamp?.ToUniversalTime(),
+            StopTimeStamp = container.Status?.FinishTimestamp?.ToUniversalTime(),
+            Urls = urls,
+            Volumes = volumes,
+            Relationships = relationships
+        };
+
+        ImmutableArray<int> GetPorts()
+        {
+            if (container.Spec.Ports is null)
+            {
+                return [];
+            }
+
+            var ports = ImmutableArray.CreateBuilder<int>();
+            foreach (var port in container.Spec.Ports)
+            {
+                if (port.ContainerPort != null)
+                {
+                    ports.Add(port.ContainerPort.Value);
+                }
+            }
+            return ports.ToImmutable();
+        }
+
+        ContainerLifetime GetContainerLifetime()
+        {
+            return (container.Spec.Persistent ?? false) ? ContainerLifetime.Persistent : ContainerLifetime.Session;
+        }
+    }
+
+    public CustomResourceSnapshot ToSnapshot(ContainerExec executable, CustomResourceSnapshot previous)
+    {
+        IResource? appModelResource = null;
+        _ = executable.AppModelResourceName is not null && _resourceState.ApplicationModel.TryGetValue(executable.AppModelResourceName, out appModelResource);
+
+        var state = executable.AppModelInitialState is "Hidden" ? "Hidden" : executable.Status?.State;
+        var environment = GetEnvironmentVariables(executable.Status?.EffectiveEnv, executable.Spec.Env);
+        var effectiveArgs = executable.Status?.EffectiveArgs;
+        var launchArguments = GetLaunchArgs(executable, effectiveArgs);
+
+        var relationships = ImmutableArray<RelationshipSnapshot>.Empty;
+        if (appModelResource != null)
+        {
+            relationships = ApplicationModel.ResourceSnapshotBuilder.BuildRelationships(appModelResource);
+        }
+
+        return previous with
+        {
+            ResourceType = previous.ResourceType ?? KnownResourceTypes.Executable,
+            State = state,
+            ExitCode = executable.Status?.ExitCode,
+            Properties = previous.Properties.SetResourcePropertyRange([
+                ResourcePropertySnapshotMetadata.Create(KnownResourceTypes.Executable, KnownProperties.Executable.WorkDir, executable.Spec.WorkingDirectory),
+                ResourcePropertySnapshotMetadata.Create(KnownResourceTypes.Executable, KnownProperties.Executable.Args, effectiveArgs ?? [], isSensitive: true),
+                new(KnownProperties.Resource.AppArgs, launchArguments?.Args) { IsSensitive = launchArguments?.IsSensitive ?? false },
+                new(KnownProperties.Resource.AppArgsSensitivity, launchArguments?.ArgsAreSensitive) { IsSensitive = launchArguments?.IsSensitive ?? false },
+            ]),
+            EnvironmentVariables = environment,
+            CreationTimeStamp = executable.Metadata.CreationTimestamp?.ToUniversalTime(),
+            StartTimeStamp = executable.Status?.StartupTimestamp?.ToUniversalTime(),
+            StopTimeStamp = executable.Status?.FinishTimestamp?.ToUniversalTime(),
+            Relationships = relationships
+        };
+    }
+
+    public CustomResourceSnapshot ToSnapshot(Executable executable, CustomResourceSnapshot previous)
+    {
+        string? projectPath = null;
+        string? launchProfileName = null;
+        IResource? appModelResource = null;
+
+        if (executable.AppModelResourceName is not null &&
+            _resourceState.ApplicationModel.TryGetValue(executable.AppModelResourceName, out appModelResource))
+        {
+            if (appModelResource is ProjectResource projectResource)
+            {
+                projectPath = projectResource.GetProjectMetadata().ProjectPath;
+                launchProfileName = projectResource.GetEffectiveLaunchProfile()?.Name;
+            }
+            else if (appModelResource.TryGetProjectMetadata(out var projectMetadata))
+            {
+                // New-style, annotation-based C# service (DotnetProjectResource)
+                projectPath = projectMetadata.ProjectPath;
+                launchProfileName = appModelResource.GetEffectiveLaunchProfile()?.Name;
+            }
+        }
+
+        var state = executable.AppModelInitialState is "Hidden" ? "Hidden" : executable.Status?.State;
+        if (executable.Spec.Start is false && IsNotStartedExecutableState(state))
+        {
+            state = KnownResourceStates.NotStarted;
+        }
+
+        var urls = GetUrls(executable, executable.Status?.State);
+
+        var effectiveArgs = executable.Status?.EffectiveArgs;
+        var environment = GetEnvironmentVariables(executable.Status?.EffectiveEnv, executable.Spec.Env);
+
+        var relationships = ImmutableArray<RelationshipSnapshot>.Empty;
+        if (appModelResource != null)
+        {
+            relationships = ApplicationModel.ResourceSnapshotBuilder.BuildRelationships(appModelResource);
+        }
+
+        var launchArguments = GetLaunchArgs(executable, effectiveArgs);
+        var launchConfigurationType = GetLaunchConfigurationType(appModelResource);
+        var properties = launchConfigurationType is not null
+            ? previous.Properties.SetResourceProperty(KnownProperties.Resource.LaunchConfigurationType, launchConfigurationType)
+            : previous.Properties.RemoveResourceProperty(KnownProperties.Resource.LaunchConfigurationType);
+        properties = properties
+            .RemoveResourceProperty(KnownProperties.Project.LaunchCommand)
+            .RemoveResourceProperty(KnownProperties.Project.Configuration)
+            .RemoveResourceProperty(KnownProperties.Project.TargetFramework)
+            .RemoveResourceProperty(KnownProperties.Project.TargetPath)
+            .RemoveResourceProperty(KnownProperties.Project.UseAppHost);
+        var dotNetLaunchProperties = GetDotNetLaunchProperties(executable, appModelResource, launchConfigurationType, effectiveArgs);
+
+        if (projectPath is not null)
+        {
+            return previous with
+            {
+                ResourceType = previous.ResourceType ?? KnownResourceTypes.Project,
+                State = state,
+                ExitCode = executable.Status?.ExitCode,
+                Properties = properties.SetResourcePropertyRange([
+                    ResourcePropertySnapshotMetadata.Create(KnownResourceTypes.Project, KnownProperties.Executable.Path, executable.Spec.ExecutablePath),
+                    ResourcePropertySnapshotMetadata.Create(KnownResourceTypes.Project, KnownProperties.Executable.WorkDir, executable.Spec.WorkingDirectory),
+                    ResourcePropertySnapshotMetadata.Create(KnownResourceTypes.Project, KnownProperties.Executable.Args, effectiveArgs ?? [], isSensitive: true),
+                    ResourcePropertySnapshotMetadata.Create(KnownResourceTypes.Project, KnownProperties.Executable.Pid, executable.Status?.ProcessId),
+                    ResourcePropertySnapshotMetadata.Create(KnownResourceTypes.Project, KnownProperties.Project.Path, projectPath),
+                    ResourcePropertySnapshotMetadata.Create(KnownResourceTypes.Project, KnownProperties.Project.LaunchProfile, launchProfileName),
+                    new(KnownProperties.Resource.AppArgs, launchArguments?.Args) { IsSensitive = launchArguments?.IsSensitive ?? false },
+                    new(KnownProperties.Resource.AppArgsSensitivity, launchArguments?.ArgsAreSensitive) { IsSensitive = launchArguments?.IsSensitive ?? false },
+                    .. dotNetLaunchProperties,
+                ]),
+                EnvironmentVariables = environment,
+                CreationTimeStamp = executable.Metadata.CreationTimestamp?.ToUniversalTime(),
+                StartTimeStamp = executable.Status?.StartupTimestamp?.ToUniversalTime(),
+                StopTimeStamp = executable.Status?.FinishTimestamp?.ToUniversalTime(),
+                Urls = urls,
+                Relationships = relationships
+            };
+        }
+
+        return previous with
+        {
+            ResourceType = previous.ResourceType ?? KnownResourceTypes.Executable,
+            State = state,
+            ExitCode = executable.Status?.ExitCode,
+            Properties = properties.SetResourcePropertyRange([
+                ResourcePropertySnapshotMetadata.Create(KnownResourceTypes.Executable, KnownProperties.Executable.Path, executable.Spec.ExecutablePath),
+                ResourcePropertySnapshotMetadata.Create(KnownResourceTypes.Executable, KnownProperties.Executable.WorkDir, executable.Spec.WorkingDirectory),
+                ResourcePropertySnapshotMetadata.Create(KnownResourceTypes.Executable, KnownProperties.Executable.Args, effectiveArgs ?? [], isSensitive: true),
+                ResourcePropertySnapshotMetadata.Create(KnownResourceTypes.Executable, KnownProperties.Executable.Pid, executable.Status?.ProcessId),
+                new(KnownProperties.Resource.AppArgs, launchArguments?.Args) { IsSensitive = launchArguments?.IsSensitive ?? false },
+                new(KnownProperties.Resource.AppArgsSensitivity, launchArguments?.ArgsAreSensitive) { IsSensitive = launchArguments?.IsSensitive ?? false },
+            ]),
+            EnvironmentVariables = environment,
+            CreationTimeStamp = executable.Metadata.CreationTimestamp?.ToUniversalTime(),
+            StartTimeStamp = executable.Status?.StartupTimestamp?.ToUniversalTime(),
+            StopTimeStamp = executable.Status?.FinishTimestamp?.ToUniversalTime(),
+            Urls = urls,
+            Relationships = relationships
+        };
+    }
+
+    private static string? GetLaunchConfigurationType(IResource? resource)
+    {
+        // The annotation identifies the debugger even when the current IDE lacks it. Structural exclusions
+        // cannot be fixed by installing an extension, so do not advertise those resources as debuggable.
+        if (resource is not null
+            && resource.TryGetLastAnnotation<SupportsDebuggingAnnotation>(out var annotation)
+            && !resource.HasAnnotationOfType<ForceProcessExecutionAnnotation>()
+            && !resource.HasPersistentLifetime())
+        {
+            return annotation.LaunchConfigurationType;
+        }
+
+        return null;
+    }
+
+    private static bool IsNotStartedExecutableState(string? state)
+    {
+        return string.IsNullOrEmpty(state) || state == ExecutableState.Unknown;
+    }
+
+    private static ImmutableArray<ResourcePropertySnapshot> GetDotNetLaunchProperties(
+        Executable resource,
+        IResource? appModelResource,
+        string? launchConfigurationType,
+        IReadOnlyList<string>? effectiveArgs)
+    {
+        if (resource.Spec.ExecutionType == ExecutionType.Process &&
+            launchConfigurationType == KnownLaunchConfigurationTypes.ProjectWithExternalBuild &&
+            appModelResource is not null &&
+            appModelResource.TryGetProjectMetadata(out var projectMetadata) &&
+            projectMetadata.SuppressBuild &&
+            !projectMetadata.IsFileBasedApp &&
+            projectMetadata.BuildWorkingDirectory is not null)
+        {
+            // Coordinated projects execute the SDK's RunCommand directly, which may be an apphost
+            // executable or "dotnet exec app.dll". The reported PID is the application, not a
+            // run/watch launcher, and its arguments must not be parsed as SDK build options.
+            appModelResource.TryGetLastAnnotation<ProjectLaunchDefaultsAnnotation>(out var launchDefaults);
+            var directProperties = ImmutableArray.CreateBuilder<ResourcePropertySnapshot>();
+            directProperties.Add(new(KnownProperties.Project.LaunchCommand, "direct"));
+            if (launchDefaults?.BuildConfiguration is { } directBuildConfiguration)
+            {
+                directProperties.Add(new(KnownProperties.Project.Configuration, directBuildConfiguration));
+            }
+            if (projectMetadata.BuildTarget is { } buildTarget)
+            {
+                directProperties.Add(new(KnownProperties.Project.TargetPath, buildTarget.TargetPath));
+                directProperties.Add(new(KnownProperties.Project.UseAppHost, buildTarget.UseAppHost));
+            }
+
+            return directProperties.ToImmutable();
+        }
+
+        var executableName = Path.GetFileName(resource.Spec.ExecutablePath);
+        if (!string.Equals(executableName, "dotnet", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(executableName, "dotnet.exe", StringComparison.OrdinalIgnoreCase))
+        {
+            return [];
+        }
+
+        // IDE launches report the application PID rather than a dotnet run/watch launcher.
+        // Their effective arguments belong to the application, so use structured project metadata.
+        if (resource.Spec.ExecutionType == ExecutionType.IDE &&
+            KnownLaunchConfigurationTypes.IsProject(launchConfigurationType) &&
+            resource.TryGetProjectLaunchConfiguration(out var launchConfiguration) &&
+            KnownLaunchConfigurationTypes.IsProject(launchConfiguration.Type))
+        {
+            return launchConfiguration.BuildConfiguration is { } buildConfiguration
+                ? [new(KnownProperties.Project.LaunchCommand, "ide"), new(KnownProperties.Project.Configuration, buildConfiguration)]
+                : [new(KnownProperties.Project.LaunchCommand, "ide")];
+        }
+
+        if (effectiveArgs is null ||
+            FindDotNetProjectCommand(effectiveArgs) is not { } commandInfo)
+        {
+            return [new(KnownProperties.Project.LaunchCommand, null)];
+        }
+
+        var (command, commandIndex) = commandInfo;
+        var sensitiveArgumentIndexes = GetSensitiveEffectiveArgumentIndexes(resource);
+        if (sensitiveArgumentIndexes.Contains(commandIndex))
+        {
+            return [new(KnownProperties.Project.LaunchCommand, null)];
+        }
+
+        string? configuration = null;
+        string? targetFramework = null;
+
+        // DCP reports dotnet launch arguments as:
+        //   ["watch", "--project", "/repo/api.csproj", "--configuration", "Release", "--framework=net10.0", "--", ...appArgs]
+        //   ["run", "--configuration:Release", "-f:net10.0", "--", ...appArgs]
+        //   ["[env:NAME=value]", "--diagnostics", "run", "--project", "/repo/api.csproj"]
+        //   ["-d", "watch", "--project", "/repo/api.csproj"]
+        // Application arguments can contain unrelated values and remain sensitive in executable.args.
+        // Watch's forwarding separator is checked separately before treating "--" as the application boundary.
+        // See https://learn.microsoft.com/dotnet/core/tools/dotnet and
+        // https://github.com/dotnet/command-line-api/blob/main/src/System.CommandLine/EnvironmentVariablesDirective.cs.
+        for (var index = commandIndex + 1; index < effectiveArgs.Count; index++)
+        {
+            var argument = effectiveArgs[index];
+            if (argument == "--")
+            {
+                // Example: watch --no-hot-reload run -- --configuration Release.
+                // Older watch implementations strip the first "--"; newer ones retain the application boundary.
+                // Without the selected SDK, even preceding target options cannot disambiguate a nonempty suffix.
+                // See https://github.com/dotnet/sdk/blob/v8.0.426/src/BuiltInTools/dotnet-watch/CommandLineOptions.cs#L248-L314
+                // and https://github.com/dotnet/sdk/blob/v10.0.100/src/BuiltInTools/dotnet-watch/CommandLine/CommandLineOptions.cs#L262-L307.
+                if (command == "watch" && index + 1 < effectiveArgs.Count)
+                {
+                    return [new(KnownProperties.Project.LaunchCommand, null)];
+                }
+
+                break;
+            }
+
+            // Runtime, artifact layout, and MSBuild property overrides can change the output path or assembly identity.
+            // A hidden launcher input cannot be replaced by the evaluator's default either.
+            if (sensitiveArgumentIndexes.Contains(index) || ChangesUnreportedTargetInputs(argument))
+            {
+                return [new(KnownProperties.Project.LaunchCommand, null)];
+            }
+
+            if (TryReadOptionValue(argument, "--configuration", "-c", out var inlineConfiguration))
+            {
+                configuration = inlineConfiguration;
+                continue;
+            }
+
+            if (TryReadOptionValue(argument, "--framework", "-f", out var inlineTargetFramework))
+            {
+                targetFramework = inlineTargetFramework;
+                continue;
+            }
+
+            if (argument is "--configuration" or "-c")
+            {
+                configuration = ReadNextValue(effectiveArgs, sensitiveArgumentIndexes, ref index);
+                if (configuration is null)
+                {
+                    return [new(KnownProperties.Project.LaunchCommand, null)];
+                }
+                continue;
+            }
+
+            if (argument is "--framework" or "-f")
+            {
+                targetFramework = ReadNextValue(effectiveArgs, sensitiveArgumentIndexes, ref index);
+                if (targetFramework is null)
+                {
+                    return [new(KnownProperties.Project.LaunchCommand, null)];
+                }
+            }
+        }
+
+        var launchCommand = command.ToLowerInvariant();
+        var properties = ImmutableArray.CreateBuilder<ResourcePropertySnapshot>(3);
+        properties.Add(new(KnownProperties.Project.LaunchCommand, launchCommand));
+        if (configuration is not null)
+        {
+            properties.Add(new(KnownProperties.Project.Configuration, configuration));
+        }
+
+        if (targetFramework is not null)
+        {
+            properties.Add(new(KnownProperties.Project.TargetFramework, targetFramework));
+        }
+
+        return properties.ToImmutable();
+
+        static bool ChangesUnreportedTargetInputs(string argument)
+        {
+            // Examples: --runtime win-x64, --artifacts-path=custom, -p:OutputPath=custom, /property:AssemblyName=Custom.
+            // Both colon and equals spellings are accepted by the dotnet/MSBuild launchers.
+            var option = argument.Split(['=', ':'], 2)[0].ToLowerInvariant();
+            return option is "--runtime" or "-r" or "--arch" or "-a" or "--os" or "--artifacts-path"
+                or "--property" or "--properties" or "-p" or "/p" or "-property" or "/property";
+        }
+
+        static (string Command, int Index)? FindDotNetProjectCommand(IReadOnlyList<string> arguments)
+        {
+            var index = 0;
+            var hasEnvironmentVariableDirective = false;
+            while (index < arguments.Count &&
+                (string.Equals(arguments[index], "[env]", StringComparison.OrdinalIgnoreCase) ||
+                 arguments[index].StartsWith("[env:", StringComparison.OrdinalIgnoreCase) && arguments[index].EndsWith(']')))
+            {
+                hasEnvironmentVariableDirective = true;
+                index++;
+            }
+
+            while (index < arguments.Count && arguments[index] is "-d" or "--diagnostics")
+            {
+                index++;
+            }
+
+            if (index >= arguments.Count)
+            {
+                return null;
+            }
+
+            return arguments[index].ToLowerInvariant() switch
+            {
+                "run" => ("run", index),
+                // .NET 10 cannot resolve the external watch command through an environment directive.
+                "watch" when !hasEnvironmentVariableDirective => ("watch", index),
+                _ => null,
+            };
+        }
+
+        static bool TryReadOptionValue(string argument, string longOption, string shortOption, out string? value)
+        {
+            foreach (var option in new[] { longOption, shortOption })
+            {
+                if (argument.Length > option.Length &&
+                    argument.StartsWith(option, StringComparison.Ordinal) &&
+                    argument[option.Length] is '=' or ':')
+                {
+                    value = NormalizeValue(argument[(option.Length + 1)..]);
+                    return true;
+                }
+            }
+
+            value = null;
+            return false;
+        }
+
+        static string? ReadNextValue(IReadOnlyList<string> arguments, HashSet<int> sensitiveArgumentIndexes, ref int index)
+        {
+            var optionIsSensitive = sensitiveArgumentIndexes.Contains(index);
+            if (index + 1 >= arguments.Count || arguments[index + 1] == "--")
+            {
+                return null;
+            }
+
+            index++;
+            return optionIsSensitive || sensitiveArgumentIndexes.Contains(index)
+                ? null
+                : NormalizeValue(arguments[index]);
+        }
+
+        static string? NormalizeValue(string value)
+        {
+            var normalized = value.Trim();
+            return normalized.Length > 0 ? normalized : null;
+        }
+    }
+
+    private static HashSet<int> GetSensitiveEffectiveArgumentIndexes(CustomResource resource)
+    {
+        if (resource.TryGetAnnotationAsObjectList(
+            Executable.SensitiveEffectiveArgumentIndexesAnnotation,
+            out List<int>? sensitiveEffectiveArgumentIndexes))
+        {
+            return sensitiveEffectiveArgumentIndexes.ToHashSet();
+        }
+
+        if (!resource.TryGetAnnotationAsObjectList(
+            CustomResource.ResourceAppArgsAnnotation,
+            out List<AppLaunchArgumentAnnotation>? launchArgumentAnnotations))
+        {
+            return [];
+        }
+
+        return launchArgumentAnnotations
+            .Where(static annotation => annotation.IsSensitive && annotation.EffectiveArgumentIndex is not null)
+            .Select(static annotation => annotation.EffectiveArgumentIndex!.Value)
+            .ToHashSet();
+    }
+
+    private static (ImmutableArray<string> Args, ImmutableArray<int>? ArgsAreSensitive, bool IsSensitive)? GetLaunchArgs(CustomResource resource, IReadOnlyList<string>? effectiveArgs)
+    {
+        if (!resource.TryGetAnnotationAsObjectList(CustomResource.ResourceAppArgsAnnotation, out List<AppLaunchArgumentAnnotation>? launchArgumentAnnotations))
+        {
+            return null;
+        }
+
+        var launchArgsBuilder = ImmutableArray.CreateBuilder<string>();
+        var argsAreSensitiveBuilder = ImmutableArray.CreateBuilder<int>();
+
+        var anySensitive = false;
+        foreach (var annotation in launchArgumentAnnotations)
+        {
+            if (annotation.IsSensitive)
+            {
+                anySensitive = true;
+            }
+
+            launchArgsBuilder.Add(GetArgumentValue(annotation, effectiveArgs));
+            argsAreSensitiveBuilder.Add(Convert.ToInt32(annotation.IsSensitive));
+        }
+
+        return (launchArgsBuilder.ToImmutable(), argsAreSensitiveBuilder.ToImmutable(), anySensitive);
+
+        static string GetArgumentValue(AppLaunchArgumentAnnotation annotation, IReadOnlyList<string>? effectiveArgs)
+        {
+            if (annotation.EffectiveArgumentIndex is int index &&
+                effectiveArgs is not null &&
+                (uint)index < (uint)effectiveArgs.Count)
+            {
+                return effectiveArgs[index];
+            }
+
+            return annotation.Argument;
+        }
+    }
+
+    private ImmutableArray<UrlSnapshot> GetUrls(CustomResource resource, string? resourceState)
+    {
+        var urls = ImmutableArray.CreateBuilder<UrlSnapshot>();
+        var appModelResourceName = resource.AppModelResourceName;
+
+        if (appModelResourceName is string resourceName &&
+            _resourceState.ApplicationModel.TryGetValue(resourceName, out var appModelResource) &&
+            appModelResource.TryGetUrls(out var resourceUrls))
+        {
+            var endpointUrls = resourceUrls.Where(u => u.Endpoint is not null).ToList();
+            var nonEndpointUrls = resourceUrls.Where(u => u.Endpoint is null).ToList();
+
+            var resourceServices = _resourceState.AppResources.OfType<ServiceWithModelResource>()
+                .Where(r => r.Service.AppModelResourceName == resource.AppModelResourceName)
+                .Select(s => s.Service)
+                .ToList();
+            var name = resource.Metadata.Name;
+
+            // Add the endpoint URLs for endpoints belonging to the current resource
+            var serviceEndpoints = new HashSet<(string EndpointName, string ServiceMetadataName)>(
+                resourceServices
+                    .Where(s => !string.IsNullOrEmpty(s.EndpointName))
+                    .Select(s => (s.EndpointName!, s.Metadata.Name)));
+            var processedEndpointUrls = new HashSet<ResourceUrlAnnotation>();
+
+            foreach (var endpoint in serviceEndpoints)
+            {
+                var (endpointName, serviceName) = endpoint;
+                var urlsForEndpoint = endpointUrls.Where(u =>
+                        string.Equals(endpointName, u.Endpoint?.EndpointName, StringComparisons.EndpointAnnotationName)
+                        && u.Endpoint?.Resource.Name == appModelResource.Name)
+                    .ToList();
+
+                foreach (var endpointUrl in urlsForEndpoint)
+                {
+                    var activeEndpoint = _resourceState.EndpointsMap.SingleOrDefault(e =>
+                            e.Value.Spec.ServiceName == serviceName
+                            && e.Value.Metadata.OwnerReferences?.Any(or => or.Kind == resource.Kind && or.Name == name) == true)
+                        .Value;
+                    var isInactive = activeEndpoint is null;
+
+                    urls.Add(
+                        new(Name: endpointUrl.Endpoint!.EndpointName,
+                            Url: endpointUrl.Url,
+                            IsInternal:
+                            endpointUrl.IsInternal)
+                        {
+                            IsInactive = isInactive,
+                            DisplayProperties = new(endpointUrl.DisplayText ?? "", endpointUrl.DisplayOrder ?? 0)
+                        });
+                    processedEndpointUrls.Add(endpointUrl);
+                }
+            }
+
+            // Add endpoint URLs that reference endpoints from other resources
+            var crossResourceEndpointUrls = endpointUrls.Where(u => !processedEndpointUrls.Contains(u)).ToList();
+            var resourceRunning = string.Equals(resourceState, KnownResourceStates.Running, StringComparisons.ResourceState);
+            foreach (var endpointUrl in crossResourceEndpointUrls)
+            {
+                var endpointOwnerResourceName = endpointUrl.Endpoint!.Resource.Name;
+                var endpointName = endpointUrl.Endpoint.EndpointName;
+
+                // Find the DCP service representing the appmodel endpoint in the owning resource
+                var endpointOwnerEndpoint = _resourceState.AppResources.OfType<ServiceWithModelResource>()
+                    .Where(r => r.Service.AppModelResourceName == endpointOwnerResourceName)
+                    .Select(s => s.Service)
+                    .FirstOrDefault(s => string.Equals(endpointName, s.EndpointName, StringComparisons.EndpointAnnotationName));
+                // The endpoint is active if there is an active DCP endpoint for the owning resource's service endpoint
+                var isActive = _resourceState.EndpointsMap.Any(e => e.Value.Spec.ServiceName == endpointOwnerEndpoint?.Metadata.Name);
+
+                urls.Add(
+                    new(Name: endpointName, Url: endpointUrl.Url, IsInternal: endpointUrl.IsInternal)
+                    {
+                        IsInactive = !isActive,
+                        DisplayProperties = new(endpointUrl.DisplayText ?? "", endpointUrl.DisplayOrder ?? 0)
+                    });
+            }
+
+            // Add the non-endpoint URLs
+            foreach (var url in nonEndpointUrls)
+            {
+                urls.Add(
+                    new(Name: null, Url: url.Url, IsInternal: url.IsInternal)
+                    {
+                        IsInactive = !resourceRunning,
+                        DisplayProperties = new(url.DisplayText ?? "", url.DisplayOrder ?? 0)
+                    });
+            }
+        }
+
+        return urls.ToImmutable();
+    }
+
+    private static ImmutableArray<VolumeSnapshot> GetVolumes(CustomResource resource)
+    {
+        if (resource is Container container)
+        {
+            return container.Spec.VolumeMounts?.Select(v => new VolumeSnapshot(v.Source, v.Target ?? "", v.Type, v.IsReadOnly)).ToImmutableArray() ?? [];
+        }
+
+        return [];
+    }
+
+    private static ImmutableArray<EnvironmentVariableSnapshot> GetEnvironmentVariables(List<EnvVar>? effectiveSource, List<EnvVar>? specSource)
+    {
+        if (effectiveSource is null or { Count: 0 })
+        {
+            return [];
+        }
+
+        var environment = ImmutableArray.CreateBuilder<EnvironmentVariableSnapshot>(effectiveSource.Count);
+
+        foreach (var env in effectiveSource)
+        {
+            if (env.Name is not null)
+            {
+                var isFromSpec = specSource?.Any(e => string.Equals(e.Name, env.Name, StringComparison.Ordinal)) is true or null;
+
+                environment.Add(new(env.Name, env.Value ?? "", isFromSpec));
+            }
+        }
+
+        environment.Sort((v1, v2) => string.Compare(v1.Name, v2.Name, StringComparison.Ordinal));
+
+        return environment.ToImmutable();
+    }
+}

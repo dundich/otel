@@ -1,0 +1,52 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="it" original="../PublishCommandStrings.resx">
+    <body>
+      <trans-unit id="Description">
+        <source>Generate deployment artifacts for an AppHost</source>
+        <target state="translated">Genera artefatti della distribuzione per un AppHost</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GeneratingArtifacts">
+        <source>Generating artifacts...</source>
+        <target state="translated">Generazione degli artefatti in corso...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="InputPromptLoading">
+        <source>Loading...</source>
+        <target state="translated">Caricamento in corso...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="NoBuildArgumentDescription">
+        <source>Do not build or restore the project before running</source>
+        <target state="translated">Non compilare o ripristinare il progetto prima dell'esecuzione</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="OperationCompletedPrefix">
+        <source>PUBLISHING COMPLETED</source>
+        <target state="translated">PUBBLICAZIONE COMPLETATA</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="OperationFailedPrefix">
+        <source>PUBLISHING FAILED</source>
+        <target state="translated">PUBBLICAZIONE NON RIUSCITA</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="OutputPathArgumentDescription">
+        <source>The output path for the generated artifacts. Defaults to the AppHost directory's 'aspire-output' folder if not specified.</source>
+        <target state="translated">Percorso di output per gli artefatti generati. Se non viene specificato alcun valore, l'impostazione predefinita è la cartella 'aspire-output' della directory AppHost.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ProjectArgumentDescription">
+        <source>The path to the Aspire AppHost project file or a directory to search</source>
+        <target state="translated">Il percorso del file di progetto Aspire AppHost o una directory in cui eseguire la ricerca</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SelectAPublisher">
+        <source>Select a publisher:</source>
+        <target state="translated">Seleziona un editore:</target>
+        <note />
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

@@ -1,0 +1,77 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.2" xsi:schemaLocation="urn:oasis:names:tc:xliff:document:1.2 xliff-core-1.2-transitional.xsd">
+  <file datatype="xml" source-language="en" target-language="es" original="../ExportCommandStrings.resx">
+    <body>
+      <trans-unit id="DashboardNotAvailable">
+        <source>Dashboard is not available. Telemetry data (structured logs, traces) will not be included in the export.</source>
+        <target state="translated">El panel no está disponible. Los datos de telemetría (registros estructurados, seguimientos) no se incluirán en la exportación.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="Description">
+        <source>Export telemetry and resource data to a zip file</source>
+        <target state="translated">Exportación de datos de telemetría y de recursos a un archivo ZIP</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ExportComplete">
+        <source>Export saved to {0}</source>
+        <target state="translated">Exportación guardada en {0}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="FailedToExport">
+        <source>Failed to export resource and telemetry data: {0}</source>
+        <target state="translated">Error al exportar los datos de telemetría y recursos: {0}</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GatheringConsoleLogs">
+        <source>Gathering console logs...</source>
+        <target state="translated">Recopilando registros de consola...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GatheringResources">
+        <source>Gathering resource data...</source>
+        <target state="translated">Recopilando datos de recursos...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GatheringStructuredLogs">
+        <source>Gathering structured logs...</source>
+        <target state="translated">Recopilando registros estructurados...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="GatheringTraces">
+        <source>Gathering traces...</source>
+        <target state="translated">Recopilando seguimientos...</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="IncludeHiddenOptionDescription">
+        <source>Include hidden resources in the output</source>
+        <target state="translated">Incluir recursos ocultos en la salida</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="NoResourcesFound">
+        <source>No resources found.</source>
+        <target state="translated">No se encontraron recursos.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="OutputOptionDescription">
+        <source>The output file path for the export zip file</source>
+        <target state="translated">Ruta de acceso del archivo de salida para el archivo ZIP de exportación</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceNotFound">
+        <source>Resource '{0}' not found.</source>
+        <target state="translated">No se encuentra el recurso '{0}'.</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="ResourceOptionDescription">
+        <source>Export data only for the specified resource</source>
+        <target state="translated">Exportar datos solo para el recurso especificado</target>
+        <note />
+      </trans-unit>
+      <trans-unit id="SelectAppHostAction">
+        <source>export data from</source>
+        <target state="translated">exportar datos de</target>
+        <note />
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

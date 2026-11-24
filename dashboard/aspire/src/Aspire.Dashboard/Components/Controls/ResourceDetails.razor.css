@@ -1,0 +1,7 @@
+::deep.resource-details-layout > .details-toolbar {
+    min-height: 36px;
+}
+
+::deep.resource-details-layout > .details-toolbar fluent-field::part(message) {
+    display: none;
+}
