@@ -13,6 +13,7 @@ builder.Services.AddHostedService(sp => sp.GetRequiredService<CounterService>())
 // Пример «сахара»: панель размечена атрибутами [DashboardPanel]/[DashboardInput]/
 // [DashboardAction], а билдер лишь сканирует сборку и превращает их в регистрацию.
 builder.AddDashboardPanels<Program>();
+builder.AddDashboardRegistration();
 
 var app = builder.Build();
 

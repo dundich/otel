@@ -668,6 +668,7 @@ public sealed class DashboardWebApplication : IAsyncDisposable
 
         _app.MapTelemetryApi(dashboardOptions);
         _app.MapDashboardApi(dashboardOptions);
+        _app.MapServiceRegistry();
         _app.MapDashboardHealthChecks();
         _app.MapFileBrowserApi();
     }

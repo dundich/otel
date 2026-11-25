@@ -4,6 +4,7 @@
 using Aspire.Dashboard.Api;
 using Aspire.Dashboard.Components.Files;
 using Aspire.Dashboard.Configuration;
+using Aspire.Dashboard.Management;
 using Aspire.Dashboard.Model;
 using Aspire.Dashboard.Utils;
 using Aspire.Otlp.Serialization;
@@ -133,6 +134,36 @@ public static class DashboardEndpointsBuilder
             return Results.LocalRedirect(redirectUrl);
         }).SkipStatusCodePages();
 
+    }
+
+
+    public static void MapServiceRegistry(this IEndpointRouteBuilder endpoints)
+    {
+        var group = endpoints.MapGroup("/api/registry");
+
+        group.MapPost("/register", (RegisterServiceRequest request, ServiceRegistry registry) =>
+        {
+            try
+            {
+                registry.Register(request, DateTimeOffset.UtcNow);
+                return Results.Ok(new { registered = request.Name });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        group.MapPost("/heartbeat", (HeartbeatRequest request, ServiceRegistry registry) =>
+            registry.Heartbeat(request.Id, DateTimeOffset.UtcNow)
+                ? Results.Ok()
+                : Results.NotFound());
+
+        group.MapDelete("/{id}", (string id, ServiceRegistry registry) =>
+            registry.Remove(id) ? Results.Ok() : Results.NotFound());
+
+        group.MapGet("", (ServiceRegistry registry) =>
+            Results.Ok(registry.GetAll(DateTimeOffset.UtcNow)));
     }
 
     public static void MapTelemetryApi(this IEndpointRouteBuilder endpoints, DashboardOptions dashboardOptions)

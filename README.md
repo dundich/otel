@@ -69,12 +69,16 @@ app1/app2 ── OTLP/gRPC ──→ aspire-dashboard:18889
                                 ▼
                        http://localhost:18888
 
+app1/app2 ── POST /api/registry/register ──→ dashboard
+app1/app2 ── heartbeat каждые 10 сек ───────→ dashboard
+
 dashboard /management ──→ app1: /dashboard/panels
                      └──→ app2: /dashboard/panels
 ```
 
-Дашборд запрашивает панели **на сервере** напрямую у каждого приложения из
-`Management__Sources__*`, поэтому proxy и CORS не нужны.
+Приложения сами регистрируют свой internal/public URL в dashboard. Дашборд
+запрашивает панели **на сервере** по зарегистрированным internal URL, поэтому
+proxy и CORS не нужны.
 
 ## Панели приложений
 
@@ -152,7 +156,7 @@ builder.AddDashboardPanels(panels => panels
 
 На странице **«Управление»**:
 
-- фильтр **«Приложение»**: все / настроенные источники (`app2`);
+- фильтр **«Приложение»**: все / зарегистрированные сервисы (`app1`, `app2`);
 - клик по имени в левом resource pane фильтрует панели по источнику;
 - поля `text`, `date`, `int`, `bool`;
 - кнопки действий (включая «Применить»);
@@ -181,8 +185,8 @@ SDK записывает значения в свойства (скомпили�
 ### Панели app1
 
 app1 — домен «собственный счётчик», одна панель. Живёт по адресу
-`app1:8080/dashboard/panels` и видна в Management, потому что app1 указан
-в `Management__Sources__0__*` у дашборда.
+`app1:8080/dashboard/panels` и видна в Management, потому что app1 сам
+регистрирует `http://app1:8080` в dashboard при старте.
 
 - **«Счётчик app1»** (`CounterPanel` + свой `CounterService`) — независимый
   счётчик этого приложения: `Step`/`Enabled`, «Применить», «Сбросить»
@@ -204,20 +208,41 @@ app2 — обычное приложение со своими панелями,
 - **«Сбросить»** — `counter.Reset()`, с `RequireConfirm` (confirm в UI).
 
 Агрегацию панелей делает **сам дашборд** (домен
-`dashboard/aspire/src/Aspire.Dashboard/Management/`): он читает
-`Management:Sources` и ходит в каждое приложение напрямую. Имена источников
+`dashboard/aspire/src/Aspire.Dashboard/Management/`): он читает registry
+и ходит в каждое зарегистрированное приложение напрямую. Имена источников
 совпадают с OTel-именами (`OTEL_SERVICE_NAME`), поэтому клик по ресурсу и
-фильтр `/management/resource/{name}` работают без настройки. Источники
-задаются у контейнера дашборда:
+фильтр `/management/resource/{name}` работают без настройки.
+
+### Service discovery
+
+Каждое приложение регистрирует себя в dashboard:
 
 ```yaml
-Management__Sources__0__Name: app1
-Management__Sources__0__Url: http://app1:8080
-Management__Sources__0__PublicUrl: http://localhost:8081
-Management__Sources__1__Name: app2
-Management__Sources__1__Url: http://app2:8080
-Management__Sources__1__PublicUrl: http://localhost:8082
+environment:
+  Dashboard__RegistryUrl: http://aspire-dashboard:18888/api/registry
+  Service__Name: app1
+  Service__InternalUrl: http://app1:8080
+  Service__PublicUrl: http://localhost:8081
 ```
+
+- `InternalUrl` — адрес, по которому dashboard вызывает приложение;
+- `PublicUrl` — адрес для отображения в UI;
+- при старте приложение делает `POST /api/registry/register`;
+- каждые 10 секунд — `POST /api/registry/heartbeat`;
+- при остановке — `DELETE /api/registry/{id}`;
+- записи без heartbeat дольше 45 секунд удаляются.
+
+Registry хранится в памяти dashboard. Для нескольких реплик dashboard нужен
+общий store (Redis/Postgres).
+
+В Kubernetes используйте Service DNS:
+
+```text
+Service__InternalUrl: http://app1.default.svc.cluster.local:8080
+Dashboard__RegistryUrl: http://dashboard.default.svc.cluster.local:18888/api/registry
+```
+
+`Management:Sources` остаётся статическим fallback-ом, если registry пуст.
 
 ## Файловый браузер
 
@@ -294,21 +319,22 @@ DASHBOARD_SHARE_PATH=/host-home
 ASPIRE_DASHBOARD_IMAGE=ra-monitor-dashboard:17.0.0
 ```
 
-Ключевые переменные `app2`:
+Ключевые переменные приложений (`app1`/`app2`):
 
 | Переменная | Назначение |
 |---|---|
-| `OTEL_SERVICE_NAME` | имя сервиса в OTel (и имя источника панелей) app2 |
+| `OTEL_SERVICE_NAME` | имя сервиса в OTel и имя источника панелей |
+| `Dashboard__RegistryUrl` | registry dashboard (`http://aspire-dashboard:18888/api/registry`) |
+| `Service__Name` | имя регистрации (`app1`/`app2`) |
+| `Service__InternalUrl` | адрес для callback от dashboard |
+| `Service__PublicUrl` | адрес для отображения в UI |
 
-Ключевые переменные `aspire-dashboard` (источники панелей):
+Ключевые переменные `aspire-dashboard`:
 
 | Переменная | Назначение |
 |---|---|
-| `Management__Sources__0__Name` | имя первого источника (`app1`) |
-| `Management__Sources__0__Url` | внутренний адрес app1 |
-| `Management__Sources__0__PublicUrl` | внешний адрес app1 для UI |
-| `Management__Sources__1__*` | вторым источником идёт `app2` |
 | `Management__TimeoutSeconds` | таймаут запроса к источнику (10) |
+| `Management__Sources__*` | статический fallback, если registry пуст |
 
 ## Сборка
 
@@ -353,7 +379,7 @@ docker compose up -d --build
 ## Troubleshooting
 
 - **Dashboard не открывается** — `docker compose ps`, `docker compose logs aspire-dashboard`.
-- **Нет панелей** — `curl http://localhost:8082/dashboard/panels`; источники задаются `Management__Sources__*` у контейнера дашборда.
+- **Нет панелей** — `curl http://localhost:18888/api/registry`; проверьте `Dashboard__RegistryUrl` и heartbeat приложения. `Management__Sources__*` — только fallback.
 - **Нет вкладок Логи/Share** — не задан `Dashboard__Files__Logs__Path` / `Share__Path`.
 - **Нет JSON/YAML подсветки** — preview доступен только для UTF-8 файлов до 5 МБ.
 - **Порт занят** — измените `DASHBOARD_PORT` / `APP*_PORT` в `.env`.

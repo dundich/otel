@@ -23,6 +23,7 @@ public static class ManagementServiceCollectionExtensions
         };
 
         services.AddSingleton(options);
+        services.AddSingleton<ServiceRegistry>();
         services.AddHttpClient(ManagementPanelService.HttpClientName)
             .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromSeconds(options.TimeoutSeconds));
         services.AddSingleton<ManagementPanelService>();

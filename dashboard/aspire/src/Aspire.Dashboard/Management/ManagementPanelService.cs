@@ -16,19 +16,38 @@ public sealed class ManagementPanelService
 
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ManagementOptions _options;
+    private readonly ServiceRegistry _registry;
     private readonly ILogger<ManagementPanelService> _logger;
 
     public ManagementPanelService(
         IHttpClientFactory httpClientFactory,
         ManagementOptions options,
+        ServiceRegistry registry,
         ILogger<ManagementPanelService> logger)
     {
         _httpClientFactory = httpClientFactory;
         _options = options;
+        _registry = registry;
         _logger = logger;
     }
 
-    public IReadOnlyList<ManagementSource> Sources => _options.Sources;
+    public IReadOnlyList<ManagementSource> Sources => GetSources();
+
+    private IReadOnlyList<ManagementSource> GetSources()
+    {
+        var registered = _registry.GetAll(DateTimeOffset.UtcNow)
+            .Select(service => new ManagementSource
+            {
+                Name = service.Name,
+                Url = service.InternalUrl,
+                PublicUrl = service.PublicUrl
+            })
+            .ToArray();
+
+        // Registry is the normal path. Management:Sources remains a static fallback
+        // for local runs where self-registration is disabled.
+        return registered.Length > 0 ? registered : _options.Sources;
+    }
 
     /// <summary>
     /// Fetches panels from every configured source. A failed source does not
@@ -38,7 +57,7 @@ public sealed class ManagementPanelService
     {
         var response = new PanelsResponse();
 
-        foreach (var source in _options.Sources)
+        foreach (var source in GetSources())
         {
             try
             {
@@ -65,7 +84,7 @@ public sealed class ManagementPanelService
         IReadOnlyDictionary<string, object?> values,
         CancellationToken cancellationToken = default)
     {
-        var source = _options.Sources.FirstOrDefault(x =>
+        var source = GetSources().FirstOrDefault(x =>
             string.Equals(x.Name, sourceName, StringComparison.OrdinalIgnoreCase));
 
         if (source is null)

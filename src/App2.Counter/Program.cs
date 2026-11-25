@@ -25,6 +25,8 @@ builder.AddDashboardPanels(panels => panels
         .Action(p => p.Reset(), "Сбросить", sortOrder: 2, requireConfirm: true,
             description: "Обнуляет значение счётчика app2"));
 
+builder.AddDashboardRegistration();
+
 var app = builder.Build();
 
 app.MapGet("/healthz", () => Results.Ok(new { status = "healthy", service = serviceName }));
