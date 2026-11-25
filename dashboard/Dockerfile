@@ -22,6 +22,18 @@ FROM mcr.microsoft.com/dotnet/aspnet:11.0 AS final
 WORKDIR /app
 COPY --from=build /out .
 
+LABEL org.opencontainers.image.title="РА-Монитор"
+LABEL org.opencontainers.image.description="Custom Aspire Dashboard with app panels, file browser and service registry"
+LABEL org.opencontainers.image.licenses="MIT"
+LABEL org.opencontainers.image.source="https://github.com/dundich/otel"
+
+# License formalities: keep all notices in the shipped image.
+COPY LICENSE /app/licenses/LICENSE.txt
+COPY NOTICE /app/licenses/NOTICE.txt
+COPY THIRD-PARTY-NOTICES.TXT /app/licenses/THIRD-PARTY-NOTICES.txt
+COPY dashboard/aspire/LICENSE.TXT /app/licenses/ASPIRE-LICENSE.txt
+COPY dashboard/aspire/THIRD-PARTY-NOTICES.TXT /app/licenses/ASPIRE-THIRD-PARTY-NOTICES.txt
+
 ENV ASPNETCORE_URLS=http://0.0.0.0:18888
 EXPOSE 18888 18889 18890
 USER $APP_UID

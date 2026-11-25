@@ -387,3 +387,12 @@ docker compose up -d --build
 - **Нет вкладок Логи/Share** — не задан `Dashboard__Files__Logs__Path` / `Share__Path`.
 - **Нет JSON/YAML подсветки** — preview доступен только для UTF-8 файлов до 5 МБ.
 - **Порт занят** — измените `DASHBOARD_PORT` / `APP*_PORT` в `.env`.
+
+## Лицензия
+
+Код проекта — MIT (`LICENSE`). Aspire Dashboard, на котором построен UI, —
+MIT (`dashboard/aspire/LICENSE.TXT`). Уведомления третьих сторон —
+`THIRD-PARTY-NOTICES.TXT` и `dashboard/aspire/THIRD-PARTY-NOTICES.TXT`.
+
+Что приложить в зависимости от сценария (закрытый продукт, Docker, NuGet/npm,
+SaaS, публичный форк) — [`docs/licensing.md`](docs/licensing.md).

@@ -1,0 +1,14 @@
+РА-Монитор
+Copyright (c) 2026 dundich
+
+This product includes software developed by the .NET Foundation and
+Contributors: Aspire Dashboard (https://github.com/dotnet/aspire),
+licensed under the MIT License. The full text is in
+dashboard/aspire/LICENSE.TXT.
+
+Third-party notices for the Aspire Dashboard sources and their dependencies
+are in dashboard/aspire/THIRD-PARTY-NOTICES.TXT. The applications in this
+repository use OpenTelemetry packages licensed under Apache-2.0; see
+THIRD-PARTY-NOTICES.TXT in the repository root.
+
+Container images include the license files under /app/licenses/.

@@ -1,0 +1,34 @@
+Third-party notices for РА-Монитор
+=================================
+
+This repository contains the following third-party software.
+
+Aspire Dashboard
+----------------
+Sources: dashboard/aspire
+License: MIT
+Copyright (c) .NET Foundation and Contributors
+License text: dashboard/aspire/LICENSE.TXT
+Full dependency notices: dashboard/aspire/THIRD-PARTY-NOTICES.TXT
+
+The Aspire notices cover, among others: OpenTelemetry (Apache-2.0),
+IMask, plotly.js, Bootstrap, D3, xterm.js (MIT/ISC), Markdig (BSD),
+Humanizer (MIT), and the Geist, Poppins and Cascadia Code fonts
+(SIL Open Font License 1.1).
+
+OpenTelemetry .NET
+------------------
+Packages: OpenTelemetry.Extensions.Hosting,
+          OpenTelemetry.Exporter.OpenTelemetryProtocol,
+          OpenTelemetry.Instrumentation.AspNetCore,
+          OpenTelemetry.Instrumentation.Http
+License: Apache-2.0
+License text: https://www.apache.org/licenses/LICENSE-2.0
+
+.NET and ASP.NET Core runtime
+-----------------------------
+License: MIT
+License text: https://github.com/dotnet/runtime/blob/main/LICENSE.TXT
+
+NuGet package license information is available from each package's
+.nuspec metadata and the https://www.nuget.org package page.
