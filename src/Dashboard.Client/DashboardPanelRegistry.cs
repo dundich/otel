@@ -152,6 +152,12 @@ internal sealed class DashboardPanelRegistration
 
             switch (member)
             {
+                case PropertyInfo property when property.GetMethod is not null && IsReadOnly:
+                    // Read-only display: values are only read from the app, never
+                    // posted back, so a setter is optional.
+                    Get = CompileGetter(property);
+                    Set = null;
+                    break;
                 case PropertyInfo property when property.GetMethod is not null && property.SetMethod is not null:
                     Get = CompileGetter(property);
                     Set = CompileSetter(property);
@@ -162,11 +168,14 @@ internal sealed class DashboardPanelRegistration
                     break;
                 case PropertyInfo property:
                     throw new InvalidOperationException(
-                        $"Input '{property.Name}' must have a public getter and setter.");
+                        $"Input '{property.Name}' must have a public getter and setter " +
+                        $"(use {nameof(DashboardInputType)}.{nameof(DashboardInputType.ReadOnly)} for display-only values).");
                 default:
                     throw new InvalidOperationException($"Unsupported member '{member.Name}'.");
             }
         }
+
+        private bool IsReadOnly => InputType == nameof(DashboardInputType.ReadOnly).ToLowerInvariant();
 
         // Reflection is used once here, at registration: the accessors are
         // compiled into delegates so requests never touch PropertyInfo.GetValue/SetValue.
@@ -213,7 +222,7 @@ internal sealed class DashboardPanelRegistration
         public string Name => Member.Name;
         public string InputType { get; }
         public Func<object, object?> Get { get; }
-        public Action<object, object?> Set { get; }
+        public Action<object, object?>? Set { get; }
 
         public static DashboardInputType ResolveInputType(Type valueType, DashboardInputType configured)
         {
@@ -428,6 +437,12 @@ public sealed class DashboardPanelRegistry
 
         foreach (var field in registration.Fields)
         {
+            if (field.Set is null)
+            {
+                // Read-only display field: nothing to bind back.
+                continue;
+            }
+
             if (!TryGetValue(values, field.Name, out var element))
             {
                 continue;

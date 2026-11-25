@@ -125,6 +125,10 @@ builder.AddDashboardPanels(panels => panels
         .Action(p => p.Apply(), "Применить", sortOrder: 1));
 ```
 
+`DashboardInputType.ReadOnly` показывает значение только для чтения: свойству
+достаточно геттера, и при нажатии кнопок такое поле не отправляется обратно
+в приложение.
+
 Атрибуты — сахар: если классы размечены `[DashboardPanel]`/`[DashboardInput]`/
 `[DashboardAction]`, достаточно `builder.AddDashboardPanels<Program>()`
 (скан сборки) или `.ScanAssembly(typeof(Program).Assembly)` внутри билдера.

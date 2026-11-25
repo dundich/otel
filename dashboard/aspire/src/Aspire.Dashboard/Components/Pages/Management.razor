@@ -85,6 +85,15 @@
                                                 <span>@(state.Bools.GetValueOrDefault(field.Name) ? "Да" : "Нет")</span>
                                             </span>
                                         }
+                                        else if (field.InputType == "readonly")
+                                        {
+                                            <input type="text"
+                                                   class="management-readonly"
+                                                   value="@state.Text.GetValueOrDefault(field.Name)"
+                                                   readonly
+                                                   tabindex="-1"
+                                                   aria-readonly="true" />
+                                        }
                                         else
                                         {
                                             <input type="@GetInputType(field)"

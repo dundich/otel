@@ -21,6 +21,7 @@ builder.AddDashboardPanels(panels => panels
     .Panel<CounterPanel>("Счётчик app2", order: 10, description: "Настройки счётчика app2")
         .Input(p => p.Step, "Шаг", DashboardInputType.Int, sortOrder: 1)
         .Input(p => p.Enabled, "Активно", DashboardInputType.Bool, sortOrder: 2)
+        .Input(p => p.Count, "Значение", DashboardInputType.ReadOnly, sortOrder: 3)
         .Action(p => p.Apply(), "Применить", sortOrder: 1)
         .Action(p => p.Reset(), "Сбросить", sortOrder: 2, requireConfirm: true,
             description: "Обнуляет значение счётчика app2"));

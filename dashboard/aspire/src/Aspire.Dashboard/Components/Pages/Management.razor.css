@@ -175,6 +175,13 @@
     font-size: 13px;
 }
 
+.management-field input.management-readonly {
+    border-style: dashed;
+    background: var(--colorNeutralBackground3);
+    color: var(--colorNeutralForeground2);
+    cursor: default;
+}
+
 .management-check {
     display: flex;
     align-items: center;

@@ -19,6 +19,9 @@ public sealed class CounterService(ILogger<CounterService> logger) : BackgroundS
     public void SetEnabled(bool enabled) => Volatile.Write(ref _enabled, enabled ? 1 : 0);
     public void Reset() => Interlocked.Exchange(ref _count, 0);
 
+    /// <summary>Ручной инкремент (кнопка «Применить») на <paramref name="delta"/>.</summary>
+    public long Add(long delta) => Interlocked.Add(ref _count, delta);
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         logger.LogInformation("app1 counter started: step={Step} every second", Step);

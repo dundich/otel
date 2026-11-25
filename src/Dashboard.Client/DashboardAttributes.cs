@@ -27,7 +27,13 @@ public enum DashboardInputType
     Date,
     Int,
     Number,
-    Bool
+    Bool,
+
+    /// <summary>
+    /// Показывает значение только для чтения. Свойству достаточно геттера;
+    /// такие поля не отправляются обратно в приложение при нажатии кнопок.
+    /// </summary>
+    ReadOnly
 }
 
 /// <summary>

@@ -17,21 +17,28 @@ public sealed class CounterPanel(CounterService counter, ILogger<CounterPanel> l
     [DashboardInput("Активно", DashboardInputType.Bool, sortOrder: 2)]
     public bool Enabled { get; set; } = true;
 
+    /// <summary>Текущее значение счётчика — только для показа в панели.</summary>
+    [DashboardInput("Значение", DashboardInputType.ReadOnly, sortOrder: 3)]
+    public long Count { get; set; }
+
     // ВЫЗЫВАЕТСЯ ПРИ ПОЯВЛЕНИИ ПАНЕЛИ (каждый GET /dashboard/panels):
     // читает актуальные Step/Enabled из собственного CounterService.
     public Task RenderAsync(CancellationToken cancellationToken = default)
     {
         Step = counter.Step;
         Enabled = counter.Enabled;
+        Count = counter.Count;
         return Task.CompletedTask;
     }
 
     // ВЫЗЫВАЕТСЯ ПО КЛАВЕ «Применить»: значения формы уже в свойствах.
+    // Применяет настройки и один раз увеличивает значение на шаг.
     [DashboardAction("Применить", sortOrder: 1)]
     public Task<string> Apply()
     {
         counter.SetStep(Step);
         counter.SetEnabled(Enabled);
+        Count = counter.Add(Step);
 
         logger.LogInformation(
             "APP1 COUNTER CONFIG APPLIED step={Step} enabled={Enabled} value={Count}",
@@ -47,6 +54,7 @@ public sealed class CounterPanel(CounterService counter, ILogger<CounterPanel> l
     public Task<string> Reset()
     {
         counter.Reset();
+        Count = counter.Count;
         logger.LogWarning("APP1 COUNTER RESET value={Count}", counter.Count);
         return Task.FromResult($"Счётчик app1 сброшен: значение={counter.Count}");
     }

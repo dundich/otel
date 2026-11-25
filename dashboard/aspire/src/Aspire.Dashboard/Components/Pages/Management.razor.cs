@@ -214,6 +214,12 @@ public partial class Management : ComponentBase
 
         foreach (var field in state.Panel.Fields)
         {
+            if (field.InputType == "readonly")
+            {
+                // Display-only value: the app decides its own state.
+                continue;
+            }
+
             if (field.InputType == "bool")
             {
                 values[field.Name] = state.Bools.GetValueOrDefault(field.Name);
