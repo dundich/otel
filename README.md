@@ -78,22 +78,16 @@ dashboard /management ──→ app1: /dashboard/panels
 
 ## Панели приложений
 
-`Dashboard.Client` даёт атрибуты:
+Панель — класс, реализующий `IDashboardPanel`. Метаданные (заголовок, поля,
+кнопки) задаются **fluent-билдером** при регистрации; атрибуты — лишь сахар
+для `ScanAssembly`.
 
 ```csharp
-[DashboardPanel("Моя панель", order: 10)]
 public sealed class MyPanel(ILogger<MyPanel> logger) : IDashboardPanel
 {
-    [DashboardInput("Имя", sortOrder: 1)]
     public string Name { get; set; } = "";
-
-    [DashboardInput("Дата рождения", DashboardInputType.Date, sortOrder: 2)]
     public DateOnly BirthDate { get; set; }
-
-    [DashboardInput("Количество", DashboardInputType.Int, sortOrder: 3)]
     public int Count { get; set; }
-
-    [DashboardInput("Активно", DashboardInputType.Bool, sortOrder: 4)]
     public bool Enabled { get; set; }
 
     // при появлении панели: каждый GET /dashboard/panels
@@ -103,7 +97,6 @@ public sealed class MyPanel(ILogger<MyPanel> logger) : IDashboardPanel
         return Task.CompletedTask;
     }
 
-    [DashboardAction("Применить")]
     public Task<string> Apply() => Task.FromResult($"Принято: {Name}, {Count}");
 
     // по нажатию кнопки: значения формы уже записаны в свойства выше
@@ -116,25 +109,38 @@ public sealed class MyPanel(ILogger<MyPanel> logger) : IDashboardPanel
 }
 ```
 
-Атрибуты `[DashboardPanel]`/`[DashboardInput]`/`[DashboardAction]` — только
-метаданные (заголовок, типы полей, кнопки); читаются рефлексией **один раз при
-регистрации**. В рантайме запроса рефлексии нет:
+Регистрация — один вызов на билдере (DI + endpoints):
+
+```csharp
+builder.AddDashboardPanels(panels => panels
+    .Panel<MyPanel>("Моя панель", order: 10)
+        .Input(p => p.Name, "Имя", DashboardInputType.Text, sortOrder: 1)
+        .Input(p => p.BirthDate, "Дата рождения", DashboardInputType.Date, sortOrder: 2)
+        .Input(p => p.Count, "Количество", DashboardInputType.Int, sortOrder: 3)
+        .Input(p => p.Enabled, "Активно", DashboardInputType.Bool, sortOrder: 4)
+        .Action(p => p.Apply(), "Применить", sortOrder: 1));
+```
+
+Атрибуты — сахар: если классы размечены `[DashboardPanel]`/`[DashboardInput]`/
+`[DashboardAction]`, достаточно `builder.AddDashboardPanels<Program>()`
+(скан сборки) или `.ScanAssembly(typeof(Program).Assembly)` внутри билдера.
+
+В этом репозитории показаны оба варианта:
+
+- **app1** — «сахар»: панель размечена атрибутами, регистрация
+  `builder.AddDashboardPanels<Program>()`;
+- **app2** — fluent: `builder.AddDashboardPanels(panels => panels.Panel<CounterPanel>(...))`.
+
+В рантайме запроса рефлексии нет: доступы к полям компилируются в делегаты,
+а действия вызываются через `IDashboardPanel.ExecuteAsync`:
 
 - `RenderAsync()` — вызывается **при появлении панели**: каждый
   `GET /dashboard/panels` (открытие/обновление страницы «Управление»),
   пересчитывает значения полей перед сериализацией в дашборд;
 - `ExecuteAsync(actionName)` — вызывается **по нажатию кнопки действия**:
   клик → SignalR circuit → `POST .../actions/{actionName}` → сначала
-  `BindValues` записывает значения формы в свойства (скомпилированные
-  сеттеры), затем диспетчер `switch (actionName)` вызывает метод с
-  `[DashboardAction]` напрямую.
-
-Подключение через DI в приложении:
-
-```csharp
-builder.Services.AddDashboardPanel<MyPanel>();
-app.MapDashboardPanels();
-```
+  `BindValues` записывает значения формы в свойства, затем диспетчер
+  `switch (actionName)` вызывает нужный метод напрямую.
 
 Панель — singleton с обычным constructor injection (`ILogger`, `CounterService`, ...).
 Контракт — интерфейс `IDashboardPanel`: `RenderAsync` вызывается при появлении
@@ -180,7 +186,9 @@ app1 — домен «собственный счётчик», одна пане
 
 - **«Счётчик app1»** (`CounterPanel` + свой `CounterService`) — независимый
   счётчик этого приложения: `Step`/`Enabled`, «Применить», «Сбросить»
-  с confirm. Тикает раз в секунду, как и счётчик app2.
+  с confirm. Тикает раз в секунду, как и счётчик app2. Метаданные заданы
+  **атрибутами** (`[DashboardPanel]`/`[DashboardInput]`/`[DashboardAction]`),
+  регистрация — `builder.AddDashboardPanels<Program>()`.
 
 Журнал сообщений (`MessageStore`, `POST/GET /api/messages`) остаётся API
 приложения, отдельной панели у него больше нет.
@@ -188,7 +196,8 @@ app1 — домен «собственный счётчик», одна пане
 ### Панели app2
 
 app2 — обычное приложение со своими панелями, без роли агрегатора. Панель
-**«Счётчик app2»** (`CounterPanel`) управляет живым `CounterService`:
+**«Счётчик app2»** (`CounterPanel`) объявлена **fluent-билдером** и управляет
+живым `CounterService`:
 
 - `RenderAsync` — при появлении панели читает `Step`/`Enabled` из сервиса;
 - **«Применить»** — `SetStep`/`SetEnabled`;

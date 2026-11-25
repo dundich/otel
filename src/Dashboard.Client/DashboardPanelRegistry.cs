@@ -7,62 +7,140 @@ using Microsoft.Extensions.Logging;
 
 namespace Dashboard.Client;
 
+/// <summary>
+/// Registration of one panel: type + metadata collected by
+/// <see cref="DashboardPanelBuilder"/> (explicit) or from attributes
+/// (<see cref="DashboardPanelBuilder.ScanAssembly"/> sugar).
+/// </summary>
 internal sealed class DashboardPanelRegistration
 {
-    public DashboardPanelRegistration(Type panelType)
+    private readonly List<FieldBinding> _fields = [];
+    private readonly List<ActionBinding> _actions = [];
+
+    public DashboardPanelRegistration(
+        Type panelType,
+        string title,
+        int order,
+        string? id,
+        string? description)
     {
-        PanelType = panelType;
-        Attribute = panelType.GetCustomAttribute<DashboardPanelAttribute>()
-            ?? throw new InvalidOperationException($"Type '{panelType.FullName}' has no {nameof(DashboardPanelAttribute)}.");
         if (!typeof(IDashboardPanel).IsAssignableFrom(panelType))
         {
             throw new InvalidOperationException(
                 $"Type '{panelType.FullName}' must implement {nameof(IDashboardPanel)}.");
         }
 
-        Id = string.IsNullOrWhiteSpace(Attribute.Id) ? panelType.Name : Attribute.Id!;
+        PanelType = panelType;
+        Title = title;
+        Order = order;
+        Id = string.IsNullOrWhiteSpace(id) ? panelType.Name : id;
+        Description = description;
+    }
 
-        Fields = panelType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+    public Type PanelType { get; }
+    public string Id { get; }
+    public string Title { get; }
+    public int Order { get; }
+    public string? Description { get; }
+    public IReadOnlyList<FieldBinding> Fields => _fields;
+    public IReadOnlyList<ActionBinding> Actions => _actions;
+    public SemaphoreSlim Gate { get; } = new(1, 1);
+
+    public void AddField(FieldBinding field)
+    {
+        if (_fields.Any(existing => string.Equals(existing.Name, field.Name, StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new InvalidOperationException(
+                $"Panel '{Id}' already has an input '{field.Name}'.");
+        }
+
+        _fields.Add(field);
+    }
+
+    public void AddAction(ActionBinding action)
+    {
+        if (_actions.Any(existing => string.Equals(existing.Name, action.Name, StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new InvalidOperationException(
+                $"Panel '{Id}' has duplicate action '{action.Name}'. Action names must be unique.");
+        }
+
+        _actions.Add(action);
+    }
+
+    /// <summary>
+    /// Attribute sugar: builds a registration from [DashboardPanel],
+    /// [DashboardInput] and [DashboardAction].
+    /// </summary>
+    public static DashboardPanelRegistration FromAttributes(Type panelType)
+    {
+        var attribute = panelType.GetCustomAttribute<DashboardPanelAttribute>()
+            ?? throw new InvalidOperationException(
+                $"Type '{panelType.FullName}' has no {nameof(DashboardPanelAttribute)}.");
+
+        var registration = new DashboardPanelRegistration(
+            panelType,
+            attribute.Title,
+            attribute.Order,
+            attribute.Id,
+            attribute.Description);
+
+        var fields = panelType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
             .Select(property => (Member: (MemberInfo)property, Attribute: property.GetCustomAttribute<DashboardInputAttribute>()))
             .Concat(panelType.GetFields(BindingFlags.Public | BindingFlags.Instance)
                 .Select(field => (Member: (MemberInfo)field, Attribute: field.GetCustomAttribute<DashboardInputAttribute>())))
             .Where(x => x.Attribute is not null)
-            .Select(x => new FieldBinding(x.Member, x.Attribute!))
-            .OrderBy(x => x.Attribute.SortOrder)
-            .ThenBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
-            .ToArray();
+            .OrderBy(x => x.Attribute!.SortOrder)
+            .ThenBy(x => x.Member.Name, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var (member, input) in fields)
+        {
+            registration.AddField(new FieldBinding(
+                member,
+                input!.Label,
+                input.Type,
+                input.SortOrder,
+                input.Placeholder,
+                input.Required));
+        }
 
         // Metadata only: the action name is the method name and is dispatched
-        // by the panel itself through IDashboardPanel.ExecuteAsync — no
-        // MethodInfo.Invoke at request time.
-        Actions = panelType.GetMethods(BindingFlags.Public | BindingFlags.Instance)
+        // by the panel itself through IDashboardPanel.ExecuteAsync.
+        var actions = panelType.GetMethods(BindingFlags.Public | BindingFlags.Instance)
             .Select(method => (Method: method, Attribute: method.GetCustomAttribute<DashboardActionAttribute>()))
             .Where(x => x.Attribute is not null)
-            .Select(x => new ActionBinding(x.Method.Name, x.Attribute!))
-            .OrderBy(x => x.Attribute.SortOrder)
-            .ThenBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
-            .ToArray();
+            .OrderBy(x => x.Attribute!.SortOrder)
+            .ThenBy(x => x.Method.Name, StringComparer.OrdinalIgnoreCase);
 
-        if (Actions.GroupBy(a => a.Name, StringComparer.OrdinalIgnoreCase).Any(g => g.Count() > 1))
+        foreach (var (method, action) in actions)
         {
-            throw new InvalidOperationException(
-                $"Panel '{Id}' has overloaded [DashboardAction] methods. Action method names must be unique.");
+            registration.AddAction(new ActionBinding(
+                method.Name,
+                action!.Label,
+                action.SortOrder,
+                action.RequireConfirm,
+                action.Description));
         }
-    }
 
-    public Type PanelType { get; }
-    public DashboardPanelAttribute Attribute { get; }
-    public string Id { get; }
-    public IReadOnlyList<FieldBinding> Fields { get; }
-    public IReadOnlyList<ActionBinding> Actions { get; }
-    public SemaphoreSlim Gate { get; } = new(1, 1);
+        return registration;
+    }
 
     public sealed class FieldBinding
     {
-        public FieldBinding(MemberInfo member, DashboardInputAttribute attribute)
+        public FieldBinding(
+            MemberInfo member,
+            string label,
+            DashboardInputType type,
+            int sortOrder,
+            string? placeholder,
+            bool required)
         {
             Member = member;
-            Attribute = attribute;
+            Label = label;
+            SortOrder = sortOrder;
+            Placeholder = placeholder;
+            Required = required;
+
             ValueType = member switch
             {
                 PropertyInfo property => property.PropertyType,
@@ -70,7 +148,7 @@ internal sealed class DashboardPanelRegistration
                 _ => throw new InvalidOperationException($"Unsupported member '{member.Name}'.")
             };
 
-            InputType = ResolveInputType(ValueType, attribute.Type).ToString().ToLowerInvariant();
+            InputType = ResolveInputType(ValueType, type).ToString().ToLowerInvariant();
 
             switch (member)
             {
@@ -127,7 +205,10 @@ internal sealed class DashboardPanelRegistration
         }
 
         public MemberInfo Member { get; }
-        public DashboardInputAttribute Attribute { get; }
+        public string Label { get; }
+        public int SortOrder { get; }
+        public string? Placeholder { get; }
+        public bool Required { get; }
         public Type ValueType { get; }
         public string Name => Member.Name;
         public string InputType { get; }
@@ -150,7 +231,12 @@ internal sealed class DashboardPanelRegistration
         }
     }
 
-    public sealed record ActionBinding(string Name, DashboardActionAttribute Attribute);
+    public sealed record ActionBinding(
+        string Name,
+        string Label,
+        int SortOrder,
+        bool RequireConfirm,
+        string? Description);
 }
 
 public sealed class DashboardPanelRegistry
@@ -165,7 +251,7 @@ public sealed class DashboardPanelRegistry
         _services = services;
         _logger = logger;
         _panels = services.GetServices<DashboardPanelRegistration>()
-            .OrderBy(x => x.Attribute.Order)
+            .OrderBy(x => x.Order)
             .ThenBy(x => x.Id, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
@@ -176,7 +262,7 @@ public sealed class DashboardPanelRegistry
         if (duplicate is not null)
         {
             throw new InvalidOperationException(
-                $"Duplicate dashboard panel id '{duplicate.Key}'. Set a unique [DashboardPanel(..., Id = \"...\")].");
+                $"Duplicate dashboard panel id '{duplicate.Key}'. Give each panel a unique id.");
         }
     }
 
@@ -244,7 +330,7 @@ public sealed class DashboardPanelRegistry
 
                 var message = data switch
                 {
-                    null => $"{action.Attribute.Label}: готово",
+                    null => $"{action.Label}: готово",
                     string text => text,
                     _ => JsonSerializer.Serialize(data)
                 };
@@ -274,31 +360,35 @@ public sealed class DashboardPanelRegistry
     private static DashboardPanelDescriptor BuildDescriptor(DashboardPanelRegistration registration, object instance)
     {
         var fields = registration.Fields
+            .OrderBy(field => field.SortOrder)
+            .ThenBy(field => field.Name, StringComparer.OrdinalIgnoreCase)
             .Select(field => new DashboardFieldDescriptor(
                 Name: field.Name,
-                Label: field.Attribute.Label,
+                Label: field.Label,
                 InputType: field.InputType,
-                Order: field.Attribute.SortOrder,
-                Placeholder: field.Attribute.Placeholder,
-                Required: field.Attribute.Required,
+                Order: field.SortOrder,
+                Placeholder: field.Placeholder,
+                Required: field.Required,
                 Value: FormatValue(field.Get(instance), field.ValueType)))
             .ToArray();
 
         var actions = registration.Actions
+            .OrderBy(action => action.SortOrder)
+            .ThenBy(action => action.Name, StringComparer.OrdinalIgnoreCase)
             .Select(action => new DashboardActionDescriptor(
                 Name: action.Name,
-                Label: action.Attribute.Label,
-                Order: action.Attribute.SortOrder,
-                RequireConfirm: action.Attribute.RequireConfirm,
-                Description: action.Attribute.Description))
+                Label: action.Label,
+                Order: action.SortOrder,
+                RequireConfirm: action.RequireConfirm,
+                Description: action.Description))
             .ToArray();
 
         return new DashboardPanelDescriptor(
             Id: registration.Id,
-            Title: registration.Attribute.Title,
+            Title: registration.Title,
             Version: AppVersion,
-            Description: registration.Attribute.Description,
-            Order: registration.Attribute.Order,
+            Description: registration.Description,
+            Order: registration.Order,
             Fields: fields,
             Actions: actions);
     }
@@ -351,13 +441,13 @@ public sealed class DashboardPanelRegistry
             catch (Exception ex)
             {
                 throw new InvalidOperationException(
-                    $"Поле '{field.Attribute.Label}' имеет неверный формат: {ex.Message}", ex);
+                    $"Поле '{field.Label}' имеет неверный формат: {ex.Message}", ex);
             }
 
             var isNullable = !field.ValueType.IsValueType || Nullable.GetUnderlyingType(field.ValueType) is not null;
             if (converted is null && !isNullable)
             {
-                throw new InvalidOperationException($"Поле '{field.Attribute.Label}' обязательно");
+                throw new InvalidOperationException($"Поле '{field.Label}' обязательно");
             }
 
             field.Set(instance, converted);

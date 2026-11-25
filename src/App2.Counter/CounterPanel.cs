@@ -3,32 +3,26 @@ using Dashboard.Client;
 namespace App2.Counter;
 
 /// <summary>
-/// Панель счётчика app2. Управляет живым singleton-сервисом CounterService:
-/// читает его состояние в RenderAsync и меняет его в действиях.
+/// Панель счётчика app2. Метаданные заданы в Program.cs через билдер;
+/// панель управляет живым singleton-сервисом CounterService.
 /// </summary>
-[DashboardPanel("Счётчик app2", order: 10, Description = "Настройки счётчика app2")]
 public sealed class CounterPanel(CounterService counter, ILogger<CounterPanel> logger) : IDashboardPanel
 {
-    [DashboardInput("Шаг", DashboardInputType.Int, sortOrder: 1)]
-    public int Step { get; set; } = 1;
+    public long Step { get; set; } = 1;
 
-    [DashboardInput("Активно", DashboardInputType.Bool, sortOrder: 2)]
     public bool Enabled { get; set; } = true;
 
     // ВЫЗЫВАЕТСЯ ПРИ ПОЯВЛЕНИИ ПАНЕЛИ, а не по нажатию кнопок: каждый
     // GET /dashboard/panels (страница «Управление», «Обновить»). Здесь
-    // актуальное состояние CounterService записывается в свойства формы,
-    // чтобы в дашборд ушли живые значения, а не значения по умолчанию.
+    // актуальное состояние CounterService записывается в свойства формы.
     public Task RenderAsync(CancellationToken cancellationToken = default)
     {
-        Step = (int)counter.Step;
+        Step = counter.Step;
         Enabled = counter.Enabled;
         return Task.CompletedTask;
     }
 
-    // Метаданные кнопки в UI; имя метода = имя действия для диспетчеризации
-    // в ExecuteAsync ниже.
-    [DashboardAction("Применить", sortOrder: 1)]
+    // ВЫЗЫВАЕТСЯ ПО КЛАВЕ «Применить»: значения формы уже в свойствах.
     public Task<string> Apply()
     {
         counter.SetStep(Step);
@@ -42,9 +36,7 @@ public sealed class CounterPanel(CounterService counter, ILogger<CounterPanel> l
             $"Счётчик: шаг={counter.Step}, активно={counter.Enabled}, значение={counter.Count}");
     }
 
-    // RequireConfirm=true — в дашборде перед действием покажется confirm().
-    [DashboardAction("Сбросить", sortOrder: 2, RequireConfirm = true,
-        Description = "Обнуляет значение счётчика app2")]
+    // RequireConfirm задан в билдере → в дашборде перед действием будет confirm().
     public Task<string> Reset()
     {
         counter.Reset();
@@ -53,8 +45,7 @@ public sealed class CounterPanel(CounterService counter, ILogger<CounterPanel> l
     }
 
     // ВЫЗЫВАЕТСЯ ПО КЛАВЕ действия: клик → SignalR circuit →
-    // POST {source}/dashboard/panels/{panel}/actions/{actionName} (source = имя
-    // этого сервиса, special-case в Program.cs → локальный registry) → сюда.
+    // POST {source}/dashboard/panels/{panel}/actions/{actionName} → сюда.
     public async Task<object?> ExecuteAsync(string actionName, CancellationToken cancellationToken = default)
         => actionName switch
         {

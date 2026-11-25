@@ -3,8 +3,9 @@ using Dashboard.Client;
 namespace App1.Api;
 
 /// <summary>
-/// Панель собственного счётчика app1 — зеркало «Счётчика app2» по приёмам,
-/// но со своим независимым состоянием в этом приложении.
+/// Панель собственного счётчика app1. Здесь метаданные заданы атрибутами —
+/// это пример «сахара»: Program.cs регистрирует панель через
+/// builder.AddDashboardPanels&lt;Program&gt;() и скан сборки.
 /// </summary>
 [DashboardPanel("Счётчик app1", order: 30,
     Description = "Собственный счётчик app1: шаг, пауза и сброс")]
@@ -40,7 +41,7 @@ public sealed class CounterPanel(CounterService counter, ILogger<CounterPanel> l
             $"Счётчик app1: шаг={counter.Step}, активно={counter.Enabled}, значение={counter.Count}");
     }
 
-    // RequireConfirm=true → в дашборде перед действием вызовется confirm().
+    // RequireConfirm=true → в дашборде перед действием будет confirm().
     [DashboardAction("Сбросить", sortOrder: 2, RequireConfirm = true,
         Description = "Обнуляет значение счётчика app1")]
     public Task<string> Reset()

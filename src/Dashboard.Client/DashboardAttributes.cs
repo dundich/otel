@@ -1,8 +1,12 @@
 namespace Dashboard.Client;
 
 /// <summary>
-/// Marks a class as a dashboard panel. Each panel is rendered as an accordion
-/// in the dashboard UI. The class is registered as a singleton in DI.
+/// Optional sugar for builder registration: marks a class as a dashboard panel
+/// when the assembly is scanned via <c>AddDashboardPanels&lt;TMarker&gt;()</c> or
+/// <c>DashboardPanelBuilder.ScanAssembly(...)</c>. Explicit
+/// <c>DashboardPanelBuilder.Panel&lt;T&gt;(...)</c> doesn't need it.
+/// Each panel is rendered as an accordion in the dashboard UI and registered as
+/// a singleton in DI.
 /// </summary>
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
 public sealed class DashboardPanelAttribute(string title, int order = 0) : Attribute

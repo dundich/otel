@@ -1,11 +1,11 @@
 namespace Dashboard.Client;
 
 /// <summary>
-/// Contract implemented by every dashboard panel class. The registry resolves the
-/// panel singleton from DI and calls these members directly — at request time no
-/// reflection is involved. Attribute metadata (<c>[DashboardPanel]</c>,
-/// <c>[DashboardInput]</c>, <c>[DashboardAction]</c>) is read once during
-/// registration, and input accessors are compiled into delegates.
+/// Contract implemented by every dashboard panel class. Metadata (title, inputs,
+/// actions) is declared in the registration builder
+/// (<c>builder.AddDashboardPanels(...)</c>); attributes are optional sugar for
+/// <c>ScanAssembly</c>. The registry resolves the panel singleton from DI and
+/// calls these members directly — at request time no reflection is involved.
 /// </summary>
 public interface IDashboardPanel
 {

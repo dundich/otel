@@ -27,7 +27,12 @@ public static class ObservabilityExtensions
                        ?? "http://localhost:4317";
 
         var resource = ResourceBuilder.CreateDefault()
-            .AddService(serviceName, serviceVersion: "1.0.0")
+            // Стабильный идентификатор: без авто-генерации service.instance.id
+            // перезапуски процесса схлопываются в один ресурс дашборда,
+            // а не копят app1-xxxxxxxx при каждом рестарте.
+            // При необходимости instance id можно задать явно через
+            // OTEL_RESOURCE_ATTRIBUTES=service.instance.id=...
+            .AddService(serviceName, serviceVersion: "1.0.0", autoGenerateServiceInstanceId: false)
             .AddAttributes(new Dictionary<string, object>
             {
                 ["deployment.environment.name"] = builder.Environment.EnvironmentName

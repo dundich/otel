@@ -9,7 +9,10 @@ builder.AddDemoObservability("app1", "OtelDemo.App1");
 builder.Services.AddSingleton<MessageStore>();
 builder.Services.AddSingleton<CounterService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<CounterService>());
-builder.Services.AddDashboardPanel<CounterPanel>();
+
+// Пример «сахара»: панель размечена атрибутами [DashboardPanel]/[DashboardInput]/
+// [DashboardAction], а билдер лишь сканирует сборку и превращает их в регистрацию.
+builder.AddDashboardPanels<Program>();
 
 var app = builder.Build();
 
@@ -31,8 +34,6 @@ app.MapGet("/", () => Results.Ok(new
 }));
 
 app.MapGet("/healthz", () => Results.Ok(new { status = "healthy", service = "app1" }));
-
-app.MapDashboardPanels();
 
 app.MapGet("/api/messages", (MessageStore store) => Results.Ok(store.Snapshot()));
 
