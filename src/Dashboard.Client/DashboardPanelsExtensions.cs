@@ -10,11 +10,12 @@ namespace Dashboard.Client;
 public static class DashboardPanelsExtensions
 {
     /// <summary>
-    /// Explicitly registers one panel type in DI. This is the recommended way when
+    /// Explicitly registers one panel type in DI. The panel must implement
+    /// <see cref="IDashboardPanel"/>. This is the recommended way when
     /// the app wants full control over panel lifetime and constructor dependencies.
     /// </summary>
     public static IServiceCollection AddDashboardPanel<TPanel>(this IServiceCollection services)
-        where TPanel : class
+        where TPanel : class, IDashboardPanel
     {
         services.TryAddSingleton<TPanel>();
         services.AddSingleton(new DashboardPanelRegistration(typeof(TPanel)));
@@ -23,8 +24,9 @@ public static class DashboardPanelsExtensions
     }
 
     /// <summary>
-    /// Scans the given assemblies for [DashboardPanel] classes, registers them as
-    /// singletons and adds the registry used by the HTTP endpoints.
+    /// Scans the given assemblies for [DashboardPanel] classes implementing
+    /// <see cref="IDashboardPanel"/>, registers them as singletons and adds the
+    /// registry used by the HTTP endpoints.
     /// </summary>
     public static IServiceCollection AddDashboardPanels(
         this IServiceCollection services,
@@ -34,6 +36,7 @@ public static class DashboardPanelsExtensions
             .Distinct()
             .SelectMany(assembly => assembly.GetTypes())
             .Where(type => type is { IsClass: true, IsAbstract: false } &&
+                           typeof(IDashboardPanel).IsAssignableFrom(type) &&
                            type.GetCustomAttribute<DashboardPanelAttribute>() is not null)
             .OrderBy(type => type.FullName, StringComparer.Ordinal)
             .ToArray();

@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,6 +14,12 @@ internal sealed class DashboardPanelRegistration
         PanelType = panelType;
         Attribute = panelType.GetCustomAttribute<DashboardPanelAttribute>()
             ?? throw new InvalidOperationException($"Type '{panelType.FullName}' has no {nameof(DashboardPanelAttribute)}.");
+        if (!typeof(IDashboardPanel).IsAssignableFrom(panelType))
+        {
+            throw new InvalidOperationException(
+                $"Type '{panelType.FullName}' must implement {nameof(IDashboardPanel)}.");
+        }
+
         Id = string.IsNullOrWhiteSpace(Attribute.Id) ? panelType.Name : Attribute.Id!;
 
         Fields = panelType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
@@ -25,29 +32,22 @@ internal sealed class DashboardPanelRegistration
             .ThenBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
+        // Metadata only: the action name is the method name and is dispatched
+        // by the panel itself through IDashboardPanel.ExecuteAsync — no
+        // MethodInfo.Invoke at request time.
         Actions = panelType.GetMethods(BindingFlags.Public | BindingFlags.Instance)
             .Select(method => (Method: method, Attribute: method.GetCustomAttribute<DashboardActionAttribute>()))
             .Where(x => x.Attribute is not null)
-            .Select(x =>
-            {
-                ValidateSignature(x.Method, x.Attribute!.Label);
-                return new ActionBinding(x.Method, x.Attribute!);
-            })
+            .Select(x => new ActionBinding(x.Method.Name, x.Attribute!))
             .OrderBy(x => x.Attribute.SortOrder)
-            .ThenBy(x => x.Method.Name, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-        if (Actions.GroupBy(a => a.Method.Name, StringComparer.OrdinalIgnoreCase).Any(g => g.Count() > 1))
+        if (Actions.GroupBy(a => a.Name, StringComparer.OrdinalIgnoreCase).Any(g => g.Count() > 1))
         {
             throw new InvalidOperationException(
                 $"Panel '{Id}' has overloaded [DashboardAction] methods. Action method names must be unique.");
         }
-
-        RenderMethod = panelType.GetMethods(BindingFlags.Public | BindingFlags.Instance)
-            .FirstOrDefault(method =>
-                (method.Name is "Render" or "RenderAsync") &&
-                (method.GetParameters().Length == 0 ||
-                 (method.GetParameters().Length == 1 && method.GetParameters()[0].ParameterType == typeof(CancellationToken))));
     }
 
     public Type PanelType { get; }
@@ -55,20 +55,7 @@ internal sealed class DashboardPanelRegistration
     public string Id { get; }
     public IReadOnlyList<FieldBinding> Fields { get; }
     public IReadOnlyList<ActionBinding> Actions { get; }
-    public MethodInfo? RenderMethod { get; }
     public SemaphoreSlim Gate { get; } = new(1, 1);
-
-    private static void ValidateSignature(MethodInfo method, string label)
-    {
-        var parameters = method.GetParameters();
-        if (parameters.Length > 1 ||
-            (parameters.Length == 1 && parameters[0].ParameterType != typeof(CancellationToken)))
-        {
-            throw new InvalidOperationException(
-                $"Action '{label}' / '{method.Name}' must be parameterless or accept only CancellationToken. " +
-                "Panel inputs are bound to properties before the action is invoked.");
-        }
-    }
 
     public sealed class FieldBinding
     {
@@ -88,12 +75,12 @@ internal sealed class DashboardPanelRegistration
             switch (member)
             {
                 case PropertyInfo property when property.GetMethod is not null && property.SetMethod is not null:
-                    Get = property.GetValue;
-                    Set = (instance, value) => property.SetValue(instance, value);
+                    Get = CompileGetter(property);
+                    Set = CompileSetter(property);
                     break;
                 case FieldInfo field:
-                    Get = field.GetValue;
-                    Set = (instance, value) => field.SetValue(instance, value);
+                    Get = CompileGetter(field);
+                    Set = CompileSetter(field);
                     break;
                 case PropertyInfo property:
                     throw new InvalidOperationException(
@@ -101,6 +88,42 @@ internal sealed class DashboardPanelRegistration
                 default:
                     throw new InvalidOperationException($"Unsupported member '{member.Name}'.");
             }
+        }
+
+        // Reflection is used once here, at registration: the accessors are
+        // compiled into delegates so requests never touch PropertyInfo.GetValue/SetValue.
+        private static Func<object, object?> CompileGetter(PropertyInfo property)
+        {
+            var instance = Expression.Parameter(typeof(object), "instance");
+            var access = Expression.Property(Expression.Convert(instance, property.DeclaringType!), property);
+            return Expression.Lambda<Func<object, object?>>(Expression.Convert(access, typeof(object)), instance).Compile();
+        }
+
+        private static Func<object, object?> CompileGetter(FieldInfo field)
+        {
+            var instance = Expression.Parameter(typeof(object), "instance");
+            var access = Expression.Field(Expression.Convert(instance, field.DeclaringType!), field);
+            return Expression.Lambda<Func<object, object?>>(Expression.Convert(access, typeof(object)), instance).Compile();
+        }
+
+        private static Action<object, object?> CompileSetter(PropertyInfo property)
+        {
+            var instance = Expression.Parameter(typeof(object), "instance");
+            var value = Expression.Parameter(typeof(object), "value");
+            var assign = Expression.Assign(
+                Expression.Property(Expression.Convert(instance, property.DeclaringType!), property),
+                Expression.Convert(value, property.PropertyType));
+            return Expression.Lambda<Action<object, object?>>(assign, instance, value).Compile();
+        }
+
+        private static Action<object, object?> CompileSetter(FieldInfo field)
+        {
+            var instance = Expression.Parameter(typeof(object), "instance");
+            var value = Expression.Parameter(typeof(object), "value");
+            var assign = Expression.Assign(
+                Expression.Field(Expression.Convert(instance, field.DeclaringType!), field),
+                Expression.Convert(value, field.FieldType));
+            return Expression.Lambda<Action<object, object?>>(assign, instance, value).Compile();
         }
 
         public MemberInfo Member { get; }
@@ -127,7 +150,7 @@ internal sealed class DashboardPanelRegistration
         }
     }
 
-    public sealed record ActionBinding(MethodInfo Method, DashboardActionAttribute Attribute);
+    public sealed record ActionBinding(string Name, DashboardActionAttribute Attribute);
 }
 
 public sealed class DashboardPanelRegistry
@@ -167,10 +190,11 @@ public sealed class DashboardPanelRegistry
             try
             {
                 var instance = _services.GetRequiredService(registration.PanelType);
-                if (registration.RenderMethod is not null)
-                {
-                    await InvokeAsync(instance, registration.RenderMethod, cancellationToken).ConfigureAwait(false);
-                }
+
+                // Вызов RenderAsync — при появлении панели (GET /dashboard/panels),
+                // не по нажатию кнопки: значения полей пересчитываются перед
+                // сериализацией дескриптора в дашборд.
+                await ((IDashboardPanel)instance).RenderAsync(cancellationToken).ConfigureAwait(false);
 
                 result.Add(BuildDescriptor(registration, instance));
             }
@@ -197,7 +221,7 @@ public sealed class DashboardPanelRegistry
             string.Equals(x.Id, panelId, StringComparison.OrdinalIgnoreCase));
 
         var action = registration?.Actions.FirstOrDefault(x =>
-            string.Equals(x.Method.Name, actionName, StringComparison.OrdinalIgnoreCase));
+            string.Equals(x.Name, actionName, StringComparison.OrdinalIgnoreCase));
 
         if (registration is null || action is null)
         {
@@ -211,8 +235,12 @@ public sealed class DashboardPanelRegistry
 
             try
             {
+                // Сначала значения из формы → свойства панели (скомпилированные
+                // сеттеры), ПОТОМ ExecuteAsync — это путь нажатия кнопки действия
+                // в UI, а не путь обновления панели.
                 BindValues(registration, instance, values);
-                var data = await InvokeAsync(instance, action.Method, cancellationToken).ConfigureAwait(false);
+                var data = await ((IDashboardPanel)instance)
+                    .ExecuteAsync(action.Name, cancellationToken).ConfigureAwait(false);
 
                 var message = data switch
                 {
@@ -229,15 +257,11 @@ public sealed class DashboardPanelRegistry
             }
             catch (Exception ex)
             {
-                var error = ex is TargetInvocationException { InnerException: not null } invocation
-                    ? invocation.InnerException!
-                    : ex;
-
-                _logger.LogWarning(error, "Dashboard action {PanelId}/{ActionName} failed", registration.Id, action.Method.Name);
+                _logger.LogWarning(ex, "Dashboard action {PanelId}/{ActionName} failed", registration.Id, action.Name);
 
                 return new DashboardActionResult(
                     Success: false,
-                    Message: error.Message,
+                    Message: ex.Message,
                     Panel: BuildDescriptor(registration, instance));
             }
         }
@@ -262,7 +286,7 @@ public sealed class DashboardPanelRegistry
 
         var actions = registration.Actions
             .Select(action => new DashboardActionDescriptor(
-                Name: action.Method.Name,
+                Name: action.Name,
                 Label: action.Attribute.Label,
                 Order: action.Attribute.SortOrder,
                 RequireConfirm: action.Attribute.RequireConfirm,
@@ -449,43 +473,5 @@ public sealed class DashboardPanelRegistry
         }
 
         return element.Deserialize(type);
-    }
-
-    private static async Task<object?> InvokeAsync(object instance, MethodInfo method, CancellationToken cancellationToken)
-    {
-        var parameters = method.GetParameters();
-        var arguments = parameters.Length == 1 ? new object?[] { cancellationToken } : null;
-        var result = method.Invoke(instance, arguments);
-        return await AwaitResultAsync(result).ConfigureAwait(false);
-    }
-
-    private static async Task<object?> AwaitResultAsync(object? result)
-    {
-        switch (result)
-        {
-            case null:
-                return null;
-
-            case Task task:
-                await task.ConfigureAwait(false);
-                return task.GetType().IsGenericType
-                    ? task.GetType().GetProperty("Result")?.GetValue(task)
-                    : null;
-
-            case ValueTask valueTask:
-                await valueTask.ConfigureAwait(false);
-                return null;
-
-            default:
-                var resultType = result.GetType();
-                if (resultType.IsGenericType && resultType.GetGenericTypeDefinition() == typeof(ValueTask<>))
-                {
-                    var task = (Task)resultType.GetMethod("AsTask")!.Invoke(result, null)!;
-                    await task.ConfigureAwait(false);
-                    return task.GetType().GetProperty("Result")?.GetValue(task);
-                }
-
-                return result;
-        }
     }
 }

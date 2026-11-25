@@ -17,6 +17,7 @@ using Aspire.Dashboard.Components.Layout;
 using Aspire.Shared;
 using Aspire.Dashboard.Components.Pages;
 using Aspire.Dashboard.Configuration;
+using Aspire.Dashboard.Management;
 using Aspire.Dashboard.Model;
 using Aspire.Dashboard.Otlp;
 using Aspire.Dashboard.Otlp.Grpc;
@@ -315,6 +316,10 @@ public sealed class DashboardWebApplication : IAsyncDisposable
 #pragma warning restore ASPNETCORE9004
 #pragma warning restore FLUENTUI0001
         });
+
+        // Management page: aggregates panels from the configured applications
+        // (Management:Sources) directly, without an intermediate aggregator.
+        builder.Services.AddDashboardManagement(builder.Configuration);
         builder.Services.AddCascadingAuthenticationState();
         builder.Services.AddResponseCompression(options =>
         {

@@ -7,12 +7,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddDemoObservability("app1", "OtelDemo.App1");
 builder.Services.AddSingleton<MessageStore>();
-builder.Services.AddDashboardPanel<App1DemoPanel>();
-
-if (builder.Configuration.GetValue<bool>("Standalone:Enabled"))
-{
-    builder.Services.AddDashboardPanel<StandalonePanel>();
-}
+builder.Services.AddSingleton<CounterService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<CounterService>());
+builder.Services.AddDashboardPanel<CounterPanel>();
 
 var app = builder.Build();
 
@@ -50,7 +47,7 @@ app.MapPost("/api/messages", (MessageRequest request, MessageStore store, ILogge
     var message = new ReceivedMessage(
         Id: Guid.NewGuid(),
         Count: request.Count,
-        Source: string.IsNullOrWhiteSpace(request.Source) ? "app2" : request.Source!,
+        Source: string.IsNullOrWhiteSpace(request.Source) ? "unknown" : request.Source!,
         ReceivedAt: DateTimeOffset.UtcNow);
 
     store.Add(message);
@@ -70,9 +67,9 @@ app.Run();
 
 internal sealed record MessageRequest(long Count, string? Source);
 
-internal sealed record ReceivedMessage(Guid Id, long Count, string Source, DateTimeOffset ReceivedAt);
+public sealed record ReceivedMessage(Guid Id, long Count, string Source, DateTimeOffset ReceivedAt);
 
-internal sealed class MessageStore
+public sealed class MessageStore
 {
     private const int MaxMessages = 100;
     private readonly ConcurrentQueue<ReceivedMessage> _messages = new();
@@ -84,6 +81,15 @@ internal sealed class MessageStore
         {
         }
     }
+
+    public void Clear()
+    {
+        while (_messages.TryDequeue(out _))
+        {
+        }
+    }
+
+    public ReceivedMessage? Last => _messages.LastOrDefault();
 
     public IReadOnlyList<ReceivedMessage> Snapshot()
         => _messages.Reverse().ToArray();

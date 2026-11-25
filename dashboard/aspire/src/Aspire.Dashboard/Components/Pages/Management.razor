@@ -41,7 +41,7 @@
                 {
                     <div class="management-error">
                         Не удалось загрузить панели: @_loadError
-                        <div class="management-muted">Проверьте, что app2 доступен по @ApiBase.</div>
+                        <div class="management-muted">Проверьте, что приложения-источники доступны (Management:Sources).</div>
                     </div>
                 }
 
@@ -114,7 +114,6 @@
 
                                 <div class="management-connection">
                                     <span>Public: <code>@state.PublicUrl</code></span>
-                                    <span>Internal: <code>@state.DnsName @(state.Addresses.Count > 0 ? $"({string.Join(", ", state.Addresses)})" : "")</code></span>
                                 </div>
                             </div>
 

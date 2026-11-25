@@ -28,7 +28,8 @@ dashboard/
 | `Components/Layout/ResourcesLayout.razor.cs` | новая `ResourceTab.Management`, вкладка после Metrics, URL/парсинг |
 | `Shared/DashboardUrls.cs` | `ManagementBasePath` и `ManagementUrl()` |
 | `Components/Pages/Management.razor` | страница внутри `resource-content` |
-| `Components/Pages/Management.razor.cs` | загрузка `/app2/api/panels`, действия, фильтр |
+| `Components/Pages/Management.razor.cs` | UI страницы: форма, фильтр, действия, уведомления |
+| `Management/*` | домен: `ManagementOptions` (`Management:Sources`), `ManagementModels` (DTO), `ManagementPanelService` (агрегация и действия), регистрация DI |
 | `Components/Pages/Management.razor.css` | стили на переменных Aspire Dashboard |
 | `Components/Pages/FileBrowser.razor(.cs/.css)` | файловый браузер для вкладок «Логи» / «Share» |
 | `Components/Files/FileBrowserTabService.cs` | опциональные корни вкладок из конфигурации/DI |
@@ -64,30 +65,37 @@ CSS/тему дашборда.
 
 Она:
 
-- запрашивает `GET /app2/api/panels` **на сервере** (`Management__ApiBaseUrl`);
-- показывает фильтр **«Приложение»** — все / app1 / другие источники;
+- запрашивает панели **на сервере** напрямую у каждого приложения из
+  `Management:Sources` (`GET {source}/dashboard/panels`);
+- показывает фильтр **«Приложение»** — все / app1 / app2;
 - клик по app в левом списке ресурсов открывает `/management/resource/{app}` и фильтрует панели;
 - в заголовке каждой панели — версия приложения из assembly (`v1.0.0`, `v10.0.2`);
 - рисует панели выбранного app;
 - поддерживает text/date/int/bool;
-- отправляет `POST /app2/api/panels/{source}/{panel}/actions/{action}`;
+- отправляет `POST {source}/dashboard/panels/{panel}/actions/{action}` напрямую;
 - показывает результат в колокольчике Aspire Dashboard (Notification Center).
 
 Так как запрос идёт с сервера дашборда, страница работает и через gateway
-(`:8080`), и при прямом открытии дашборда (`:18888`), если контейнер видит app2.
+(`:8080`), и при прямом открытии дашборда (`:18888`), если контейнер видит источники.
 
-Настройка источника:
+Настройка источников (дашборд знает их сам, промежуточного агрегатора нет):
 
 ```yaml
 environment:
-  Management__ApiBaseUrl: http://app2:8080/api
+  Management__Sources__0__Name: app1
+  Management__Sources__0__Url: http://app1:8080
+  Management__Sources__0__PublicUrl: http://localhost:8081
+  Management__Sources__1__Name: app2
+  Management__Sources__1__Url: http://app2:8080
+  Management__Sources__1__PublicUrl: http://localhost:8082
+  # опционально: Management__TimeoutSeconds: 10
 ```
 
 ## Фильтр по приложению
 
-Список приложений строится из ответа `/api/panels`. При выборе app1 остаются
+Список приложений строится из `Management:Sources`. При выборе app1 остаются
 только панели app1; «Все приложения» показывает всё. Новый app появится в
-фильтре автоматически после добавления в `Dashboard:Sources`.
+фильтре после добавления ещё одной пары `Management__Sources__N__*`.
 
 ## Файловый браузер «Логи» / «Share»
 

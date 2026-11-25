@@ -10,7 +10,7 @@
 src/
   Dashboard.Client/     # OTel + SDK панелей: атрибуты, DI, /dashboard/panels
   App1.Api/             # Web API: принимает сообщения, пишет лог, панель app1
-  App2.Counter/         # счётчик +1/сек, OTLP, агрегация панелей app1
+  App2.Counter/         # счётчик +1/сек, OTLP, свои панели
 dashboard/
   aspire/               # vendored исходники Aspire 17.0.0
   Dockerfile            # сборка кастомного dashboard
@@ -69,19 +69,20 @@ app1/app2 ── OTLP/gRPC ──→ aspire-dashboard:18889
                                 ▼
                        http://localhost:18888
 
-app2 ── /api/panels ──→ dashboard /management
-app1 ←── POST /api/messages ── app2
+dashboard /management ──→ app1: /dashboard/panels
+                     └──→ app2: /dashboard/panels
 ```
 
-Dashboard запрашивает панели у app2 **на сервере** (`Management__ApiBaseUrl=http://app2:8080/api`), поэтому proxy и CORS не нужны.
+Дашборд запрашивает панели **на сервере** напрямую у каждого приложения из
+`Management__Sources__*`, поэтому proxy и CORS не нужны.
 
 ## Панели приложений
 
 `Dashboard.Client` даёт атрибуты:
 
 ```csharp
-[DashboardPanel("Панель app1", order: 10)]
-public sealed class App1DemoPanel(ILogger<App1DemoPanel> logger)
+[DashboardPanel("Моя панель", order: 10)]
+public sealed class MyPanel(ILogger<MyPanel> logger) : IDashboardPanel
 {
     [DashboardInput("Имя", sortOrder: 1)]
     public string Name { get; set; } = "";
@@ -95,32 +96,62 @@ public sealed class App1DemoPanel(ILogger<App1DemoPanel> logger)
     [DashboardInput("Активно", DashboardInputType.Bool, sortOrder: 4)]
     public bool Enabled { get; set; }
 
-    public Task Render() { Name = "Ваня"; return Task.CompletedTask; }
+    // при появлении панели: каждый GET /dashboard/panels
+    public Task RenderAsync(CancellationToken ct = default)
+    {
+        Name = "Ваня";
+        return Task.CompletedTask;
+    }
 
     [DashboardAction("Применить")]
     public Task<string> Apply() => Task.FromResult($"Принято: {Name}, {Count}");
+
+    // по нажатию кнопки: значения формы уже записаны в свойства выше
+    public async Task<object?> ExecuteAsync(string actionName, CancellationToken ct = default)
+        => actionName switch
+        {
+            nameof(Apply) => await Apply().ConfigureAwait(false),
+            _ => throw new InvalidOperationException($"Unknown action '{actionName}'.")
+        };
 }
 ```
+
+Атрибуты `[DashboardPanel]`/`[DashboardInput]`/`[DashboardAction]` — только
+метаданные (заголовок, типы полей, кнопки); читаются рефлексией **один раз при
+регистрации**. В рантайме запроса рефлексии нет:
+
+- `RenderAsync()` — вызывается **при появлении панели**: каждый
+  `GET /dashboard/panels` (открытие/обновление страницы «Управление»),
+  пересчитывает значения полей перед сериализацией в дашборд;
+- `ExecuteAsync(actionName)` — вызывается **по нажатию кнопки действия**:
+  клик → SignalR circuit → `POST .../actions/{actionName}` → сначала
+  `BindValues` записывает значения формы в свойства (скомпилированные
+  сеттеры), затем диспетчер `switch (actionName)` вызывает метод с
+  `[DashboardAction]` напрямую.
 
 Подключение через DI в приложении:
 
 ```csharp
-builder.Services.AddDashboardPanel<App1DemoPanel>();
+builder.Services.AddDashboardPanel<MyPanel>();
 app.MapDashboardPanels();
 ```
 
 Панель — singleton с обычным constructor injection (`ILogger`, `CounterService`, ...).
+Контракт — интерфейс `IDashboardPanel`: `RenderAsync` вызывается при появлении
+панели (каждый `GET /dashboard/panels`), `ExecuteAsync` — по нажатию кнопки
+действия. Рефлексии в рантайме нет: атрибуты читаются один раз при регистрации,
+доступы к свойствам компилируются в делегаты.
 
 ### Управление
 
 На странице **«Управление»**:
 
-- фильтр **«Приложение»**: все / app1;
-- клик по `app1` в левом resource pane фильтрует панели;
+- фильтр **«Приложение»**: все / настроенные источники (`app2`);
+- клик по имени в левом resource pane фильтрует панели по источнику;
 - поля `text`, `date`, `int`, `bool`;
-- кнопка **«Применить»**;
-- версия приложения в заголовке панели: `Панель app1 v1.0.0`;
-- `Public` / `Internal` адреса приложения;
+- кнопки действий (включая «Применить»);
+- версия приложения в заголовке панели: `Счётчик app2 v10.0.2`;
+- `Public` адрес приложения;
 - результат действия уходит в **колокольчик** Aspire Dashboard (`INotificationService`).
 
 Скриншот: `docs/management.png`.
@@ -138,7 +169,46 @@ POST /dashboard/panels/{panelId}/actions/{actionName}
 { "values": { "Name": "Ваня", "Count": 42, "Enabled": true } }
 ```
 
-SDK записывает значения в свойства, вызывает action и возвращает полный снимок панели.
+SDK записывает значения в свойства (скомпилированные сеттеры), вызывает
+`IDashboardPanel.ExecuteAsync` и возвращает полный снимок панели.
+
+### Панели app1
+
+app1 — домен «собственный счётчик», одна панель. Живёт по адресу
+`app1:8080/dashboard/panels` и видна в Management, потому что app1 указан
+в `Management__Sources__0__*` у дашборда.
+
+- **«Счётчик app1»** (`CounterPanel` + свой `CounterService`) — независимый
+  счётчик этого приложения: `Step`/`Enabled`, «Применить», «Сбросить»
+  с confirm. Тикает раз в секунду, как и счётчик app2.
+
+Журнал сообщений (`MessageStore`, `POST/GET /api/messages`) остаётся API
+приложения, отдельной панели у него больше нет.
+
+### Панели app2
+
+app2 — обычное приложение со своими панелями, без роли агрегатора. Панель
+**«Счётчик app2»** (`CounterPanel`) управляет живым `CounterService`:
+
+- `RenderAsync` — при появлении панели читает `Step`/`Enabled` из сервиса;
+- **«Применить»** — `SetStep`/`SetEnabled`;
+- **«Сбросить»** — `counter.Reset()`, с `RequireConfirm` (confirm в UI).
+
+Агрегацию панелей делает **сам дашборд** (домен
+`dashboard/aspire/src/Aspire.Dashboard/Management/`): он читает
+`Management:Sources` и ходит в каждое приложение напрямую. Имена источников
+совпадают с OTel-именами (`OTEL_SERVICE_NAME`), поэтому клик по ресурсу и
+фильтр `/management/resource/{name}` работают без настройки. Источники
+задаются у контейнера дашборда:
+
+```yaml
+Management__Sources__0__Name: app1
+Management__Sources__0__Url: http://app1:8080
+Management__Sources__0__PublicUrl: http://localhost:8081
+Management__Sources__1__Name: app2
+Management__Sources__1__Url: http://app2:8080
+Management__Sources__1__PublicUrl: http://localhost:8082
+```
 
 ## Файловый браузер
 
@@ -186,9 +256,7 @@ http://aspire-dashboard:18889
 Метрики app2:
 
 - `app2.counter.value`;
-- `app2.counter.increments`;
-- `app2.messages.sent`;
-- `app2.messages.sent.value`.
+- `app2.counter.increments`.
 
 Логи:
 
@@ -221,11 +289,17 @@ ASPIRE_DASHBOARD_IMAGE=ra-monitor-dashboard:17.0.0
 
 | Переменная | Назначение |
 |---|---|
-| `App1__BaseUrl` | адрес app1 (`http://app1:8080`) |
-| `Dashboard__Sources__0__Name` | имя источника панелей (`app1`) |
-| `Dashboard__Sources__0__Url` | внутренний адрес app1 |
-| `Dashboard__Sources__0__PublicUrl` | внешний адрес для отображения |
-| `Management__ApiBaseUrl` | API app2 для Management dashboard |
+| `OTEL_SERVICE_NAME` | имя сервиса в OTel (и имя источника панелей) app2 |
+
+Ключевые переменные `aspire-dashboard` (источники панелей):
+
+| Переменная | Назначение |
+|---|---|
+| `Management__Sources__0__Name` | имя первого источника (`app1`) |
+| `Management__Sources__0__Url` | внутренний адрес app1 |
+| `Management__Sources__0__PublicUrl` | внешний адрес app1 для UI |
+| `Management__Sources__1__*` | вторым источником идёт `app2` |
+| `Management__TimeoutSeconds` | таймаут запроса к источнику (10) |
 
 ## Сборка
 
@@ -270,7 +344,7 @@ docker compose up -d --build
 ## Troubleshooting
 
 - **Dashboard не открывается** — `docker compose ps`, `docker compose logs aspire-dashboard`.
-- **Нет панелей** — `curl http://localhost:8082/api/panels`; проверьте `Dashboard:Sources`.
+- **Нет панелей** — `curl http://localhost:8082/dashboard/panels`; источники задаются `Management__Sources__*` у контейнера дашборда.
 - **Нет вкладок Логи/Share** — не задан `Dashboard__Files__Logs__Path` / `Share__Path`.
 - **Нет JSON/YAML подсветки** — preview доступен только для UTF-8 файлов до 5 МБ.
 - **Порт занят** — измените `DASHBOARD_PORT` / `APP*_PORT` в `.env`.
