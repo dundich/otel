@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <RootNamespace>Dashboard.Client</RootNamespace>
-    <AssemblyName>Dashboard.Client</AssemblyName>
+    <RootNamespace>RaMonitor.Panels</RootNamespace>
+    <AssemblyName>RaMonitor.Panels</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />

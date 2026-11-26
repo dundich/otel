@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace Dashboard.Client;
+namespace RaMonitor.Panels;
 
 public sealed record DashboardPanelDescriptor(
     string Id,

@@ -1,7 +1,7 @@
 using System.Linq.Expressions;
 using System.Reflection;
 
-namespace Dashboard.Client;
+namespace RaMonitor.Panels;
 
 /// <summary>
 /// Fluent registration of dashboard panels. This is the primary API:

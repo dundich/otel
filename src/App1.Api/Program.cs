@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics.Metrics;
 using App1.Api;
-using Dashboard.Client;
+using RaMonitor.Panels;
 
 var builder = WebApplication.CreateBuilder(args);
 

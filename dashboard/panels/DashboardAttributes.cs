@@ -1,4 +1,4 @@
-namespace Dashboard.Client;
+namespace RaMonitor.Panels;
 
 /// <summary>
 /// Optional sugar for builder registration: marks a class as a dashboard panel

@@ -8,7 +8,7 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
-namespace Dashboard.Client;
+namespace RaMonitor.Panels;
 
 /// <summary>
 /// Minimal OpenTelemetry setup without Aspire. Telemetry is exported over OTLP/gRPC

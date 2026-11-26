@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 
-namespace Dashboard.Client;
+namespace RaMonitor.Panels;
 
 public static class DashboardPanelsExtensions
 {

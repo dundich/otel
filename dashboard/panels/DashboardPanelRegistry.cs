@@ -5,7 +5,7 @@ using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace Dashboard.Client;
+namespace RaMonitor.Panels;
 
 /// <summary>
 /// Registration of one panel: type + metadata collected by

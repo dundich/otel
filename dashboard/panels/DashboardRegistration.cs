@@ -4,7 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace Dashboard.Client;
+namespace RaMonitor.Panels;
 
 /// <summary>
 /// Opt-in self-registration of an app URL in the dashboard host.

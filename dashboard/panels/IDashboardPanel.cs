@@ -1,4 +1,4 @@
-namespace Dashboard.Client;
+namespace RaMonitor.Panels;
 
 /// <summary>
 /// Contract implemented by every dashboard panel class. Metadata (title, inputs,

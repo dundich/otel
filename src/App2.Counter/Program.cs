@@ -1,5 +1,5 @@
 using App2.Counter;
-using Dashboard.Client;
+using RaMonitor.Panels;
 
 var builder = WebApplication.CreateBuilder(args);
 

@@ -13,12 +13,12 @@
 
 ```text
 src/
-  Dashboard.Client/     # OTel + SDK панелей: атрибуты, DI, /dashboard/panels
   App1.Api/             # Web API: принимает сообщения, пишет лог, панель app1
   App2.Counter/         # счётчик +1/сек, OTLP, свои панели
 dashboard/
   aspire/               # vendored исходники Aspire 17.0.0 + AddDashboard()
   host/                 # web-хост: Program.cs, appsettings.json, все настройки
+  panels/               # «Панельки»: SDK панелей приложений (RaMonitor.Panels)
   Dockerfile            # сборка host
 logs/                   # корень одного из узлов вкладки «Файлы»
 compose.yaml
@@ -95,7 +95,7 @@ dashboard/aspire/Aspire.Dashboard    библиотека: UI, OTLP, API, regist
 |---|---|
 | `dashboard/host` | `Program.cs`, конфигурация, `wwwroot`, логотип, Docker |
 | `dashboard/aspire` | Blazor-компоненты, OTLP-приём, telemetry API, registry, Management, файловый браузер |
-| `src/Dashboard.Client` | SDK панелей для приложений (`AddDashboardPanels`, `IDashboardPanel`) |
+| `dashboard/panels` («Панельки», `RaMonitor.Panels`) | SDK панелей для приложений (`AddDashboardPanels`, `IDashboardPanel`) |
 | `src/App1.Api`, `src/App2.Counter` | демо-приложения, отправляют OTLP и регистрируют себя |
 
 Границы важны: библиотека **не читает** `appsettings.json` хоста сама и не

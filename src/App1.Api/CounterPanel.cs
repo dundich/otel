@@ -1,4 +1,4 @@
-using Dashboard.Client;
+using RaMonitor.Panels;
 
 namespace App1.Api;
 

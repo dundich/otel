@@ -8,7 +8,9 @@
 ```text
 dashboard/
   Dockerfile
-  aspire/                    # vendored исходники Aspire v17.0.0
+  host/                       # web-хост RaMonitor.Host: Program.cs, appsettings, wwwroot
+  panels/                     # «Панельки»: SDK панелей приложений (RaMonitor.Panels)
+  aspire/                     # vendored исходники Aspire v17.0.0
     src/Aspire.Dashboard/
       Components/Layout/ResourcesLayout.razor(.cs/.css)
       Components/Pages/Management.razor(.cs/.css)

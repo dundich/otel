@@ -1,4 +1,4 @@
-using Dashboard.Client;
+using RaMonitor.Panels;
 
 namespace App2.Counter;
 
