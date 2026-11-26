@@ -6,6 +6,9 @@
 FROM mcr.microsoft.com/dotnet/sdk:11.0 AS build
 WORKDIR /src
 
+# Optional product version: docker compose build with DASHBOARD_VERSION=1.2.3.
+ARG VERSION
+
 COPY dashboard/ ./
 
 RUN --mount=type=cache,target=/root/.nuget/packages \
@@ -16,6 +19,7 @@ RUN --mount=type=cache,target=/root/.nuget/packages \
     -c Release \
     -o /out \
     -p:PublishAot=false \
+    ${VERSION:+-p:Version=$VERSION} \
     --no-restore
 
 FROM mcr.microsoft.com/dotnet/aspnet:11.0 AS final

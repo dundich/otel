@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Aspire.Shared;
@@ -11,7 +12,10 @@ public static class VersionHelpers
 {
     private static readonly Lazy<string?> s_cachedRuntimeVersion = new Lazy<string?>(GetRuntimeVersion);
 
-    public static string? DashboardDisplayVersion { get; } = AssemblyVersionHelper.GetDisplayVersion(typeof(VersionHelpers).Assembly);
+    // The component host owns the product version. Fall back to the library
+    // assembly for tests and direct library usage.
+    public static string? DashboardDisplayVersion { get; } = AssemblyVersionHelper.GetDisplayVersion(
+        Assembly.GetEntryAssembly() ?? typeof(VersionHelpers).Assembly);
 
     public static string? RuntimeVersion => s_cachedRuntimeVersion.Value;
 

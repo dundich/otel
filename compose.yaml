@@ -5,6 +5,8 @@ services:
     build:
       context: .
       dockerfile: dashboard/Dockerfile
+      args:
+        VERSION: ${DASHBOARD_VERSION:-}
     image: ${ASPIRE_DASHBOARD_IMAGE:-ra-monitor-dashboard:17.0.0}
     environment:
       # Step 1 demo: no login token. Only bind to 127.0.0.1 and never expose publicly.

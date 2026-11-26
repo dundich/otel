@@ -69,8 +69,37 @@ docker compose down
 
 ## Dashboard как компонент
 
-`Aspire.Dashboard` — библиотека. Хост регистрирует её fluent-методом, настройки
-сгруппированы по доменам:
+### Архитектура
+
+Дашборд — это не отдельное приложение, а **библиотека** `Aspire.Dashboard`
+с fluent-регистрацией в DI. Web-хост (`dashboard/host`) — обычное ASP.NET Core
+приложение, которое:
+
+- создаёт `WebApplicationBuilder`;
+- передаёт дашборду свои настройки через доменные билдеры;
+- вызывает `UseDashboard()` для middleware и endpoints;
+- владеет `appsettings.json`, статикой, портами и брендингом.
+
+```text
+dashboard/host/RaMonitor.Host        web-хост, точка входа
+        │  ProjectReference
+        ▼
+dashboard/aspire/Aspire.Dashboard    библиотека: UI, OTLP, API, registry, файлы
+```
+
+| Проект | Ответственность |
+|---|---|
+| `dashboard/host` | `Program.cs`, конфигурация, `wwwroot`, логотип, Docker |
+| `dashboard/aspire` | Blazor-компоненты, OTLP-приём, telemetry API, registry, Management, файловый браузер |
+| `src/Dashboard.Client` | SDK панелей для приложений (`AddDashboardPanels`, `IDashboardPanel`) |
+| `src/App1.Api`, `src/App2.Counter` | демо-приложения, отправляют OTLP и регистрируют себя |
+
+Границы важны: библиотека **не читает** `appsettings.json` хоста сама и не
+создаёт `WebApplication`. Всё, что зависит от окружения, приходит из хоста.
+
+### Регистрация в DI
+
+Минимальный хост:
 
 ```csharp
 using Aspire.Dashboard;
@@ -82,28 +111,151 @@ builder.AddDashboard(dashboard => dashboard
         .Title("РА-Монитор")
         .LogoUrl("/img/logo-ra.svg"))
     .Hosting(hosting => hosting
-        .BasePath("/monitor")
-        .PublicUrl("https://example.com/monitor")
+        .BasePath("/")
+        .PublicUrl("http://localhost:18888")
         .EndpointUrls("http://0.0.0.0:18888"))
-    .Files(files => files
-        .Logs("/workspace/logs", "Логи")
-        .Share("/host-home", "Share"))
     .Otlp(otlp => otlp
         .GrpcEndpoint("http://0.0.0.0:18889")
         .SuppressUnsecuredMessage(true))
+    .Files(files => files
+        .Logs("/workspace/logs")
+        .Share("/host-home"))
     .Management(management => management
         .Timeout(10))
     .Security(security => security
         .AllowAnonymous(true)));
 
 var app = builder.Build();
+
 app.UseDashboard();
+
 app.Run();
 ```
 
-`AddDashboard()` регистрирует сервисы в DI, `UseDashboard()` добавляет middleware
-и endpoints. Конфигурация остаётся в хосте; при необходимости её можно поднять
-целиком и переопределить отдельные домены:
+`AddDashboard()`:
+
+- создаёт `DashboardBuilder` и применяет домены;
+- переносит значения в `IConfiguration` (in-memory provider добавляется последним,
+  поэтому настройки хоста выигрывают у env);
+- регистрирует `DashboardComponentOptions` и `DashboardWebApplication` как
+  singleton в DI;
+- добавляет все сервисы дашборда: Blazor Server, Fluent UI, OTLP, telemetry,
+  registry, Management, файловый браузер, авторизацию;
+- настраивает Kestrel endpoints из `Hosting.EndpointUrls` и OTLP endpoint.
+
+`UseDashboard()`:
+
+- монтирует base path (`UsePathBase`);
+- добавляет `UseRouting` **после** `UsePathBase`, иначе `_blazor` останется
+  в корне хоста;
+- настраивает localization, CORS, forwarded headers, auth, antiforgery;
+- подключает статику и `MapStaticAssets()` (включая `_framework/blazor.web.js`);
+- маппит Blazor-компоненты, OTLP/gRPC, OTLP/HTTP, telemetry API, registry,
+  health checks, файловый браузер.
+
+Порядок middleware намеренно повторяет оригинальный Aspire Dashboard: auth
+идёт после forwarded headers и CORS, antiforgery — после authorization,
+а OTLP endpoints не пересекаются с UI.
+
+### Домены настроек
+
+Каждый домен — отдельный билдер. Методы можно вызывать в любом порядке;
+цепочка возвращает `DashboardBuilder`.
+
+| Домен | Билдер | Методы |
+|---|---|---|
+| Брендинг | `Branding` | `Title(string)`, `LogoUrl(string)` |
+| Хостинг | `Hosting` | `BasePath(string)`, `PublicUrl(string)`, `EndpointUrls(string)` |
+| Файлы | `Files` | `Logs(path, title?)`, `Share(path, title?)` |
+| OTLP | `Otlp` | `GrpcEndpoint(string)`, `HttpEndpoint(string)`, `Unsecured(bool)`, `SuppressUnsecuredMessage(bool)` |
+| Управление | `Management` | `Timeout(int)`, `Source(name, url, publicUrl?)` |
+| Безопасность | `Security` | `AllowAnonymous(bool)` |
+
+#### Branding
+
+```csharp
+.Branding(branding => branding
+    .Title("РА-Монитор")
+    .LogoUrl("/img/logo-ra.svg"))
+```
+
+- `Title` попадает в `Dashboard:ApplicationName` и
+  `ASPIRE_DASHBOARD_APPLICATION_NAME`, поэтому используется в шапке,
+  `<title>` и login-странице.
+- `LogoUrl` подставляется в компонент `AspireLogo`.
+- Если `LogoUrl` начинается с `/`, base path добавляется автоматически:
+  `/monitor` + `/img/logo-ra.svg` → `/monitor/img/logo-ra.svg`.
+- Абсолютный URL (`https://cdn/logo.svg`) не переписывается.
+- Логотип — обычный файл хоста в `wwwroot`; в демо это
+  `dashboard/host/wwwroot/img/logo-ra.svg`.
+
+#### Hosting
+
+```csharp
+.Hosting(hosting => hosting
+    .BasePath("/monitor")
+    .PublicUrl("https://example.com/monitor")
+    .EndpointUrls("http://0.0.0.0:18888"))
+```
+
+- `BasePath` — путь монтирования UI, API и Blazor-цепочки.
+- `PublicUrl` — адрес для ссылок и отображения (может отличаться от listen URL).
+- `EndpointUrls` — Kestrel listen URL; в контейнере обычно
+  `http://0.0.0.0:18888`.
+
+`BasePath` поддерживает `_blazor`, статику, CSS, логотип и ссылки навигации.
+Клиентский `base href` формируется автоматически: `/monitor/`.
+
+#### Files
+
+```csharp
+.Files(files => files
+    .Logs("/workspace/logs", "Логи")
+    .Share("/host-home", "Share"))
+```
+
+`null`-путь скрывает вкладку. Пути читаются из
+`Dashboard:Files:Logs:Path` и `Dashboard:Files:Share:Path`.
+
+#### Otlp
+
+```csharp
+.Otlp(otlp => otlp
+    .GrpcEndpoint("http://0.0.0.0:18889")
+    .HttpEndpoint("http://0.0.0.0:18890")
+    .SuppressUnsecuredMessage(true))
+```
+
+- gRPC — основной канал для приложений;
+- HTTP endpoint опционален;
+- `Unsecured()` выставляет OTLP auth mode в `Unsecured`;
+- `SuppressUnsecuredMessage()` убирает предупреждение в UI.
+
+#### Management
+
+```csharp
+.Management(management => management
+    .Timeout(10)
+    .Source("app1", "http://app1:8080", "http://localhost:8081"))
+```
+
+`Source` — статический fallback. Основной путь — registry: приложения сами
+публикуют свой internal URL. Если registry пуст, дашборд использует
+`Management:Sources`.
+
+#### Security
+
+```csharp
+.Security(security => security.AllowAnonymous(true))
+```
+
+Шаг-1 демо: без логина и API-ключей. В production вызывайте
+`AllowAnonymous(false)` и настраивайте auth/keys через стандартную
+конфигурацию Aspire.
+
+### FromConfiguration
+
+Чтобы не дублировать чтение конфигурации, можно поднять все домены разом:
 
 ```csharp
 builder.AddDashboard(dashboard => dashboard
@@ -111,53 +263,217 @@ builder.AddDashboard(dashboard => dashboard
     .Branding(branding => branding.Title("РА-Монитор")));
 ```
 
-Домены:
+`FromConfiguration` читает привычные ключи:
 
-| Домен | Что настраивает |
+| Домен | Ключи |
 |---|---|
-| `Branding` | заголовок и logo (title/logo из хоста) |
-| `Hosting` | base path, public URL, listen URLs |
-| `Files` | вкладки «Логи» и «Share» |
-| `Otlp` | OTLP/gRPC и OTLP/HTTP endpoints |
-| `Management` | таймаут и статические источники панелей |
-| `Security` | unsecured-режим шага 1 |
+| Branding | `Dashboard:Branding:Title`, `Dashboard:Branding:LogoUrl`, fallback `Dashboard:ApplicationName` |
+| Hosting | `Dashboard:BasePath`, `Dashboard:Frontend:PublicUrl`, `ASPNETCORE_URLS` |
+| Files | `Dashboard:Files:Logs:Path/Title`, `Dashboard:Files:Share:Path/Title` |
+| Otlp | `ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL`, `ASPIRE_DASHBOARD_OTLP_HTTP_ENDPOINT_URL`, `Dashboard:Otlp:*` |
+| Management | `Management:TimeoutSeconds`, `Management:Sources:*` |
+| Security | `ASPIRE_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS` |
 
-Все настройки по умолчанию лежат в `dashboard/host/appsettings.json`:
+Вызовы после `FromConfiguration` работают как override.
+
+### Настройки хоста
+
+Все значения по умолчанию — в `dashboard/host/appsettings.json`:
 
 ```json
 {
+  "AllowedHosts": "*",
+
   "ASPNETCORE_URLS": "http://0.0.0.0:18888",
   "ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL": "http://0.0.0.0:18889",
+  "ASPIRE_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS": "true",
+
   "Dashboard": {
     "BasePath": "/",
+
     "Branding": {
       "Title": "РА-Монитор",
       "LogoUrl": "/img/logo-ra.svg"
     },
-    "Frontend": { "PublicUrl": "http://localhost:18888" },
+
+    "Frontend": {
+      "PublicUrl": "http://localhost:18888"
+    },
+
+    "Otlp": {
+      "SuppressUnsecuredMessage": true
+    },
+
     "Files": {
-      "Logs": { "Path": "/workspace/logs" },
-      "Share": { "Path": "/host-home" }
+      "Logs": { "Path": "/workspace/logs", "Title": "Логи" },
+      "Share": { "Path": "/host-home", "Title": "Share" }
+    }
+  },
+
+  "Management": {
+    "TimeoutSeconds": 10
+  },
+
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
     }
   }
 }
 ```
 
-Разные хосты могут иметь свои base URL и брендинг:
+Переопределение через env:
 
 ```yaml
 Dashboard__BasePath: /monitor
 Dashboard__Frontend__PublicUrl: https://example.com/monitor
 Dashboard__Branding__Title: РА-Монитор
 Dashboard__Branding__LogoUrl: /img/logo-ra.svg
+Dashboard__Files__Logs__Path: /workspace/logs
+Dashboard__Files__Share__Path: /host-home
+ASPNETCORE_URLS: http://0.0.0.0:18888
+ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL: http://0.0.0.0:18889
+ASPIRE_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS: "true"
 ```
 
-Если dashboard смонтирован не в `/`, URL регистрации приложений тоже должен
-включать base path:
+### Свой base URL у каждого хоста
+
+Один и тот же образ можно смонтировать под разными путями:
 
 ```yaml
-DASHBOARD_REGISTRY_URL: http://aspire-dashboard:18888/monitor/api/registry
+# хост A
+Dashboard__BasePath: /
+Dashboard__Frontend__PublicUrl: http://localhost:18888
+
+# хост B
+Dashboard__BasePath: /monitor
+Dashboard__Frontend__PublicUrl: https://example.com/monitor
+DASHBOARD_REGISTRY_URL: http://dashboard:18888/monitor/api/registry
 ```
+
+Важно: при `BasePath != "/"` **все** endpoints дашборда, включая registry,
+переезжают под base path. Приложения должны регистрироваться по адресу
+с префиксом:
+
+```text
+http://aspire-dashboard:18888/monitor/api/registry
+```
+
+Если этого не сделать, Management останется пустым: приложения будут стучаться
+в `/api/registry` и получать 404.
+
+### Как встроить в другой хост
+
+1. Добавить `ProjectReference` на `Aspire.Dashboard.csproj`.
+2. Убедиться, что хост target'ит `net11.0` (исходники Aspire 17).
+3. Включить `RequiresAspNetWebAssets=true`, если в хосте нет `.razor`-файлов —
+   иначе не попадут `_framework/blazor.web.js` и другие framework assets.
+4. Вызвать `AddDashboard(...)` и `UseDashboard()`.
+5. Положить свой логотип в `wwwroot` и указать `LogoUrl`.
+6. Задать `BasePath`/`PublicUrl`, если дашборд монтируется не в корень.
+
+Пример `.csproj`:
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <RequiresAspNetWebAssets>true</RequiresAspNetWebAssets>
+    <PublishAot>false</PublishAot>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../aspire/src/Aspire.Dashboard/Aspire.Dashboard.csproj" />
+    <PackageReference Include="Dapper.AOT" PrivateAssets="all" Publish="true" />
+    <PackageReference Include="Google.Protobuf" />
+    <PackageReference Include="Azure.Core" />
+  </ItemGroup>
+</Project>
+```
+
+`Dapper.AOT` нужен хосту отдельно: в библиотеке он помечен `PrivateAssets=all`,
+а сгенерированные интерсепторы требуют runtime-сборку. `Google.Protobuf` и
+`Azure.Core` пинятся в `dashboard/host/Directory.Packages.props`, чтобы хост
+не выбирал более старые транзитивные версии.
+
+### Технические детали
+
+- `dashboard/aspire` собирается как **библиотека** (`OutputType=Library`),
+  его `Program.cs` удалён.
+- `dashboard/host` — отдельный `Microsoft.NET.Sdk.Web` проект на `net11.0`.
+- Хост не содержит `.razor`; компоненты берутся из библиотеки через
+  `MapRazorComponents<App>()`.
+- Все настройки библиотеки приходят из `WebApplicationBuilder` хоста;
+  собственный `appsettings.json` библиотеки не публикуется.
+- `MapStaticAssets()` обязателен: без него `_framework/blazor.web.js` не
+  отдаётся при запуске из библиотеки.
+- `UsePathBase` монтируется до явного `UseRouting`, иначе `_blazor` остаётся
+  на корне.
+- Docker собирает `dashboard/host`, а не `Aspire.Dashboard`.
+
+### Версия хоста
+
+Версия продукта принадлежит хосту и задаётся в `dashboard/host/RaMonitor.Host.csproj`:
+
+```xml
+<Version>1.0.0</Version>
+<AssemblyVersion>1.0.0.0</AssemblyVersion>
+<FileVersion>1.0.0.0</FileVersion>
+<InformationalVersion>1.0.0</InformationalVersion>
+```
+
+Где используется:
+
+- `InformationalVersion` — версия в стартовом логе и в HTML
+  `<meta name="aspire-version">` (её читает UI и диагностика);
+- `AssemblyVersion` — версия сборки для CLR/DI;
+- `FileVersion` — файловая версия для Windows/артефактов;
+- версия **панелей приложений** (`Счётчик app2 v10.0.2`) берётся из сборки
+  самого приложения, а не из хоста.
+
+Переопределение в CI без правки файла:
+
+```bash
+cd dashboard/host
+dotnet publish RaMonitor.Host.csproj -c Release -p:PublishAot=false \
+  -p:Version=1.2.3 -p:InformationalVersion=1.2.3
+```
+
+Docker-сборка принимает версию через build arg:
+
+```bash
+DASHBOARD_VERSION=1.2.3 docker compose build aspire-dashboard
+```
+
+`dashboard/Dockerfile` объявляет `ARG VERSION` и передаёт
+`-p:Version=$VERSION` в `dotnet publish`. Без аргумента используется версия
+из `.csproj`.
+
+Если версия нужна в рантайме (например, для `/healthz` или собственного API),
+читайте её из entry assembly:
+
+```csharp
+var version = Assembly.GetEntryAssembly()
+    ?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+    ?.InformationalVersion;
+```
+
+### Проверка
+
+```bash
+# корневой запуск
+curl -I http://localhost:18888/management
+curl -I http://localhost:18888/_framework/blazor.web.js
+curl    http://localhost:18888/api/registry
+
+# запуск под /monitor
+curl -I http://localhost:18888/monitor/management
+curl -I http://localhost:18888/monitor/_blazor/negotiate
+curl    http://localhost:18888/monitor/api/registry
+```
+
+Ожидаемо: `200` для UI/статики, `302` для `/` (redirect на
+`/structuredlogs`), список `app1`/`app2` в registry.
 
 ## Как это работает
 
@@ -414,6 +730,10 @@ APP1_PORT=8081
 APP2_PORT=8082
 
 DASHBOARD_APP_NAME=РА-Монитор
+DASHBOARD_LOGO_URL=/img/logo-ra.svg
+DASHBOARD_BASE_PATH=/
+DASHBOARD_PUBLIC_URL=http://localhost:18888
+DASHBOARD_REGISTRY_URL=http://aspire-dashboard:18888/api/registry
 DASHBOARD_SUPPRESS_UNSECURED=true
 DASHBOARD_LOGS_PATH=/workspace/logs
 DASHBOARD_SHARE_PATH=/host-home
@@ -431,12 +751,24 @@ ASPIRE_DASHBOARD_IMAGE=ra-monitor-dashboard:17.0.0
 | `Service__InternalUrl` | адрес для callback от dashboard |
 | `Service__PublicUrl` | адрес для отображения в UI |
 
-Ключевые переменные `aspire-dashboard`:
+Ключевые переменные `aspire-dashboard` (host):
 
 | Переменная | Назначение |
 |---|---|
+| `Dashboard__Branding__Title` | заголовок и имя приложения |
+| `Dashboard__Branding__LogoUrl` | логотип в шапке |
+| `Dashboard__BasePath` | путь монтирования (`/` или `/monitor`) |
+| `Dashboard__Frontend__PublicUrl` | публичный URL для ссылок |
+| `ASPNETCORE_URLS` | listen URL дашборда |
+| `ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL` | OTLP/gRPC endpoint |
+| `ASPIRE_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS` | unsecured-режим шага 1 |
+| `Dashboard__Files__Logs__Path` | корень вкладки «Логи» |
+| `Dashboard__Files__Share__Path` | корень вкладки «Share» |
 | `Management__TimeoutSeconds` | таймаут запроса к источнику (10) |
 | `Management__Sources__*` | статический fallback, если registry пуст |
+
+Если `Dashboard__BasePath` не `/`, приложениям нужен
+`DASHBOARD_REGISTRY_URL` с этим префиксом.
 
 ## Сборка
 
@@ -450,10 +782,19 @@ Dashboard-хост:
 
 ```bash
 cd dashboard/host
+dotnet run -c Release -p:PublishAot=false
+```
+
+Сборка без запуска:
+
+```bash
+cd dashboard/host
 dotnet build RaMonitor.Host.csproj -c Release -p:PublishAot=false
 ```
 
-Приложения на .NET 10. Для сборки dashboard нужен .NET 11 SDK, потому что исходники Aspire 17 target `net11.0`.
+Приложения на .NET 10. Для сборки dashboard и хоста нужен .NET 11 SDK, потому
+что исходники Aspire 17 target `net11.0`. Хост берёт настройки из
+`dashboard/host/appsettings.json`; переменные окружения переопределяют их.
 
 Всё через Docker:
 
