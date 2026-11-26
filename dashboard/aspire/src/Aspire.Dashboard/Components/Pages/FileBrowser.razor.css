@@ -240,7 +240,3 @@
 }
 
 /* Toolbar with root/up/search controls sits in the layout's title-toolbar-inline section. */
-::deep .title-toolbar-inline {
-    margin: 8px;
-    padding-left: 17px;
-}
