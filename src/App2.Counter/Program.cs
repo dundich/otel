@@ -31,6 +31,12 @@ builder.AddDashboardPanels(panels => panels
             description: "Обнуляет значение счётчика app2")
         .Action(p => p.Report(), "Отчёт (MD)", sortOrder: 3,
             description: "Возвращает Markdown-отчёт о состоянии счётчика")
+    .Panel<MigrationPanel>("Миграции", order: 11,
+        description: "Пример отчёта по миграциям PostgreSQL и Elasticsearch")
+        .Warn("ВНИМАНИЕ: миграция меняет схему PostgreSQL и mapping Elasticsearch. Сделайте резервную копию и согласуйте окно работ.", sortOrder: 0)
+        .Info("Кнопка «Миграция» формирует Markdown-отчёт со списком объектов; команды не выполняются.", sortOrder: 1)
+        .Action(p => p.Report(), "Миграция", sortOrder: 1,
+            description: "Открыть Markdown-отчёт со списком миграций")
     .SearchPanel<CallSearchPanel>("Звонки", order: 20,
         description: "Поиск телефонных звонков по номеру")
         .Info("Можно ввести часть номера. Enter в поле запускает поиск.", sortOrder: 0)
