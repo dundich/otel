@@ -9,13 +9,17 @@ services:
     environment:
       # Step 1 demo: no login token. Only bind to 127.0.0.1 and never expose publicly.
       ASPIRE_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS: "true"
-      ASPIRE_DASHBOARD_APPLICATION_NAME: "${DASHBOARD_APP_NAME:-РА-Монитор}"
+      Dashboard__Branding__Title: "${DASHBOARD_APP_NAME:-РА-Монитор}"
+      Dashboard__Branding__LogoUrl: "${DASHBOARD_LOGO_URL:-/img/logo-ra.svg}"
       # Hide the dashboard's "endpoint is unsecured" warning. The endpoint is still
       # unsecured on purpose in this demo; this only removes the banner.
       Dashboard__Otlp__SuppressUnsecuredMessage: "${DASHBOARD_SUPPRESS_UNSECURED:-true}"
       ASPNETCORE_URLS: http://0.0.0.0:18888
       ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL: http://0.0.0.0:18889
-      Dashboard__Frontend__PublicUrl: http://localhost:${DASHBOARD_PORT:-18888}
+      # Host-specific base URL. Different deployments can mount the same
+      # dashboard under their own path, e.g. DASHBOARD_BASE_PATH=/monitor.
+      Dashboard__BasePath: ${DASHBOARD_BASE_PATH:-/}
+      Dashboard__Frontend__PublicUrl: ${DASHBOARD_PUBLIC_URL:-http://localhost:${DASHBOARD_PORT:-18888}}
       Dashboard__Files__Logs__Path: ${DASHBOARD_LOGS_PATH:-/workspace/logs}
       Dashboard__Files__Share__Path: ${DASHBOARD_SHARE_PATH:-/host-home}
     volumes:
@@ -37,7 +41,7 @@ services:
       OTEL_SERVICE_NAME: app1
       OTEL_METRIC_EXPORT_INTERVAL: "2000"
       OTEL_BSP_SCHEDULE_DELAY: "1000"
-      Dashboard__RegistryUrl: http://aspire-dashboard:18888/api/registry
+      Dashboard__RegistryUrl: ${DASHBOARD_REGISTRY_URL:-http://aspire-dashboard:18888/api/registry}
       Service__Name: app1
       Service__InternalUrl: http://app1:8080
       Service__PublicUrl: http://localhost:${APP1_PORT:-8081}
@@ -59,7 +63,7 @@ services:
       OTEL_SERVICE_NAME: app2
       OTEL_METRIC_EXPORT_INTERVAL: "2000"
       OTEL_BSP_SCHEDULE_DELAY: "1000"
-      Dashboard__RegistryUrl: http://aspire-dashboard:18888/api/registry
+      Dashboard__RegistryUrl: ${DASHBOARD_REGISTRY_URL:-http://aspire-dashboard:18888/api/registry}
       Service__Name: app2
       Service__InternalUrl: http://app2:8080
       Service__PublicUrl: http://localhost:${APP2_PORT:-8082}

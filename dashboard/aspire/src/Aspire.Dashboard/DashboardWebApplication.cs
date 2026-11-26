@@ -79,10 +79,13 @@ public sealed class DashboardWebApplication : IAsyncDisposable
         DynamicallyAccessedMemberTypes.PublicConstructors |
         DynamicallyAccessedMemberTypes.PublicProperties |
         DynamicallyAccessedMemberTypes.NonPublicProperties;
-    private readonly WebApplication _app;
-    private readonly ILogger<DashboardWebApplication> _logger;
-    private readonly IOptionsMonitor<DashboardOptions> _dashboardOptionsMonitor;
+    private WebApplication _app = null!;
+    private ILogger<DashboardWebApplication> _logger = null!;
+    private IOptionsMonitor<DashboardOptions> _dashboardOptionsMonitor = null!;
     private readonly IReadOnlyList<string> _validationFailures;
+    private readonly DashboardComponentOptions _componentOptions;
+    private DashboardOptions? _dashboardOptions;
+    private bool _isAllHttps;
     private readonly List<Func<ResolvedEndpointInfo>> _frontendEndPointAccessor = new();
     private Func<ResolvedEndpointInfo>? _otlpServiceGrpcEndPointAccessor;
     private Func<ResolvedEndpointInfo>? _otlpServiceHttpEndPointAccessor;
@@ -131,13 +134,13 @@ public sealed class DashboardWebApplication : IAsyncDisposable
 
     public IReadOnlyList<string> ValidationFailures => _validationFailures;
 
-    public IServiceProvider Services { get; }
+    public IServiceProvider Services { get; private set; } = null!;
 
     /// <summary>
-    /// Create a new instance of the <see cref="DashboardWebApplication"/> class.
+    /// Registers the dashboard in the supplied host builder. Call
+    /// <see cref="Use(WebApplication)"/> after <c>builder.Build()</c> to add the
+    /// middleware and endpoints. The host owns configuration and lifetime.
     /// </summary>
-    /// <param name="preConfigureBuilder">Configuration for the internal app builder *before* normal dashboard configuration is done. This is for unit testing.</param>
-    /// <param name="options">Environment configuration for the internal app builder. This is for unit testing</param>
     [DynamicDependency(RuntimeActivatedComponentMembers, typeof(Components.Layout.MainLayout))]
     [DynamicDependency(RuntimeActivatedComponentMembers, typeof(Components.Layout.ResourcesLayout))]
     [DynamicDependency(RuntimeActivatedComponentMembers, typeof(ConsoleLogs))]
@@ -158,29 +161,24 @@ public sealed class DashboardWebApplication : IAsyncDisposable
     [DynamicDependency(RuntimeActivatedComponentMembers, typeof(Traces))]
     [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "AddRazorComponents and AddInteractiveServerComponents still warn that Blazor does not support trimming. Routed components and MainLayout are explicitly preserved, and circuit serialization uses generated Dashboard and Fluent UI contexts. Remove when Blazor supports trimming: https://aka.ms/aspnet/nativeaot.")]
     public DashboardWebApplication(
-        Action<WebApplicationBuilder>? preConfigureBuilder = null,
-        WebApplicationOptions? options = null)
+        WebApplicationBuilder builder,
+        DashboardComponentOptions? componentOptions = null)
     {
+        ArgumentNullException.ThrowIfNull(builder);
+        _componentOptions = componentOptions ?? new DashboardComponentOptions();
         DashboardExperienceComponents.PreserveLegacyComponents();
+
+        if (!string.IsNullOrWhiteSpace(_componentOptions.Title))
+        {
+            builder.Configuration["Dashboard:ApplicationName"] = _componentOptions.Title;
+            builder.Configuration["ASPIRE_DASHBOARD_APPLICATION_NAME"] = _componentOptions.Title;
+        }
 
         var startupTimestamp = Stopwatch.GetTimestamp();
 
         // Workaround MaxItemCount regression. In .NET 8 the value is set via AppContext.
         // The issue doesn't appear to impact .NET 8, but setting this value ensures the dashbaord is always run with a consistent MaxItemCount value.
         AppContext.SetData("Microsoft.AspNetCore.Components.Web.Virtualization.Virtualize.MaxItemCount", 10_000);
-
-        var builder = options is not null ? WebApplication.CreateBuilder(options) : WebApplication.CreateBuilder();
-
-        // WebApplication.CreateBuilder already enables static web assets in the Development environment.
-        // The dashboard also needs them in other environments when running from source (e.g. to serve
-        // _content/ files from NuGet packages like FluentUI). The call is a no-op when published
-        // because the static web assets manifest doesn't exist.
-        if (!builder.Environment.IsDevelopment())
-        {
-            builder.WebHost.UseStaticWebAssets();
-        }
-
-        preConfigureBuilder?.Invoke(builder);
 
 #if !DEBUG
         builder.Logging.AddFilter("Default", LogLevel.Information);
@@ -260,6 +258,14 @@ public sealed class DashboardWebApplication : IAsyncDisposable
         }
 
         var validDashboardOptions = TryGetDashboardOptions(builder, dashboardConfigSection, out var dashboardOptions, out var failureMessages);
+        _dashboardOptions = dashboardOptions;
+
+        if (!string.IsNullOrWhiteSpace(_componentOptions.PublicUrl))
+        {
+            dashboardOptions.Frontend.PublicUrl = _componentOptions.PublicUrl;
+            builder.Services.PostConfigure<DashboardOptions>(options => options.Frontend.PublicUrl = _componentOptions.PublicUrl);
+        }
+
         // Use the bound snapshot even when validation fails. Resolving options through DI
         // would throw instead of allowing startup failure telemetry to be recorded.
         builder.Services.TryAddSingleton(services => new DashboardStartupTelemetry(
@@ -269,15 +275,8 @@ public sealed class DashboardWebApplication : IAsyncDisposable
 
         if (!validDashboardOptions)
         {
-            // The options have validation failures. Write them out to the user and return a non-zero exit code.
-            // We don't want to start the app, but we need to build the app to access the logger to log the errors.
-            _app = builder.Build();
-            _dashboardOptionsMonitor = _app.Services.GetRequiredService<IOptionsMonitor<DashboardOptions>>();
+            // Validation is reported from Use() once the host logger exists.
             _validationFailures = failureMessages.ToList();
-            _logger = GetLogger();
-            Services = _app.Services;
-            WriteVersion(_logger);
-            WriteValidationFailures(_logger, _validationFailures);
             return;
         }
         else
@@ -288,8 +287,8 @@ public sealed class DashboardWebApplication : IAsyncDisposable
         ConfigureKestrelEndpoints(builder, dashboardOptions);
 
         var browserHttpsPort = dashboardOptions.Frontend.GetEndpointAddresses().FirstOrDefault(IsHttpsOrNull)?.Port;
-        var isAllHttps = browserHttpsPort is not null && IsHttpsOrNull(dashboardOptions.Otlp.GetGrpcEndpointAddress()) && IsHttpsOrNull(dashboardOptions.Otlp.GetHttpEndpointAddress());
-        if (isAllHttps)
+        _isAllHttps = browserHttpsPort is not null && IsHttpsOrNull(dashboardOptions.Otlp.GetGrpcEndpointAddress()) && IsHttpsOrNull(dashboardOptions.Otlp.GetHttpEndpointAddress());
+        if (_isAllHttps)
         {
             // Explicitly configure the HTTPS redirect port as we're possibly listening on multiple HTTPS addresses
             // if the dashboard OTLP URL is configured to use HTTPS too
@@ -479,13 +478,42 @@ public sealed class DashboardWebApplication : IAsyncDisposable
             var applicationNameKey = DashboardApplicationNameKey.Create(dashboardOptions.GetApplicationNameOrDefault());
             options.Cookie.Name = $"{DashboardAntiForgeryCookieNamePrefix}.{applicationNameKey}";
         });
+    }
 
-        _app = builder.Build();
+    /// <summary>
+    /// Adds the dashboard middleware and endpoints to a built host. Call once,
+    /// after <c>builder.Build()</c> and before <c>app.Run()</c>.
+    /// </summary>
+    public WebApplication Use(WebApplication app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+        _app = app;
+
+        // Component-style mounting: a host can expose the dashboard under its
+        // own base URL, e.g. /monitor. Must run before routing and static files.
+        if (_componentOptions.BasePath is { Length: > 1 } basePath)
+        {
+            _app.UsePathBase(basePath);
+        }
+
+        // Explicit routing after UsePathBase. Without this, WebApplication can
+        // insert UseRouting before the path-base middleware and Blazor's
+        // _blazor endpoints stay at the host root instead of the mount path.
+        _app.UseRouting();
 
         _dashboardOptionsMonitor = _app.Services.GetRequiredService<IOptionsMonitor<DashboardOptions>>();
-
         Services = _app.Services;
         _logger = GetLogger();
+
+        if (_validationFailures.Count > 0)
+        {
+            WriteVersion(_logger);
+            WriteValidationFailures(_logger, _validationFailures);
+            throw new InvalidOperationException(
+                "Dashboard configuration is invalid: " + string.Join(" ", _validationFailures));
+        }
+
+        var dashboardOptions = _dashboardOptions!;
 
         var supportedCultureNames = GlobalizationHelpers.ExpandedLocalizedCultures
             .SelectMany(kvp => kvp.Value)
@@ -505,7 +533,7 @@ public sealed class DashboardWebApplication : IAsyncDisposable
             ResolvedEndpointInfo? frontendEndpointInfo = null;
             if (_frontendEndPointAccessor.Count > 0)
             {
-                if (dashboardOptions.Otlp.Cors.IsCorsEnabled)
+                if (_dashboardOptions!.Otlp.Cors.IsCorsEnabled)
                 {
                     var corsOptions = _app.Services.GetRequiredService<IOptions<CorsOptions>>().Value;
 
@@ -584,7 +612,7 @@ public sealed class DashboardWebApplication : IAsyncDisposable
 
         // Use Forwarded Headers middleware if configured. This must run before token validation because sign-in cookie
         // behavior depends on the normalized request scheme.
-        if (builder.Configuration.GetBool(DashboardConfigNames.ForwardedHeaders.ConfigKey) ?? false)
+        if (_app.Configuration.GetBool(DashboardConfigNames.ForwardedHeaders.ConfigKey) ?? false)
         {
             _app.UseForwardedHeaders();
         }
@@ -596,7 +624,7 @@ public sealed class DashboardWebApplication : IAsyncDisposable
         if (!_app.Environment.IsDevelopment())
         {
             _app.UseExceptionHandler("/error");
-            if (isAllHttps)
+            if (_isAllHttps)
             {
                 _app.UseHsts();
             }
@@ -606,7 +634,7 @@ public sealed class DashboardWebApplication : IAsyncDisposable
 
         _app.UseStatusCodePagesWithReExecute("/error/{0}");
 
-        if (isAllHttps)
+        if (_isAllHttps)
         {
             _app.UseHttpsRedirection();
         }
@@ -650,27 +678,33 @@ public sealed class DashboardWebApplication : IAsyncDisposable
             await next(context).ConfigureAwait(false);
         });
 
+        // Serve static web assets from the dashboard library, the host and the
+        // ASP.NET Core framework (including _framework/blazor.web.js).
+        _app.MapStaticAssets();
+
         _app.MapRazorComponents<App>().AddInteractiveServerRenderMode(options =>
         {
-            options.DisableWebSocketCompression = dashboardOptions.Frontend.DisableWebSocketCompression;
+            options.DisableWebSocketCompression = _dashboardOptions!.Frontend.DisableWebSocketCompression;
         });
 
         // Terminal WebSocket proxy
         _app.MapTerminalWebSocket();
 
         // OTLP HTTP services.
-        _app.MapHttpOtlpApi(dashboardOptions.Otlp);
+        _app.MapHttpOtlpApi(_dashboardOptions!.Otlp);
 
         // OTLP gRPC services.
         _app.MapGrpcService<OtlpGrpcMetricsService>();
         _app.MapGrpcService<OtlpGrpcTraceService>();
         _app.MapGrpcService<OtlpGrpcLogsService>();
 
-        _app.MapTelemetryApi(dashboardOptions);
-        _app.MapDashboardApi(dashboardOptions);
+        _app.MapTelemetryApi(_dashboardOptions!);
+        _app.MapDashboardApi(_dashboardOptions!);
         _app.MapServiceRegistry();
         _app.MapDashboardHealthChecks();
         _app.MapFileBrowserApi();
+
+        return _app;
     }
 
     private void PrintSummary(ResolvedEndpointInfo? frontendEndpointInfo)

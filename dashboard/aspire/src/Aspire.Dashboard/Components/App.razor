@@ -1,6 +1,8 @@
-﻿@using Aspire.Dashboard.Configuration
+﻿@using Aspire.Dashboard
+@using Aspire.Dashboard.Configuration
 @using Microsoft.Extensions.Options
 @inject IOptionsMonitor<DashboardOptions> DashboardOptions
+@inject DashboardComponentOptions ComponentOptions
 
 <!DOCTYPE html>
 <html lang="@GlobalizationHelpers.GetHtmlLanguageName(System.Globalization.CultureInfo.CurrentUICulture)">
@@ -13,7 +15,7 @@
     <meta name="dotnet-runtime-mode" content="@VersionHelpers.RuntimeMode" />
     <meta name="aspire-dashboard-legacy-available" content="@DashboardExperienceComponents.IsLegacyAvailable.ToString().ToLowerInvariant()" />
     <meta name="aspire-dashboard-default-experience" content="@(DashboardExperienceComponents.IsLegacyAvailable && DashboardOptions.CurrentValue.UI.DisableModernDashboard == true ? "legacy" : "modern")" />
-    <base href="/" />
+    <base href="@ComponentOptions.BaseHref" />
     <link rel="icon" type="image/x-icon" href="@Assets["favicon.ico"]" />
     <link rel="stylesheet" href="@Assets["_content/Microsoft.FluentUI.AspNetCore.Components/css/reboot.css"]" />
     <link rel="stylesheet" href="@Assets["css/design.css"]" />

@@ -1,0 +1,11 @@
+<Project>
+  <!-- Isolated from the repository's .NET 10 Directory.Build.props: the
+       dashboard host runs on .NET 11 because Aspire 17 sources target net11.0. -->
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>preview</LangVersion>
+    <PublishAot>false</PublishAot>
+  </PropertyGroup>
+</Project>

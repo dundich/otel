@@ -2,6 +2,11 @@
 
 Минимальный пример на **.NET 10**: кастомный **Aspire Dashboard**, собранный из исходников, плюс два приложения с панелями управления и файловым браузером.
 
+Дашборд разделён на **библиотеку-компонент** (`dashboard/aspire`) и
+**web-хост** (`dashboard/host`). Хост владеет всеми настройками и подключает
+дашборд через DI. Это позволяет в будущем встроить dashboard в другой UI-хост
+или смонтировать его под своим base URL.
+
 Без Aspire AppHost, без nginx и без iframe. Всё поднимается через `docker compose`.
 
 ## Что внутри
@@ -12,15 +17,16 @@ src/
   App1.Api/             # Web API: принимает сообщения, пишет лог, панель app1
   App2.Counter/         # счётчик +1/сек, OTLP, свои панели
 dashboard/
-  aspire/               # vendored исходники Aspire 17.0.0
-  Dockerfile            # сборка кастомного dashboard
+  aspire/               # vendored исходники Aspire 17.0.0 + AddDashboard()
+  host/                 # web-хост: Program.cs, appsettings.json, все настройки
+  Dockerfile            # сборка host
 logs/                   # корень вкладки «Логи»
 compose.yaml
 ```
 
 Контейнеры:
 
-- `aspire-dashboard` — кастомный dashboard из `dashboard/aspire`;
+- `aspire-dashboard` — web-хост `dashboard/host`, который подключает dashboard через DI;
 - `app1`;
 - `app2`.
 
@@ -59,6 +65,98 @@ Structured logs   Traces   Metrics   Управление   Логи   Share
 
 ```bash
 docker compose down
+```
+
+## Dashboard как компонент
+
+`Aspire.Dashboard` — библиотека. Хост регистрирует её fluent-методом, настройки
+сгруппированы по доменам:
+
+```csharp
+using Aspire.Dashboard;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.AddDashboard(dashboard => dashboard
+    .Branding(branding => branding
+        .Title("РА-Монитор")
+        .LogoUrl("/img/logo-ra.svg"))
+    .Hosting(hosting => hosting
+        .BasePath("/monitor")
+        .PublicUrl("https://example.com/monitor")
+        .EndpointUrls("http://0.0.0.0:18888"))
+    .Files(files => files
+        .Logs("/workspace/logs", "Логи")
+        .Share("/host-home", "Share"))
+    .Otlp(otlp => otlp
+        .GrpcEndpoint("http://0.0.0.0:18889")
+        .SuppressUnsecuredMessage(true))
+    .Management(management => management
+        .Timeout(10))
+    .Security(security => security
+        .AllowAnonymous(true)));
+
+var app = builder.Build();
+app.UseDashboard();
+app.Run();
+```
+
+`AddDashboard()` регистрирует сервисы в DI, `UseDashboard()` добавляет middleware
+и endpoints. Конфигурация остаётся в хосте; при необходимости её можно поднять
+целиком и переопределить отдельные домены:
+
+```csharp
+builder.AddDashboard(dashboard => dashboard
+    .FromConfiguration(builder.Configuration)
+    .Branding(branding => branding.Title("РА-Монитор")));
+```
+
+Домены:
+
+| Домен | Что настраивает |
+|---|---|
+| `Branding` | заголовок и logo (title/logo из хоста) |
+| `Hosting` | base path, public URL, listen URLs |
+| `Files` | вкладки «Логи» и «Share» |
+| `Otlp` | OTLP/gRPC и OTLP/HTTP endpoints |
+| `Management` | таймаут и статические источники панелей |
+| `Security` | unsecured-режим шага 1 |
+
+Все настройки по умолчанию лежат в `dashboard/host/appsettings.json`:
+
+```json
+{
+  "ASPNETCORE_URLS": "http://0.0.0.0:18888",
+  "ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL": "http://0.0.0.0:18889",
+  "Dashboard": {
+    "BasePath": "/",
+    "Branding": {
+      "Title": "РА-Монитор",
+      "LogoUrl": "/img/logo-ra.svg"
+    },
+    "Frontend": { "PublicUrl": "http://localhost:18888" },
+    "Files": {
+      "Logs": { "Path": "/workspace/logs" },
+      "Share": { "Path": "/host-home" }
+    }
+  }
+}
+```
+
+Разные хосты могут иметь свои base URL и брендинг:
+
+```yaml
+Dashboard__BasePath: /monitor
+Dashboard__Frontend__PublicUrl: https://example.com/monitor
+Dashboard__Branding__Title: РА-Монитор
+Dashboard__Branding__LogoUrl: /img/logo-ra.svg
+```
+
+Если dashboard смонтирован не в `/`, URL регистрации приложений тоже должен
+включать base path:
+
+```yaml
+DASHBOARD_REGISTRY_URL: http://aspire-dashboard:18888/monitor/api/registry
 ```
 
 ## Как это работает
@@ -348,11 +446,11 @@ ASPIRE_DASHBOARD_IMAGE=ra-monitor-dashboard:17.0.0
 dotnet build OtelDemo.slnx -c Release
 ```
 
-Кастомный dashboard:
+Dashboard-хост:
 
 ```bash
-cd dashboard/aspire
-dotnet build src/Aspire.Dashboard/Aspire.Dashboard.csproj -c Release -p:PublishAot=false
+cd dashboard/host
+dotnet build RaMonitor.Host.csproj -c Release -p:PublishAot=false
 ```
 
 Приложения на .NET 10. Для сборки dashboard нужен .NET 11 SDK, потому что исходники Aspire 17 target `net11.0`.

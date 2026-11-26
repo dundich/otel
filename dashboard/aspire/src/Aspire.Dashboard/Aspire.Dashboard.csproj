@@ -5,7 +5,8 @@
     <TargetFramework>net11.0</TargetFramework>
     <ResxCodeGenerator>PublicResXFileCodeGenerator</ResxCodeGenerator>
     <ApplicationIcon>$(MSBuildThisFileDirectory)..\Shared\Aspire.ico</ApplicationIcon>
-    <PublishAot>true</PublishAot>
+    <OutputType>Library</OutputType>
+    <PublishAot>false</PublishAot>
     <PublishDocumentationFile>false</PublishDocumentationFile>
     <!-- .NET 11 persistent services serialize framework-owned state with the internal
          JsonSerializerOptionsProvider instead of CircuitOptions.JsonTypeInfoResolvers.
@@ -232,6 +233,9 @@
 
   <ItemGroup>
     <Content Update="package.json;package-lock.json" CopyToPublishDirectory="Never" />
+    <!-- The dashboard is a library: settings belong to the host project. -->
+    <Content Update="appsettings.json" CopyToPublishDirectory="Never" />
+    <Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
     <Content Remove="wwwroot\js\README.md" />
     <None Include="wwwroot\js\README.md" />
   </ItemGroup>

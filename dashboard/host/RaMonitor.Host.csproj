@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net11.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>preview</LangVersion>
+    <PublishAot>false</PublishAot>
+    <PublishDocumentationFile>false</PublishDocumentationFile>
+    <IsTransformWebConfigDisabled>true</IsTransformWebConfigDisabled>
+    <!-- The host serves Blazor/Razor components from the dashboard library but
+         has no .razor files of its own. Opt in explicitly so the framework's
+         _framework/blazor.web.js static assets are included. -->
+    <RequiresAspNetWebAssets>true</RequiresAspNetWebAssets>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../aspire/src/Aspire.Dashboard/Aspire.Dashboard.csproj" />
+
+    <!-- Keep the host's dependency graph aligned with the dashboard's central
+         versions. Without these pins the host resolves older transitive versions. -->
+    <PackageReference Include="Google.Protobuf" />
+    <PackageReference Include="Azure.Core" />
+    <!-- Dapper's generated interceptors live in the dashboard assembly but need
+         the Dapper.AOT runtime; PrivateAssets in the library prevents flow. -->
+    <PackageReference Include="Dapper.AOT" PrivateAssets="all" Publish="true" />
+  </ItemGroup>
+
+</Project>
