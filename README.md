@@ -69,6 +69,10 @@ docker compose down
 
 ## Dashboard как компонент
 
+> Подробный разбор DI-регистрации, доменов, lifetime и встраивания в другой
+> хост — [`docs/di.md`](docs/di.md). Рабочий пример —
+> `dashboard/host/Program.cs`.
+
 ### Архитектура
 
 Дашборд — это не отдельное приложение, а **библиотека** `Aspire.Dashboard`
