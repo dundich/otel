@@ -657,6 +657,10 @@ fluent-dialog-body .fluent-message-box {
     container-name: page-toolbar;
 }
 
+.page-content-container .content-header {
+    margin-top: 8px;
+}
+
 .filter-toolbar > * {
     flex: 0 0 auto;
 }
