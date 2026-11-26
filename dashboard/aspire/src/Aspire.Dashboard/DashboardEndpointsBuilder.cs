@@ -25,9 +25,9 @@ public static class DashboardEndpointsBuilder
 
     public static void MapFileBrowserApi(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/files/download", (string tab, string path, FileBrowserTabService tabs) =>
+        endpoints.MapGet("/files/download", (string root, string path, FileBrowserRootService roots) =>
         {
-            var browser = tabs.GetById(tab);
+            var browser = roots.GetById(root);
             if (browser is null)
             {
                 return Results.NotFound();

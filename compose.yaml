@@ -22,8 +22,13 @@ services:
       # dashboard under their own path, e.g. DASHBOARD_BASE_PATH=/monitor.
       Dashboard__BasePath: ${DASHBOARD_BASE_PATH:-/}
       Dashboard__Frontend__PublicUrl: ${DASHBOARD_PUBLIC_URL:-http://localhost:${DASHBOARD_PORT:-18888}}
-      Dashboard__Files__Logs__Path: ${DASHBOARD_LOGS_PATH:-/workspace/logs}
-      Dashboard__Files__Share__Path: ${DASHBOARD_SHARE_PATH:-/host-home}
+      Dashboard__Files__Title: "${DASHBOARD_FILES_TITLE:-Файлы}"
+      Dashboard__Files__Roots__logs__Title: "${DASHBOARD_LOGS_TITLE:-Логи}"
+      Dashboard__Files__Roots__logs__Path: ${DASHBOARD_LOGS_PATH:-/workspace/logs}
+      Dashboard__Files__Roots__logs__Url: ${DASHBOARD_LOGS_URL:-/files/logs}
+      Dashboard__Files__Roots__share__Title: "${DASHBOARD_SHARE_TITLE:-Share}"
+      Dashboard__Files__Roots__share__Path: ${DASHBOARD_SHARE_PATH:-/host-home}
+      Dashboard__Files__Roots__share__Url: ${DASHBOARD_SHARE_URL:-/files/share}
     volumes:
       - ./:/workspace:ro
       - ${HOME}:/host-home:ro

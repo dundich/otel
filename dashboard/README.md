@@ -31,8 +31,8 @@ dashboard/
 | `Components/Pages/Management.razor.cs` | UI страницы: форма, фильтр, действия, уведомления |
 | `Management/*` | домен: `ManagementOptions` (`Management:Sources`), `ManagementModels` (DTO), `ManagementPanelService` (агрегация и действия), регистрация DI |
 | `Components/Pages/Management.razor.css` | стили на переменных Aspire Dashboard |
-| `Components/Pages/FileBrowser.razor(.cs/.css)` | файловый браузер для вкладок «Логи» / «Share» |
-| `Components/Files/FileBrowserTabService.cs` | опциональные корни вкладок из конфигурации/DI |
+| `Components/Pages/FileBrowser.razor(.cs/.css)` | одна вкладка «Файлы» с выбором корня в combo |
+| `Components/Files/FileBrowserRootService.cs` | корни файлового браузера: title, path, url из конфигурации/DI |
 | `Components/Controls/AspireLogo.razor` | логотип заменён на `/img/logo-purple.png` |
 | `wwwroot/img/logo-purple.png` | логотип из `cloud-sa.vsrobotics.ru` |
 
@@ -97,15 +97,24 @@ environment:
 только панели app1; «Все приложения» показывает всё. Новый app появится в
 фильтре после добавления ещё одной пары `Management__Sources__N__*`.
 
-## Файловый браузер «Логи» / «Share»
+## Файловый браузер «Файлы»
 
-Вкладки появляются после «Управления» только если задан путь:
+В навигации одна вкладка **«Файлы»** после «Управления». Её заголовок и
+дочерние корни задаются в DI/конфигурации:
 
 ```yaml
 environment:
-  Dashboard__Files__Logs__Path: /workspace/logs
-  Dashboard__Files__Share__Path: /workspace/share
+  Dashboard__Files__Title: Файлы
+  Dashboard__Files__Roots__logs__Title: Логи
+  Dashboard__Files__Roots__logs__Path: /workspace/logs
+  Dashboard__Files__Roots__logs__Url: /files/logs
+  Dashboard__Files__Roots__share__Title: Share
+  Dashboard__Files__Roots__share__Path: /workspace/share
+  Dashboard__Files__Roots__share__Url: /files/share
 ```
+
+Корень выбирается в combo на тулбаре. У каждого корня свой URL, например
+`/files/logs` и `/files/share`; ссылка открывает сразу нужный корень.
 
 Корень монтируется read-only:
 
@@ -114,14 +123,15 @@ volumes:
   - ./:/workspace:ro
 ```
 
-`FileBrowserTabService` регистрируется в DI и отдаёт только настроенные вкладки.
-`FileBrowser.razor` умеет:
+`FileBrowserRootService` регистрируется в DI и отдаёт только настроенные
+корни. `FileBrowser.razor` умеет:
 
+- выбирать корень в combo (меняет URL страницы);
 - маски `*.log`, `*.txt;*.json`;
 - папки выше файлов;
 - колонки: icon, Name, Size, Type, Date Modified, view;
 - вход в папку, «Вверх», «В корень», клавиша Home;
-- download через `/files/download`;
+- download через `/files/download?root=logs&path=...`;
 - preview UTF-8 до 5 МБ в полноэкранном режиме с кнопками back/download;
 - подсветка JSON/YAML (highlight.js);
 - защиту от path traversal.

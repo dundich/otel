@@ -1,5 +1,5 @@
-@page "/logs"
-@page "/share"
+@page "/files"
+@page "/files/{Slug}/{**RelativePath}"
 @layout ResourcesLayout
 
 @using Aspire.Dashboard.Components.Files
@@ -17,7 +17,16 @@
         <ToolbarSection>
             @if (_preview is null)
             {
-                <div class="file-toolbar" role="toolbar" aria-label="Файлы">
+                <div class="file-toolbar" role="toolbar" aria-label="@Title">
+                    <FluentSelect TOption="FileBrowserRoot"
+                                  TValue="FileBrowserRoot"
+                                  Items="@Roots"
+                                  OptionText="@(root => root?.Title)"
+                                  @bind-Value="_selectedRoot"
+                                  @bind-Value:after="OnRootChanged"
+                                  Class="file-root-select"
+                                  AriaLabel="Корень файлов"
+                                  Width="220px" />
                     <button type="button" class="file-button file-icon-button" @onclick="GoRoot" title="В корень (Home)" aria-label="В корень">
                         <FluentIcon Value="@(new Icons.Regular.Size16.Home())" Width="16px" Color="Color.Custom" CustomColor="currentColor" />
                     </button>
@@ -87,7 +96,7 @@
                                 <td class="file-name">
                                     @if (entry.IsDirectory)
                                     {
-                                        <button type="button" class="file-link file-name-button" @onclick="() => Navigate(entry.RelativePath)">
+                                        <button type="button" class="file-link file-name-button" @onclick="() => OpenEntry(entry)">
                                             @entry.Name
                                         </button>
                                     }
@@ -108,7 +117,7 @@
                                 <td class="file-actions">
                                     @if (entry.IsDirectory)
                                     {
-                                        <button type="button" class="file-action-icon" @onclick="() => Navigate(entry.RelativePath)" title="Открыть" aria-label="Открыть">
+                                        <button type="button" class="file-action-icon" @onclick="() => OpenEntry(entry)" title="Открыть" aria-label="Открыть">
                                             <FluentIcon Value="@(new Icons.Regular.Size16.FolderOpen())" Width="16px" Color="Color.Custom" CustomColor="currentColor" />
                                         </button>
                                     }

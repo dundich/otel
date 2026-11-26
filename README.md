@@ -20,7 +20,7 @@ dashboard/
   aspire/               # vendored исходники Aspire 17.0.0 + AddDashboard()
   host/                 # web-хост: Program.cs, appsettings.json, все настройки
   Dockerfile            # сборка host
-logs/                   # корень вкладки «Логи»
+logs/                   # корень одного из узлов вкладки «Файлы»
 compose.yaml
 ```
 
@@ -43,7 +43,7 @@ docker compose up -d --build
 Основные разделы dashboard:
 
 ```text
-Structured logs   Traces   Metrics   Управление   Логи   Share
+Structured logs   Traces   Metrics   Управление   Файлы
 ```
 
 Полезные адреса:
@@ -55,8 +55,8 @@ Structured logs   Traces   Metrics   Управление   Логи   Share
 | http://localhost:18888/traces | трейсы |
 | http://localhost:18888/metrics | метрики |
 | http://localhost:18888/management | панели приложений |
-| http://localhost:18888/logs | файловый браузер логов |
-| http://localhost:18888/share | файловый браузер домашней директории |
+| http://localhost:18888/files/logs | файловый браузер логов |
+| http://localhost:18888/files/share | файловый браузер домашней директории |
 | http://localhost:8081 | app1 API |
 | http://localhost:8082 | app2 API |
 | http://localhost:4317 | OTLP/gRPC |
@@ -122,8 +122,9 @@ builder.AddDashboard(dashboard => dashboard
         .GrpcEndpoint("http://0.0.0.0:18889")
         .SuppressUnsecuredMessage(true))
     .Files(files => files
-        .Logs("/workspace/logs")
-        .Share("/host-home"))
+        .Title("Файлы")
+        .Root("logs", "/workspace/logs", "Логи", "/files/logs")
+        .Root("share", "/host-home", "Share", "/files/share"))
     .Management(management => management
         .Timeout(10))
     .Security(security => security
@@ -170,7 +171,7 @@ app.Run();
 |---|---|---|
 | Брендинг | `Branding` | `Title(string)`, `LogoUrl(string)` |
 | Хостинг | `Hosting` | `BasePath(string)`, `PublicUrl(string)`, `EndpointUrls(string)` |
-| Файлы | `Files` | `Logs(path, title?)`, `Share(path, title?)` |
+| Файлы | `Files` | `Title(string)`, `Root(id, path, title?, url?)`, `Roots(configuration)` |
 | OTLP | `Otlp` | `GrpcEndpoint(string)`, `HttpEndpoint(string)`, `Unsecured(bool)`, `SuppressUnsecuredMessage(bool)` |
 | Управление | `Management` | `Timeout(int)`, `Source(name, url, publicUrl?)` |
 | Безопасность | `Security` | `AllowAnonymous(bool)` |
@@ -212,14 +213,33 @@ app.Run();
 
 #### Files
 
+Одна вкладка **«Файлы»** с выпадающим списком корней. У каждого корня свои
+`Title`, `Path` и `Url`, поэтому на него можно дать прямую ссылку.
+
 ```csharp
 .Files(files => files
-    .Logs("/workspace/logs", "Логи")
-    .Share("/host-home", "Share"))
+    .Title("Файлы")
+    .Root("logs", "/workspace/logs", "Логи", "/files/logs")
+    .Root("share", "/host-home", "Share", "/files/share"))
 ```
 
-`null`-путь скрывает вкладку. Пути читаются из
-`Dashboard:Files:Logs:Path` и `Dashboard:Files:Share:Path`.
+- `Title` — заголовок вкладки в навигации.
+- `Root(id, path, title?, url?)` — добавляет узел. `id` используется в API
+  скачивания, `url` — адрес страницы (по умолчанию `/files/{id}`).
+- `null`-путь удаляет узел.
+- `Roots(configuration)` читает все узлы из `Dashboard:Files:Roots`.
+
+Ключи:
+
+```text
+Dashboard:Files:Title
+Dashboard:Files:Roots:{id}:Path
+Dashboard:Files:Roots:{id}:Title
+Dashboard:Files:Roots:{id}:Url
+```
+
+В UI вкладка одна; выбор корня в combo меняет URL страницы:
+`/files/logs` ↔ `/files/share`.
 
 #### Otlp
 
@@ -273,7 +293,7 @@ builder.AddDashboard(dashboard => dashboard
 |---|---|
 | Branding | `Dashboard:Branding:Title`, `Dashboard:Branding:LogoUrl`, fallback `Dashboard:ApplicationName` |
 | Hosting | `Dashboard:BasePath`, `Dashboard:Frontend:PublicUrl`, `ASPNETCORE_URLS` |
-| Files | `Dashboard:Files:Logs:Path/Title`, `Dashboard:Files:Share:Path/Title` |
+| Files | `Dashboard:Files:Title`, `Dashboard:Files:Roots:{id}:Path/Title/Url` |
 | Otlp | `ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL`, `ASPIRE_DASHBOARD_OTLP_HTTP_ENDPOINT_URL`, `Dashboard:Otlp:*` |
 | Management | `Management:TimeoutSeconds`, `Management:Sources:*` |
 | Security | `ASPIRE_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS` |
@@ -309,8 +329,19 @@ builder.AddDashboard(dashboard => dashboard
     },
 
     "Files": {
-      "Logs": { "Path": "/workspace/logs", "Title": "Логи" },
-      "Share": { "Path": "/host-home", "Title": "Share" }
+      "Title": "Файлы",
+      "Roots": {
+        "logs": {
+          "Title": "Логи",
+          "Path": "/workspace/logs",
+          "Url": "/files/logs"
+        },
+        "share": {
+          "Title": "Share",
+          "Path": "/host-home",
+          "Url": "/files/share"
+        }
+      }
     }
   },
 
@@ -334,8 +365,13 @@ Dashboard__BasePath: /monitor
 Dashboard__Frontend__PublicUrl: https://example.com/monitor
 Dashboard__Branding__Title: РА-Монитор
 Dashboard__Branding__LogoUrl: /img/logo-ra.svg
-Dashboard__Files__Logs__Path: /workspace/logs
-Dashboard__Files__Share__Path: /host-home
+Dashboard__Files__Title: Файлы
+Dashboard__Files__Roots__logs__Title: Логи
+Dashboard__Files__Roots__logs__Path: /workspace/logs
+Dashboard__Files__Roots__logs__Url: /files/logs
+Dashboard__Files__Roots__share__Title: Share
+Dashboard__Files__Roots__share__Path: /host-home
+Dashboard__Files__Roots__share__Url: /files/share
 ASPNETCORE_URLS: http://0.0.0.0:18888
 ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL: http://0.0.0.0:18889
 ASPIRE_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS: "true"
@@ -668,12 +704,25 @@ Dashboard__RegistryUrl: http://dashboard.default.svc.cluster.local:18888/api/reg
 
 ## Файловый браузер
 
-Вкладки **«Логи»** и **«Share»** опциональны: если путь не задан, вкладка не появляется.
+В навигации одна вкладка **«Файлы»**. Её заголовок задаётся
+`Dashboard__Files__Title`, а корни — дочерними узлами `Dashboard__Files__Roots`.
 
 ```yaml
 environment:
-  Dashboard__Files__Logs__Path: /workspace/logs
-  Dashboard__Files__Share__Path: /host-home
+  Dashboard__Files__Title: Файлы
+  Dashboard__Files__Roots__logs__Title: Логи
+  Dashboard__Files__Roots__logs__Path: /workspace/logs
+  Dashboard__Files__Roots__logs__Url: /files/logs
+  Dashboard__Files__Roots__share__Title: Share
+  Dashboard__Files__Roots__share__Path: /host-home
+  Dashboard__Files__Roots__share__Url: /files/share
+```
+
+Корень выбирается в combo на тулбаре; у каждого корня свой URL:
+
+```text
+/files/logs    → /workspace/logs
+/files/share   → /host-home
 ```
 
 Корни:
@@ -693,7 +742,7 @@ volumes:
 - папки выше файлов;
 - колонки: иконка, `Name`, `Size`, `Type`, `Date Modified`, `view`;
 - вход в папку, `Вверх`, `В корень`, клавиша **Home**;
-- скачивание: `/files/download?tab=logs&path=app1.log`;
+- скачивание: `/files/download?root=logs&path=app1.log`;
 - просмотр UTF-8 до 5 МБ;
 - подсветка JSON и YAML через highlight.js;
 - preview на всю область с кнопками back/download;
@@ -739,8 +788,13 @@ DASHBOARD_BASE_PATH=/
 DASHBOARD_PUBLIC_URL=http://localhost:18888
 DASHBOARD_REGISTRY_URL=http://aspire-dashboard:18888/api/registry
 DASHBOARD_SUPPRESS_UNSECURED=true
+DASHBOARD_FILES_TITLE=Файлы
+DASHBOARD_LOGS_TITLE=Логи
 DASHBOARD_LOGS_PATH=/workspace/logs
+DASHBOARD_LOGS_URL=/files/logs
+DASHBOARD_SHARE_TITLE=Share
 DASHBOARD_SHARE_PATH=/host-home
+DASHBOARD_SHARE_URL=/files/share
 
 ASPIRE_DASHBOARD_IMAGE=ra-monitor-dashboard:17.0.0
 ```
@@ -766,8 +820,10 @@ ASPIRE_DASHBOARD_IMAGE=ra-monitor-dashboard:17.0.0
 | `ASPNETCORE_URLS` | listen URL дашборда |
 | `ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL` | OTLP/gRPC endpoint |
 | `ASPIRE_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS` | unsecured-режим шага 1 |
-| `Dashboard__Files__Logs__Path` | корень вкладки «Логи» |
-| `Dashboard__Files__Share__Path` | корень вкладки «Share» |
+| `Dashboard__Files__Title` | заголовок вкладки «Файлы» |
+| `Dashboard__Files__Roots__{id}__Title` | название корня в combo |
+| `Dashboard__Files__Roots__{id}__Path` | путь корня на диске |
+| `Dashboard__Files__Roots__{id}__Url` | URL корня под `/files` |
 | `Management__TimeoutSeconds` | таймаут запроса к источнику (10) |
 | `Management__Sources__*` | статический fallback, если registry пуст |
 
@@ -827,7 +883,7 @@ docker compose up -d --build
 
 - **Dashboard не открывается** — `docker compose ps`, `docker compose logs aspire-dashboard`.
 - **Нет панелей** — `curl http://localhost:18888/api/registry`; проверьте `Dashboard__RegistryUrl` и heartbeat приложения. `Management__Sources__*` — только fallback.
-- **Нет вкладок Логи/Share** — не задан `Dashboard__Files__Logs__Path` / `Share__Path`.
+- **Нет вкладки «Файлы»** — не задан ни один `Dashboard__Files__Roots__{id}__Path`.
 - **Нет JSON/YAML подсветки** — preview доступен только для UTF-8 файлов до 5 МБ.
 - **Порт занят** — измените `DASHBOARD_PORT` / `APP*_PORT` в `.env`.
 

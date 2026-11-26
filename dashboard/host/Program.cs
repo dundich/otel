@@ -15,12 +15,8 @@ builder.AddDashboard(dashboard => dashboard
         .PublicUrl(builder.Configuration["Dashboard:Frontend:PublicUrl"])
         .EndpointUrls(builder.Configuration["ASPNETCORE_URLS"]))
     .Files(files => files
-        .Logs(
-            builder.Configuration["Dashboard:Files:Logs:Path"],
-            builder.Configuration["Dashboard:Files:Logs:Title"])
-        .Share(
-            builder.Configuration["Dashboard:Files:Share:Path"],
-            builder.Configuration["Dashboard:Files:Share:Title"]))
+        .Title(builder.Configuration["Dashboard:Files:Title"])
+        .Roots(builder.Configuration))
     .Otlp(otlp => otlp
         .GrpcEndpoint(builder.Configuration["ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL"])
         .HttpEndpoint(builder.Configuration["ASPIRE_DASHBOARD_OTLP_HTTP_ENDPOINT_URL"])

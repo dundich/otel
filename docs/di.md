@@ -32,12 +32,8 @@ builder.AddDashboard(dashboard => dashboard
         .PublicUrl(builder.Configuration["Dashboard:Frontend:PublicUrl"])
         .EndpointUrls(builder.Configuration["ASPNETCORE_URLS"]))
     .Files(files => files
-        .Logs(
-            builder.Configuration["Dashboard:Files:Logs:Path"],
-            builder.Configuration["Dashboard:Files:Logs:Title"])
-        .Share(
-            builder.Configuration["Dashboard:Files:Share:Path"],
-            builder.Configuration["Dashboard:Files:Share:Title"]))
+        .Title(builder.Configuration["Dashboard:Files:Title"])
+        .Roots(builder.Configuration))
     .Otlp(otlp => otlp
         .GrpcEndpoint(builder.Configuration["ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL"])
         .HttpEndpoint(builder.Configuration["ASPIRE_DASHBOARD_OTLP_HTTP_ENDPOINT_URL"])
@@ -173,18 +169,27 @@ antiforgery — после authorization, OTLP endpoints не пересекаю
 
 ### Files
 
+Одна вкладка **«Файлы»**, внутри — выбираемые корни. У каждого корня свой
+`Title`, путь и URL, поэтому на него можно дать прямую ссылку.
+
 ```csharp
 .Files(files => files
-    .Logs("/workspace/logs", "Логи")
-    .Share("/host-home", "Share"))
+    .Title("Файлы")
+    .Root("logs", "/workspace/logs", "Логи", "/files/logs")
+    .Root("share", "/host-home", "Share", "/files/share"))
 ```
 
 | Метод | Ключи конфигурации |
 |---|---|
-| `Logs(path, title?)` | `Dashboard:Files:Logs:Path`, `Dashboard:Files:Logs:Title` |
-| `Share(path, title?)` | `Dashboard:Files:Share:Path`, `Dashboard:Files:Share:Title` |
+| `Title(title)` | `Dashboard:Files:Title` |
+| `Root(id, path, title?, url?)` | `Dashboard:Files:Roots:{id}:Path/Title/Url` |
+| `Roots(configuration)` | все узлы `Dashboard:Files:Roots` |
+| `Logs(path, title?, url?)` | сокращение для `Root("logs", ...)` |
+| `Share(path, title?, url?)` | сокращение для `Root("share", ...)` |
 
-`null`-путь скрывает вкладку.
+`null`-путь удаляет корень. `Url` по умолчанию — `/files/{id}`. В UI корень
+выбирается в combo на тулбаре, URL меняется на `/files/logs` или
+`/files/share`.
 
 ### Otlp
 
@@ -235,6 +240,7 @@ antiforgery — после authorization, OTLP endpoints не пересекаю
 |---|---|---|
 | `DashboardWebApplication` | Singleton | `AddDashboard()` |
 | `DashboardComponentOptions` | Singleton | `AddDashboard()` |
+| `FileBrowserRootService` | Singleton | `AddDashboard()` |
 | Blazor circuits | Scoped | ASP.NET Core |
 | OTLP/telemetry services | Singleton/Scoped | регистрация dashboard |
 | Панели приложений | Singleton | `AddDashboardPanels` в приложении |
@@ -266,8 +272,19 @@ antiforgery — после authorization, OTLP endpoints не пересекаю
       "SuppressUnsecuredMessage": true
     },
     "Files": {
-      "Logs": { "Path": "/workspace/logs", "Title": "Логи" },
-      "Share": { "Path": "/host-home", "Title": "Share" }
+      "Title": "Файлы",
+      "Roots": {
+        "logs": {
+          "Title": "Логи",
+          "Path": "/workspace/logs",
+          "Url": "/files/logs"
+        },
+        "share": {
+          "Title": "Share",
+          "Path": "/host-home",
+          "Url": "/files/share"
+        }
+      }
     }
   },
 
@@ -284,8 +301,13 @@ Dashboard__BasePath: /monitor
 Dashboard__Frontend__PublicUrl: https://example.com/monitor
 Dashboard__Branding__Title: РА-Монитор
 Dashboard__Branding__LogoUrl: /img/logo-ra.svg
-Dashboard__Files__Logs__Path: /workspace/logs
-Dashboard__Files__Share__Path: /host-home
+Dashboard__Files__Title: Файлы
+Dashboard__Files__Roots__logs__Title: Логи
+Dashboard__Files__Roots__logs__Path: /workspace/logs
+Dashboard__Files__Roots__logs__Url: /files/logs
+Dashboard__Files__Roots__share__Title: Share
+Dashboard__Files__Roots__share__Path: /host-home
+Dashboard__Files__Roots__share__Url: /files/share
 ASPNETCORE_URLS: http://0.0.0.0:18888
 ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL: http://0.0.0.0:18889
 ASPIRE_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS: "true"
@@ -327,6 +349,8 @@ ASPIRE_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS: "true"
 
 ```text
 /monitor/management
+/monitor/files/logs
+/monitor/files/share
 /monitor/api/registry
 /monitor/_blazor/negotiate
 ```

@@ -3,7 +3,6 @@ using System.IO.Enumeration;
 using System.Text;
 using Aspire.Dashboard.Components.Files;
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.JSInterop;
 using Microsoft.FluentUI.AspNetCore.Components;
@@ -20,9 +19,8 @@ public partial class FileBrowser : ComponentBase, IAsyncDisposable
         ".slnx", ".sh", ".ps1", ".env", ".config", ".ini"
     };
 
-    private FileBrowserTab? _tab;
-    private string _tabId = string.Empty;
-    private string _root = string.Empty;
+    private FileBrowserRoot? _root;
+    private FileBrowserRoot? _selectedRoot;
     private string _relativePath = string.Empty;
     private string _mask = "*";
     private string _appliedMask = "*";
@@ -33,8 +31,14 @@ public partial class FileBrowser : ComponentBase, IAsyncDisposable
     private PreviewState? _highlightedPreview;
     private IJSObjectReference? _jsModule;
 
+    [Parameter]
+    public string? Slug { get; set; }
+
+    [Parameter]
+    public string? RelativePath { get; set; }
+
     [Inject]
-    public required FileBrowserTabService Tabs { get; init; }
+    public required FileBrowserRootService Tabs { get; init; }
 
     [Inject]
     public required NavigationManager NavigationManager { get; init; }
@@ -42,16 +46,13 @@ public partial class FileBrowser : ComponentBase, IAsyncDisposable
     [Inject]
     public required IJSRuntime JS { get; init; }
 
-    private string Title => _tab?.Title ?? "Files";
+    private string Title => Tabs.Title;
+
+    private IReadOnlyList<FileBrowserRoot> Roots => Tabs.Roots;
 
     private bool IsRoot => string.IsNullOrEmpty(_relativePath);
 
     private string CurrentPath => IsRoot ? "/" : $"/{_relativePath}";
-
-    protected override void OnInitialized()
-    {
-        NavigationManager.LocationChanged += OnLocationChanged;
-    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -72,61 +73,43 @@ public partial class FileBrowser : ComponentBase, IAsyncDisposable
         _highlightedPreview = _preview;
     }
 
-    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
-    {
-        if (!IsFileBrowserLocation(e.Location))
-        {
-            return;
-        }
-
-        _ = InvokeAsync(async () =>
-        {
-            await ReloadAsync();
-            StateHasChanged();
-        });
-    }
-
-    private static bool IsFileBrowserLocation(string location)
-    {
-        var path = new Uri(location).AbsolutePath;
-        return path.Equals("/logs", StringComparison.OrdinalIgnoreCase) ||
-               path.StartsWith("/logs/", StringComparison.OrdinalIgnoreCase) ||
-               path.Equals("/share", StringComparison.OrdinalIgnoreCase) ||
-               path.StartsWith("/share/", StringComparison.OrdinalIgnoreCase);
-    }
-
     private async Task ReloadAsync()
     {
         _preview = null;
         _highlightedPreview = null;
         _error = null;
 
-        var relativeUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
-        _tabId = relativeUrl.StartsWith("logs", StringComparison.OrdinalIgnoreCase) ? "logs" : "share";
-
-        _tab = Tabs.GetById(_tabId);
-        if (_tab is null)
+        if (string.IsNullOrEmpty(Slug))
         {
-            _error = $"Вкладка {_tabId} не настроена. Укажите Dashboard:Files:{_tabId}:Path.";
-            _entries = [];
+            // /files without a root opens the first configured root.
+            var first = Tabs.Roots.FirstOrDefault();
+            if (first is null)
+            {
+                _root = null;
+                _selectedRoot = null;
+                _entries = [];
+                _error = "Файлы не настроены. Укажите Dashboard:Files:Roots.";
+                return;
+            }
+
+            NavigationManager.NavigateTo(first.Url, replace: true);
             return;
         }
 
-        _root = _tab.RootPath;
-        _relativePath = NormalizeRelativePath(GetPathFromUri(NavigationManager.Uri));
-        await LoadEntriesAsync();
-    }
-
-    private static string? GetPathFromUri(string uri)
-    {
-        var query = new Uri(uri).Query;
-        if (string.IsNullOrEmpty(query))
+        var root = Tabs.GetBySlug(Slug);
+        if (root is null)
         {
-            return null;
+            _root = null;
+            _selectedRoot = null;
+            _entries = [];
+            _error = $"Корень файлов «{Slug}» не настроен. Проверьте Dashboard:Files:Roots.";
+            return;
         }
 
-        var values = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(query);
-        return values.TryGetValue("path", out var value) ? value.ToString() : null;
+        _root = root;
+        _selectedRoot = root;
+        _relativePath = NormalizeRelativePath(RelativePath);
+        await LoadEntriesAsync();
     }
 
     private async Task LoadEntriesAsync()
@@ -134,7 +117,12 @@ public partial class FileBrowser : ComponentBase, IAsyncDisposable
         _error = null;
         _entries = [];
 
-        var fullPath = FileBrowserPath.Resolve(_root, _relativePath);
+        if (_root is null)
+        {
+            return;
+        }
+
+        var fullPath = FileBrowserPath.Resolve(_root.RootPath, _relativePath);
         if (fullPath is null)
         {
             _error = "Путь выходит за пределы разрешённого корня.";
@@ -205,32 +193,57 @@ public partial class FileBrowser : ComponentBase, IAsyncDisposable
         masks.Any(mask => FileSystemName.MatchesSimpleExpression(mask, name, ignoreCase: true));
 
     private string DownloadUrl(FileEntry entry) =>
-        $"/files/download?tab={Uri.EscapeDataString(_tab!.Id)}&path={Uri.EscapeDataString(entry.RelativePath)}";
+        $"/files/download?root={Uri.EscapeDataString(_root!.Id)}&path={Uri.EscapeDataString(entry.RelativePath)}";
 
-    private void Navigate(string relativePath)
+    private void Navigate(FileBrowserRoot root, string relativePath)
     {
-        _relativePath = relativePath;
         _preview = null;
 
-        var baseUrl = $"/{_tabId}";
-        var url = string.IsNullOrEmpty(relativePath)
-            ? baseUrl
-            : $"{baseUrl}?path={Uri.EscapeDataString(relativePath)}";
+        var url = root.Url;
+        if (!string.IsNullOrWhiteSpace(relativePath))
+        {
+            var segments = relativePath
+                .Split('/', StringSplitOptions.RemoveEmptyEntries)
+                .Select(Uri.EscapeDataString);
+            url = $"{root.Url}/{string.Join('/', segments)}";
+        }
 
         NavigationManager.NavigateTo(url);
     }
 
-    private void GoRoot() => Navigate(string.Empty);
+    private void OnRootChanged()
+    {
+        if (_selectedRoot is { } root)
+        {
+            Navigate(root, string.Empty);
+        }
+    }
+
+    private void OpenEntry(FileEntry entry)
+    {
+        if (entry.IsDirectory && _root is { } root)
+        {
+            Navigate(root, entry.RelativePath);
+        }
+    }
+
+    private void GoRoot()
+    {
+        if (_root is { } root)
+        {
+            Navigate(root, string.Empty);
+        }
+    }
 
     private void GoUp()
     {
-        if (IsRoot)
+        if (IsRoot || _root is not { } root)
         {
             return;
         }
 
         var index = _relativePath.LastIndexOf('/');
-        Navigate(index < 0 ? string.Empty : _relativePath[..index]);
+        Navigate(root, index < 0 ? string.Empty : _relativePath[..index]);
     }
 
     private void ApplyMask()
@@ -265,7 +278,12 @@ public partial class FileBrowser : ComponentBase, IAsyncDisposable
     private async Task PreviewAsync(FileEntry entry)
     {
         _preview = null;
-        var fullPath = FileBrowserPath.Resolve(_root, entry.RelativePath);
+        if (_root is null)
+        {
+            return;
+        }
+
+        var fullPath = FileBrowserPath.Resolve(_root.RootPath, entry.RelativePath);
         if (fullPath is null || !File.Exists(fullPath))
         {
             _error = "Файл не найден.";
@@ -321,8 +339,6 @@ public partial class FileBrowser : ComponentBase, IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        NavigationManager.LocationChanged -= OnLocationChanged;
-
         if (_jsModule is not null)
         {
             await _jsModule.DisposeAsync();

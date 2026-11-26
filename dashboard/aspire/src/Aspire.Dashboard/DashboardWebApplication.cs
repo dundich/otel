@@ -385,7 +385,7 @@ public sealed class DashboardWebApplication : IAsyncDisposable
         builder.Services.TryAddScoped<IDashboardClient, SelectedDashboardClient>();
 
         builder.Services.TryAddSingleton<Aspire.Dashboard.Model.INotificationService, Aspire.Dashboard.Model.NotificationService>();
-        builder.Services.TryAddSingleton<FileBrowserTabService>();
+        builder.Services.TryAddSingleton<FileBrowserRootService>();
         builder.Services.TryAddSingleton(TimeProvider.System);
         builder.Services.TryAddScoped<DashboardCommandExecutor>();
 

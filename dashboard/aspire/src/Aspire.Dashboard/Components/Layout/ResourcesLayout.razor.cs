@@ -153,7 +153,7 @@ public sealed partial class ResourcesLayout : LayoutComponentBase, IAsyncDisposa
     public required ResourceOrderStore OrderStore { get; init; }
 
     [Inject]
-    public required FileBrowserTabService FileBrowserTabs { get; init; }
+    public required FileBrowserRootService FileBrowserRoots { get; init; }
 
     [Inject]
     public required Microsoft.FluentUI.AspNetCore.Components.INotificationService ToastService { get; init; }
@@ -1117,8 +1117,7 @@ public sealed partial class ResourcesLayout : LayoutComponentBase, IAsyncDisposa
             DashboardUrls.TracesBasePath => ResourceTab.Traces,
             DashboardUrls.MetricsBasePath => ResourceTab.Metrics,
             DashboardUrls.ManagementBasePath => ResourceTab.Management,
-            DashboardUrls.LogsBasePath => ResourceTab.Logs,
-            DashboardUrls.ShareBasePath => ResourceTab.Share,
+            DashboardUrls.FilesBasePath => ResourceTab.Files,
             _ => ResourceTab.Overview
         };
 
@@ -2452,7 +2451,7 @@ public sealed partial class ResourcesLayout : LayoutComponentBase, IAsyncDisposa
 
     private bool IsTabAvailable(ResourceTab tab, IReadOnlyList<SelectedResourceItem> selection)
     {
-        if (tab is ResourceTab.Management or ResourceTab.Logs or ResourceTab.Share)
+        if (tab is ResourceTab.Management or ResourceTab.Files)
         {
             return true;
         }
@@ -2486,7 +2485,7 @@ public sealed partial class ResourcesLayout : LayoutComponentBase, IAsyncDisposa
 
     private bool IsTabAvailable(ResourceTab tab, SelectedResourceItem item)
     {
-        if (tab is ResourceTab.Management or ResourceTab.Logs or ResourceTab.Share)
+        if (tab is ResourceTab.Management or ResourceTab.Files)
         {
             return true;
         }
@@ -2534,8 +2533,7 @@ public sealed partial class ResourcesLayout : LayoutComponentBase, IAsyncDisposa
                 ResourceTab.Management => resourceNames.Count == 1
                     ? DashboardUrls.ManagementUrl(resourceNames[0])
                     : DashboardUrls.ManagementUrl(),
-                ResourceTab.Logs => DashboardUrls.LogsUrl(),
-                ResourceTab.Share => DashboardUrls.ShareUrl(),
+                ResourceTab.Files => DashboardUrls.FilesUrl(),
                 _ => throw new InvalidOperationException($"Unexpected tab: {tab}")
             };
 
@@ -2556,8 +2554,7 @@ public sealed partial class ResourcesLayout : LayoutComponentBase, IAsyncDisposa
             ResourceTab.Traces => DashboardUrls.TracesUrl(resourceName),
             ResourceTab.Metrics => DashboardUrls.MetricsUrl(resourceName),
             ResourceTab.Management => DashboardUrls.ManagementUrl(resourceName),
-            ResourceTab.Logs => DashboardUrls.LogsUrl(),
-            ResourceTab.Share => DashboardUrls.ShareUrl(),
+            ResourceTab.Files => DashboardUrls.FilesUrl(),
             _ => throw new InvalidOperationException($"Unexpected tab: {tab}")
         };
     }
@@ -3035,14 +3032,9 @@ public sealed partial class ResourcesLayout : LayoutComponentBase, IAsyncDisposa
             isVisible: true);
         yield return CreateTab(ResourceTab.Management, "Управление", new Icons.Regular.Size24.Settings(),
             isVisible: true);
-        if (FileBrowserTabs.Logs is { } logsTab)
+        if (FileBrowserRoots.Roots.Count > 0)
         {
-            yield return CreateTab(ResourceTab.Logs, logsTab.Title, new Icons.Regular.Size24.DocumentText(),
-                isVisible: true);
-        }
-        if (FileBrowserTabs.Share is { } shareTab)
-        {
-            yield return CreateTab(ResourceTab.Share, shareTab.Title, new Icons.Regular.Size24.Share(),
+            yield return CreateTab(ResourceTab.Files, FileBrowserRoots.Title, new Icons.Regular.Size24.Folder(),
                 isVisible: true);
         }
 
@@ -3220,8 +3212,7 @@ internal enum ResourceTab
     Traces,
     Metrics,
     Management,
-    Logs,
-    Share
+    Files
 }
 
 internal enum ResourcePaneGrouping

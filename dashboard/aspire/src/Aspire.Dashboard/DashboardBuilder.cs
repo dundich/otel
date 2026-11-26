@@ -13,8 +13,9 @@ namespace Aspire.Dashboard;
 ///         .BasePath("/monitor")
 ///         .PublicUrl("https://example.com/monitor"))
 ///     .Files(files => files
-///         .Logs("/workspace/logs")
-///         .Share("/host-home"))
+///         .Title("Файлы")
+///         .Root("logs", "/workspace/logs", "Логи", "/files/logs")
+///         .Root("share", "/host-home", "Share", "/files/share"))
 ///     .Otlp(otlp => otlp
 ///         .GrpcEndpoint("http://0.0.0.0:18889")
 ///         .Unsecured())
@@ -49,10 +50,31 @@ public sealed class DashboardBuilder
         hosting.EndpointUrls = configuration["ASPNETCORE_URLS"] ?? configuration["urls"] ?? hosting.EndpointUrls;
 
         var files = Settings.Files;
-        files.LogsPath = configuration["Dashboard:Files:Logs:Path"] ?? files.LogsPath;
-        files.LogsTitle = configuration["Dashboard:Files:Logs:Title"] ?? files.LogsTitle;
-        files.SharePath = configuration["Dashboard:Files:Share:Path"] ?? files.SharePath;
-        files.ShareTitle = configuration["Dashboard:Files:Share:Title"] ?? files.ShareTitle;
+        files.Title = configuration["Dashboard:Files:Title"] ?? files.Title;
+
+        foreach (var root in configuration.GetSection("Dashboard:Files:Roots").GetChildren())
+        {
+            var id = root.Key;
+            var path = root["Path"];
+            if (!string.IsNullOrWhiteSpace(path))
+            {
+                files.SetRoot(id, path, root["Title"], root["Url"]);
+            }
+        }
+
+        // Backwards compatibility with the original two-tab settings.
+        if (configuration["Dashboard:Files:Logs:Path"] is { Length: > 0 } logsPath)
+        {
+            files.SetRoot("logs", logsPath,
+                configuration["Dashboard:Files:Logs:Title"] ?? "Логи",
+                configuration["Dashboard:Files:Logs:Url"] ?? "/files/logs");
+        }
+        if (configuration["Dashboard:Files:Share:Path"] is { Length: > 0 } sharePath)
+        {
+            files.SetRoot("share", sharePath,
+                configuration["Dashboard:Files:Share:Title"] ?? "Share",
+                configuration["Dashboard:Files:Share:Url"] ?? "/files/share");
+        }
 
         var otlp = Settings.Otlp;
         otlp.GrpcEndpointUrl = configuration["ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL"]
@@ -103,7 +125,7 @@ public sealed class DashboardBuilder
         return this;
     }
 
-    /// <summary>File browser tabs. A null path hides the tab.</summary>
+    /// <summary>File browser roots shown in the single "Files" tab.</summary>
     public DashboardBuilder Files(Action<DashboardFilesBuilder> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
@@ -186,19 +208,40 @@ public sealed class DashboardFilesBuilder
     private readonly DashboardFilesSettings _settings;
 
     internal DashboardFilesBuilder(DashboardFilesSettings settings) => _settings = settings;
-    public DashboardFilesBuilder Logs(string? path, string? title = null)
+
+    /// <summary>Title of the single files tab, for example "Файлы".</summary>
+    public DashboardFilesBuilder Title(string? title)
     {
-        _settings.LogsPath = path;
-        _settings.LogsTitle = title;
+        _settings.Title = title;
         return this;
     }
 
-    public DashboardFilesBuilder Share(string? path, string? title = null)
+    /// <summary>
+    /// Adds a selectable file root. <paramref name="url"/> is an app-relative
+    /// URL under /files, for example "/files/logs". A null path removes the root.
+    /// </summary>
+    public DashboardFilesBuilder Root(string id, string? path, string? title = null, string? url = null)
     {
-        _settings.SharePath = path;
-        _settings.ShareTitle = title;
+        _settings.SetRoot(id, path, title, url);
         return this;
     }
+
+    /// <summary>Adds every root from the Dashboard:Files:Roots configuration section.</summary>
+    public DashboardFilesBuilder Roots(IConfiguration configuration)
+    {
+        foreach (var root in configuration.GetSection("Dashboard:Files:Roots").GetChildren())
+        {
+            _settings.SetRoot(root.Key, root["Path"], root["Title"], root["Url"]);
+        }
+
+        return this;
+    }
+
+    public DashboardFilesBuilder Logs(string? path, string? title = null, string? url = null)
+        => Root("logs", path, title ?? "Логи", url);
+
+    public DashboardFilesBuilder Share(string? path, string? title = null, string? url = null)
+        => Root("share", path, title ?? "Share", url);
 }
 
 public sealed class DashboardOtlpBuilder
@@ -293,21 +336,21 @@ internal sealed class DashboardSettings
             values["Dashboard:Frontend:PublicUrl"] = Hosting.PublicUrl;
         }
 
-        if (Files.LogsPath is not null)
+        if (!string.IsNullOrWhiteSpace(Files.Title))
         {
-            values["Dashboard:Files:Logs:Path"] = Files.LogsPath;
+            values["Dashboard:Files:Title"] = Files.Title;
         }
-        if (Files.LogsTitle is not null)
+        foreach (var root in Files.Roots)
         {
-            values["Dashboard:Files:Logs:Title"] = Files.LogsTitle;
-        }
-        if (Files.SharePath is not null)
-        {
-            values["Dashboard:Files:Share:Path"] = Files.SharePath;
-        }
-        if (Files.ShareTitle is not null)
-        {
-            values["Dashboard:Files:Share:Title"] = Files.ShareTitle;
+            values[$"Dashboard:Files:Roots:{root.Id}:Path"] = root.Path;
+            if (!string.IsNullOrWhiteSpace(root.Title))
+            {
+                values[$"Dashboard:Files:Roots:{root.Id}:Title"] = root.Title;
+            }
+            if (!string.IsNullOrWhiteSpace(root.Url))
+            {
+                values[$"Dashboard:Files:Roots:{root.Id}:Url"] = root.Url;
+            }
         }
 
         if (!string.IsNullOrWhiteSpace(Otlp.GrpcEndpointUrl))
@@ -369,11 +412,39 @@ internal sealed class DashboardHostingSettings
 
 internal sealed class DashboardFilesSettings
 {
-    public string? LogsPath { get; set; }
-    public string? LogsTitle { get; set; }
-    public string? SharePath { get; set; }
-    public string? ShareTitle { get; set; }
+    public string? Title { get; set; }
+    public List<DashboardFilesRootSetting> Roots { get; } = [];
+
+    public void SetRoot(string id, string? path, string? title, string? url)
+    {
+        var index = Roots.FindIndex(root => string.Equals(root.Id, id, StringComparison.OrdinalIgnoreCase));
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            if (index >= 0)
+            {
+                Roots.RemoveAt(index);
+            }
+
+            return;
+        }
+
+        var setting = new DashboardFilesRootSetting(
+            id,
+            path,
+            title,
+            string.IsNullOrWhiteSpace(url) ? $"/files/{id}" : url);
+        if (index >= 0)
+        {
+            Roots[index] = setting;
+        }
+        else
+        {
+            Roots.Add(setting);
+        }
+    }
 }
+
+internal sealed record DashboardFilesRootSetting(string Id, string Path, string? Title, string Url);
 
 internal sealed class DashboardOtlpSettings
 {
