@@ -138,23 +138,25 @@ span-ов и детали.
 
 ![Resources](presentation/resources.png)
 
-Ресурсы app1/app2 и их состояние. Клик по ресурсу фильтрует панели
-«Управления» по имени источника.
+Ресурсы app1/app2/otlp-js-test и их состояние. Клик по ресурсу фильтрует
+панели «Управления» по имени источника.
 
 ---
 
 ## 10. Как это устроено
 
 ```text
-app1/app2 ── OTLP/gRPC ──→ aspire-dashboard:18889
+app1/app2     ── OTLP/gRPC ──→ aspire-dashboard:18889
+otlp-js-test  ── OTLP/HTTP ──→ aspire-dashboard:18890
                                 │
                                 ▼
                        http://localhost:18888
 
-app1/app2 ── POST /api/registry/register ──→ dashboard
-app1/app2 ── heartbeat каждые 10 сек ───────→ dashboard
+app1/app2/otlp-js-test ── POST /api/registry/register ──→ dashboard
+                      ── heartbeat каждые 10 сек ───────→ dashboard
 
 dashboard ── GET  {source}/dashboard/panels ───────────→ app
+dashboard ── GET  {source}/dashboard/panels/{id} ──────→ app (auto-refresh)
 dashboard ── POST {source}/dashboard/panels/{id}/actions/{action} → app
 ```
 

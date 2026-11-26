@@ -9,13 +9,15 @@ using MessageBarIntent = Microsoft.FluentUI.AspNetCore.Components.MessageBarInte
 
 namespace Aspire.Dashboard.Components.Pages;
 
-public partial class Management : ComponentBase
+public partial class Management : ComponentBase, IDisposable
 {
     private List<PanelState> _states = [];
+    private readonly List<CancellationTokenSource> _refreshTokens = [];
     private PanelsResponse? _data;
     private string _selectedSource = string.Empty;
     private string? _loadError;
     private bool _loading;
+    private bool _disposed;
 
     [Inject]
     public required ManagementPanelService ManagementPanels { get; init; }
@@ -88,6 +90,11 @@ public partial class Management : ComponentBase
         {
             _loading = false;
         }
+
+        if (!_disposed && _loadError is null)
+        {
+            RestartAutoRefresh();
+        }
     }
 
     private static List<PanelState> BuildStates(PanelsResponse data)
@@ -127,23 +134,147 @@ public partial class Management : ComponentBase
     {
         state.Text.Clear();
         state.Bools.Clear();
+        state.Edited.Clear();
 
         foreach (var field in panel.Fields)
         {
-            if (field.InputType == "bool")
+            ApplyFieldValue(state, field);
+        }
+    }
+
+    private static void ApplyFieldValue(PanelState state, FieldDto field)
+    {
+        if (field.InputType == "bool")
+        {
+            state.Bools[field.Name] = field.Value.ValueKind is JsonValueKind.True;
+            return;
+        }
+
+        state.Text[field.Name] = field.Value.ValueKind switch
+        {
+            JsonValueKind.String => field.Value.GetString() ?? string.Empty,
+            JsonValueKind.Null or JsonValueKind.Undefined => string.Empty,
+            _ => field.Value.ToString()
+        };
+    }
+
+    /// <summary>
+    /// Auto-refresh updates only readonly values and fields the user hasn't
+    /// edited, so an in-progress form edit is not overwritten every tick.
+    /// </summary>
+    private static void ApplyAutoRefreshValues(PanelState state, PanelDto panel)
+    {
+        var names = panel.Fields.Select(field => field.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var key in state.Text.Keys.Where(key => !names.Contains(key)).ToArray())
+        {
+            state.Text.Remove(key);
+        }
+
+        foreach (var key in state.Bools.Keys.Where(key => !names.Contains(key)).ToArray())
+        {
+            state.Bools.Remove(key);
+        }
+
+        foreach (var field in panel.Fields)
+        {
+            if (field.InputType != "readonly" && state.Edited.Contains(field.Name))
             {
-                state.Bools[field.Name] = field.Value.ValueKind is JsonValueKind.True;
+                continue;
             }
-            else
+
+            ApplyFieldValue(state, field);
+        }
+    }
+
+    private void RestartAutoRefresh()
+    {
+        foreach (var token in _refreshTokens)
+        {
+            token.Cancel();
+            token.Dispose();
+        }
+
+        _refreshTokens.Clear();
+
+        foreach (var state in _states)
+        {
+            if (state.Panel.RefreshIntervalMs is not int intervalMs || intervalMs < 100)
             {
-                state.Text[field.Name] = field.Value.ValueKind switch
+                continue;
+            }
+
+            var cts = new CancellationTokenSource();
+            _refreshTokens.Add(cts);
+            _ = AutoRefreshLoopAsync(state, TimeSpan.FromMilliseconds(intervalMs), cts.Token);
+        }
+    }
+
+    private async Task AutoRefreshLoopAsync(PanelState state, TimeSpan interval, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var timer = new PeriodicTimer(interval);
+            while (await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false))
+            {
+                if (state.Busy)
                 {
-                    JsonValueKind.String => field.Value.GetString() ?? string.Empty,
-                    JsonValueKind.Null or JsonValueKind.Undefined => string.Empty,
-                    _ => field.Value.ToString()
-                };
+                    continue;
+                }
+
+                await InvokeAsync(() => RefreshPanelAsync(state, cancellationToken));
             }
         }
+        catch (OperationCanceledException)
+        {
+            // Page disposed or panels reloaded.
+        }
+    }
+
+    private async Task RefreshPanelAsync(PanelState state, CancellationToken cancellationToken)
+    {
+        if (state.Busy || cancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
+
+        try
+        {
+            var panel = await ManagementPanels.GetPanelAsync(
+                state.Source,
+                state.Panel.Id,
+                cancellationToken);
+
+            if (panel is null || cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+
+            state.Panel = panel;
+            ApplyAutoRefreshValues(state, panel);
+            StateHasChanged();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // ignore
+        }
+        catch
+        {
+            // Keep the last known values; the next tick retries.
+        }
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+
+        foreach (var token in _refreshTokens)
+        {
+            token.Cancel();
+            token.Dispose();
+        }
+
+        _refreshTokens.Clear();
     }
 
     private static string GetInputType(FieldDto field) => field.InputType switch
@@ -161,10 +292,16 @@ public partial class Management : ComponentBase
     };
 
     private static void SetText(PanelState state, FieldDto field, ChangeEventArgs args)
-        => state.Text[field.Name] = args.Value?.ToString() ?? string.Empty;
+    {
+        state.Text[field.Name] = args.Value?.ToString() ?? string.Empty;
+        state.Edited.Add(field.Name);
+    }
 
     private static void SetBool(PanelState state, FieldDto field, ChangeEventArgs args)
-        => state.Bools[field.Name] = args.Value is bool value && value;
+    {
+        state.Bools[field.Name] = args.Value is bool value && value;
+        state.Edited.Add(field.Name);
+    }
 
     private async Task RunAsync(PanelState state, ActionDto action)
     {
@@ -317,6 +454,7 @@ public partial class Management : ComponentBase
         public string PublicUrl { get; }
         public Dictionary<string, string> Text { get; } = new(StringComparer.OrdinalIgnoreCase);
         public Dictionary<string, bool> Bools { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public HashSet<string> Edited { get; } = new(StringComparer.OrdinalIgnoreCase);
         public bool Busy { get; set; }
         public string? RunningAction { get; set; }
         public bool Success { get; set; }

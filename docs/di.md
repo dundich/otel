@@ -276,16 +276,32 @@ builder.AddDashboard(dashboard => dashboard
 | `Panel<T>(...)` | обычная панель на «Управлении» (`kind: panel`) |
 | `SearchPanel<T>(...)` | поисковая панель на вкладке «Поиск» (`kind: search`) |
 | `Label` / `Note` / `Info` / `Warn` | статические элементы тела панели |
+| `AutoRefresh(TimeSpan)` / `AutoRefresh(seconds)` | опциональный таймер перечитывания свойств |
 | `ConfigureHost(host => ...)` | произвольная регистрация в DI хоста |
 
 Поисковая панель использует тот же контракт `IDashboardPanel`; дашборд
 показывает её фильтр в тулбаре вкладки «Поиск», а ответы действия складывает
 в список карточек (время, длительность, параметры запроса, viewer).
 
+Автообновление — **opt-in**, по умолчанию выключено:
+
+```csharp
+.Panel<CounterPanel>("Счётчик app2", order: 10)
+    .AutoRefresh(TimeSpan.FromSeconds(1))
+    .Input(p => p.Count, "Значение", DashboardInputType.ReadOnly)
+```
+
+В дескрипторе появляется `refreshIntervalMs`. Дашборд запускает таймер и
+перечитывает панель через `GET /dashboard/panels/{panelId}`; сервер вызывает
+`RenderAsync`, после чего UI обновляет read-only и нередактируемые поля.
+Незавершённый ввод пользователя не затирается, во время действия панели тик
+пропускается, таймеры останавливаются при уходе со страницы.
+
 После регистрации:
 
 ```text
 GET  /dashboard/panels
+GET  /dashboard/panels/{panel}
 POST /dashboard/panels/{panel}/actions/{action}
 ```
 

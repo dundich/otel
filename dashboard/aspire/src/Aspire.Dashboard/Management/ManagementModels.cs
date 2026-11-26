@@ -25,6 +25,7 @@ public sealed class PanelDto
     public string Version { get; set; } = "0.0.0";
     public string? Description { get; set; }
     public int Order { get; set; }
+    public int? RefreshIntervalMs { get; set; }
     public string Kind { get; set; } = "panel";
     public List<FieldDto> Fields { get; set; } = [];
     public List<ActionDto> Actions { get; set; } = [];

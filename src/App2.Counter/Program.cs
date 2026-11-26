@@ -16,15 +16,22 @@ builder.AddDemoObservability(serviceName, "OtelDemo.App2");
 builder.Services.AddSingleton<CounterService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<CounterService>());
 
+// Версия приложения для информационного label панели миграций.
+var appVersion = typeof(MigrationPanel).Assembly.GetName().Version is { } version
+    ? $"{version.Major}.{version.Minor}.{version.Build}"
+    : "0.0.0";
+
 // Регистрация панелей через билдер: DI + endpoints одним вызовом.
 builder.AddDashboardPanels(panels => panels
     .Panel<MigrationPanel>("Миграции", order: 1,
         description: "Пример отчёта по миграциям PostgreSQL и Elasticsearch")
-        .Warn("ВНИМАНИЕ: миграция меняет схему PostgreSQL и mapping Elasticsearch. Сделайте резервную копию и согласуйте окно работ.", sortOrder: 0)
-        .Info("Кнопка «Миграция» формирует Markdown-отчёт со списком объектов; команды не выполняются.", sortOrder: 1)
+        .Label($"Последняя миграция: 2026.11.26-01 · 2026-11-26 18:00 · Текущая версия: {appVersion}", sortOrder: 0)
+        .Warn("ВНИМАНИЕ: миграция меняет схему PostgreSQL и mapping Elasticsearch. Сделайте резервную копию и согласуйте окно работ.", sortOrder: 1)
+        .Info("Кнопка «Миграция» формирует Markdown-отчёт со списком объектов; команды не выполняются.", sortOrder: 2)
         .Action(p => p.Report(), "Миграция", sortOrder: 1,
             description: "Открыть Markdown-отчёт со списком миграций")
     .Panel<CounterPanel>("Счётчик app2", order: 10, description: "Настройки счётчика app2")
+        .AutoRefresh(TimeSpan.FromSeconds(1))
         .Label("Живой счётчик приложения app2", sortOrder: 0)
         .Info("Значение обновляется каждую секунду.", sortOrder: 1)
         .Note("Настройки применяются к работающему приложению.", sortOrder: 2)

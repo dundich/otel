@@ -21,6 +21,12 @@ public sealed class DashboardPanelAttribute(string title, int order = 0) : Attri
 
     /// <summary>Panel (default) or search panel shown on the «Поиск» tab.</summary>
     public DashboardPanelKind Kind { get; init; } = DashboardPanelKind.Panel;
+
+    /// <summary>
+    /// Opt-in auto-render interval for attribute-declared panels. The dashboard
+    /// re-reads the panel descriptor at this interval. Null/0 disables it.
+    /// </summary>
+    public int? AutoRefreshSeconds { get; init; }
 }
 
 public enum DashboardInputType

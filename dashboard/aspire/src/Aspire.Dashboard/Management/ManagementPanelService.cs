@@ -112,6 +112,29 @@ public sealed class ManagementPanelService
         return new ActionOutcome(response.IsSuccessStatusCode, (int)response.StatusCode, body, result);
     }
 
+    /// <summary>
+    /// Re-reads one panel descriptor. Used by the optional auto-refresh timer.
+    /// </summary>
+    public async Task<PanelDto?> GetPanelAsync(
+        string sourceName,
+        string panelId,
+        CancellationToken cancellationToken = default)
+    {
+        var source = GetSources().FirstOrDefault(x =>
+            string.Equals(x.Name, sourceName, StringComparison.OrdinalIgnoreCase));
+
+        if (source is null)
+        {
+            return null;
+        }
+
+        var client = _httpClientFactory.CreateClient(HttpClientName);
+        return await client.GetFromJsonAsync<PanelDto>(
+            $"{source.Url.TrimEnd('/')}/dashboard/panels/{Uri.EscapeDataString(panelId)}",
+            JsonOptions,
+            cancellationToken);
+    }
+
     private async Task<PanelSourceDto> GetSourceAsync(ManagementSource source, CancellationToken cancellationToken)
     {
         var client = _httpClientFactory.CreateClient(HttpClientName);

@@ -79,6 +79,19 @@ internal sealed class DashboardPanelEndpointsStartupFilter(string prefix) : ISta
                     return;
                 }
 
+                // GET {prefix}/panels/{panelId}
+                if (segments is ["panels", var singlePanelId])
+                {
+                    if (!HttpMethods.IsGet(context.Request.Method))
+                    {
+                        context.Response.StatusCode = StatusCodes.Status405MethodNotAllowed;
+                        return;
+                    }
+
+                    await WritePanelAsync(context, singlePanelId);
+                    return;
+                }
+
                 // POST {prefix}/panels/{panelId}/actions/{actionName}
                 if (segments is ["panels", var panelId, "actions", var actionName])
                 {
@@ -103,6 +116,23 @@ internal sealed class DashboardPanelEndpointsStartupFilter(string prefix) : ISta
         var registry = context.RequestServices.GetRequiredService<DashboardPanelRegistry>();
         var panels = await registry.GetPanelsAsync(context.RequestAborted);
         await context.Response.WriteAsJsonAsync(panels, context.RequestAborted);
+    }
+
+    private static async Task WritePanelAsync(HttpContext context, string panelId)
+    {
+        var registry = context.RequestServices.GetRequiredService<DashboardPanelRegistry>();
+        var panel = await registry.GetPanelAsync(panelId, context.RequestAborted);
+
+        if (panel is null)
+        {
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            await context.Response.WriteAsJsonAsync(
+                new { error = $"Panel '{panelId}' not found." },
+                context.RequestAborted);
+            return;
+        }
+
+        await context.Response.WriteAsJsonAsync(panel, context.RequestAborted);
     }
 
     private static async Task ExecuteActionAsync(HttpContext context, string panelId, string actionName)

@@ -171,6 +171,33 @@ public sealed class DashboardPanelOf<T> where T : class, IDashboardPanel
     public DashboardPanelOf<T> Info(string text, int sortOrder = 0)
         => AddElement(DashboardElementTypes.Info, text, sortOrder);
 
+    /// <summary>
+    /// Opt-in auto-render: the dashboard periodically re-reads the panel
+    /// descriptor (property values) at the given interval. Disabled by default.
+    /// </summary>
+    public DashboardPanelOf<T> AutoRefresh(TimeSpan interval)
+    {
+        if (interval < TimeSpan.FromMilliseconds(100))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(interval), "Auto-refresh interval must be at least 100 ms.");
+        }
+
+        _registration.RefreshInterval = interval;
+        return this;
+    }
+
+    /// <summary>Opt-in auto-render with an interval in seconds.</summary>
+    public DashboardPanelOf<T> AutoRefresh(int seconds)
+    {
+        if (seconds <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(seconds), "Auto-refresh seconds must be positive.");
+        }
+
+        return AutoRefresh(TimeSpan.FromSeconds(seconds));
+    }
+
     private DashboardPanelOf<T> AddElement(string type, string text, int sortOrder)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(text);

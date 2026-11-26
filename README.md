@@ -1,8 +1,8 @@
 # РА-Монитор
 
-Минимальный пример: кастомный **Aspire Dashboard** (**.NET 11**), собранный из
-исходников, плюс два приложения на **.NET 10** с панелями управления,
-поисковыми фильтрами и файловым браузером.
+Минимальный пример: кастомный **Aspire Dashboard** (**.NET 11**), два
+.NET-приложения на **.NET 10** и минимальный **Node.js** app. Внутри — панели
+управления, поисковые фильтры, файловый браузер и телеметрия.
 
 Дашборд разделён на **библиотеку-компонент** (`dashboard/aspire`) и
 **web-хост** (`dashboard/host`). Хост владеет всеми настройками и подключает
@@ -37,11 +37,13 @@
   - [API панелей](#api-панелей)
   - [Результат действия](#результат-действия)
   - [Элементы панели](#элементы-панели)
+  - [Автообновление панели](#автообновление-панели)
   - [Поисковые панели](#поисковые-панели)
   - [Viewers](#viewers)
   - [Уведомления](#уведомления)
   - [Панели app1](#панели-app1)
   - [Панели app2](#панели-app2)
+  - [JS-приложение otlp-js-test](#js-приложение-otlp-js-test)
   - [Service discovery](#service-discovery)
 - [Файловый браузер](#файловый-браузер)
 - [Метрики и логи](#метрики-и-логи)
@@ -58,10 +60,10 @@
 | Компонент | Актуальное состояние |
 |---|---|
 | Dashboard | Библиотека `Aspire.Dashboard` + хост `dashboard/host`, .NET 11 |
-| Приложения | `app1`, `app2` на .NET 10, OTLP/gRPC, self-registration |
+| Приложения | `app1`, `app2` на .NET 10 + `otlp-js-test` на Node.js; OTLP/gRPC и OTLP/HTTP |
 | SDK панелей | `RaMonitor.Panels` (`net10.0;net11.0`), обычные и поисковые панели |
 | Вкладки | Structured logs, Traces, Metrics, **Управление**, **Поиск**, **Файлы** |
-| Панели | элементы Label/Note/Info/Warn, типизированные ответы, viewers |
+| Панели | элементы Label/Note/Info/Warn, автообновление (opt-in), типизированные ответы, viewers |
 | Уведомления | список событий + открытие ответа по клику |
 | Презентация | 12 экранов со скриншотами в `docs/presentation/` |
 
@@ -84,6 +86,7 @@ GitHub при просмотре Markdown.
 src/
   App1.Api/             # Web API: принимает сообщения, пишет лог, панель app1
   App2.Counter/         # счётчик +1/сек, OTLP, свои панели
+  OtlpJsTest/           # минимальный Node.js app: метрика + панель
 dashboard/
   aspire/               # vendored исходники Aspire 17.0.0 + AddDashboard()
   host/                 # web-хост: Program.cs, appsettings.json, все настройки
@@ -101,7 +104,8 @@ compose.yaml
 
 - `aspire-dashboard` — web-хост `dashboard/host`, который подключает dashboard через DI;
 - `app1`;
-- `app2`.
+- `app2`;
+- `otlp-js-test` — минимальный Node.js app.
 
 ## Быстрый старт
 
@@ -135,7 +139,9 @@ Structured logs   Traces   Metrics   Управление   Поиск   Фай�
 | http://localhost:18888/files/share | файловый браузер домашней директории |
 | http://localhost:8081 | app1 API |
 | http://localhost:8082 | app2 API |
+| http://localhost:8083 | otlp-js-test API |
 | http://localhost:4317 | OTLP/gRPC |
+| http://localhost:4318 | OTLP/HTTP |
 
 Остановить:
 
@@ -172,7 +178,8 @@ dashboard/aspire/Aspire.Dashboard    библиотека: UI, OTLP, API, regist
 | `dashboard/host` | `Program.cs`, конфигурация, `wwwroot`, логотип, Docker |
 | `dashboard/aspire` | Blazor-компоненты, OTLP-приём, telemetry API, registry, Management, файловый браузер |
 | `dashboard/panels` («Панельки», `RaMonitor.Panels`) | SDK панелей для приложений (`AddDashboardPanels`, `IDashboardPanel`) |
-| `src/App1.Api`, `src/App2.Counter` | демо-приложения, отправляют OTLP и регистрируют себя |
+| `src/App1.Api`, `src/App2.Counter` | демо-приложения на .NET, отправляют OTLP и регистрируют себя |
+| `src/OtlpJsTest` | минимальный Node.js app: своя метрика, счётчик и панель |
 
 Границы важны: библиотека **не читает** `appsettings.json` хоста сама и не
 создаёт `WebApplication`. Всё, что зависит от окружения, приходит из хоста.
@@ -410,7 +417,8 @@ builder.AddDashboard(dashboard => dashboard
 
 - вызывается `AddDashboardPanels` на том же `IHostApplicationBuilder`;
 - панели регистрируются в DI как singleton;
-- появляется `GET /dashboard/panels` и
+- появляется `GET /dashboard/panels`,
+  `GET /dashboard/panels/{panel}` и
   `POST /dashboard/panels/{panel}/actions/{action}`;
 - страница «Управление» показывает панели источников из registry /
   `Management:Sources`, поэтому для панелей хоста добавьте хост источником,
@@ -661,21 +669,23 @@ curl    http://localhost:18888/monitor/api/registry
 ```
 
 Ожидаемо: `200` для UI/статики, `302` для `/` (redirect на
-`/structuredlogs`), список `app1`/`app2` в registry.
+`/structuredlogs`), список `app1`/`app2`/`otlp-js-test` в registry.
 
 ## Как это работает
 
 ```text
-app1/app2 ── OTLP/gRPC ──→ aspire-dashboard:18889
+app1/app2     ── OTLP/gRPC ──→ aspire-dashboard:18889
+otlp-js-test  ── OTLP/HTTP ──→ aspire-dashboard:18890
                                 │
                                 ▼
                        http://localhost:18888
 
-app1/app2 ── POST /api/registry/register ──→ dashboard
-app1/app2 ── heartbeat каждые 10 сек ───────→ dashboard
+app1/app2/otlp-js-test ── POST /api/registry/register ──→ dashboard
+                      ── heartbeat каждые 10 сек ───────→ dashboard
 
 dashboard /management ──→ app1: /dashboard/panels
-                     └──→ app2: /dashboard/panels
+                     ├──→ app2: /dashboard/panels
+                     └──→ otlp-js-test: /dashboard/panels
 ```
 
 Приложения сами регистрируют свой internal/public URL в dashboard. Дашборд
@@ -765,7 +775,7 @@ builder.AddDashboardPanels(panels => panels
 
 На странице **«Управление»**:
 
-- фильтр **«Приложение»**: все / зарегистрированные сервисы (`app1`, `app2`);
+- фильтр **«Приложение»**: все / зарегистрированные сервисы (`app1`, `app2`, `otlp-js-test`);
 - клик по имени в левом resource pane фильтрует панели по источнику;
 - поля `text`, `date`, `int`, `bool`;
 - кнопки действий (включая «Применить»);
@@ -782,6 +792,7 @@ builder.AddDashboardPanels(panels => panels
 
 ```text
 GET  /dashboard/panels
+GET  /dashboard/panels/{panelId}
 POST /dashboard/panels/{panelId}/actions/{actionName}
 ```
 
@@ -854,6 +865,35 @@ DashboardContent.Markdown(markdown);
 Элементы приходят в `GET /dashboard/panels` в `elements` (`type`, `text`,
 `order`) и показываются над полями панели. Компонент `PanelElements` общий
 для «Управления» и «Поиска».
+
+### Автообновление панели
+
+Автообновление — **опция**, по умолчанию выключено. Включается в регистрации:
+
+```csharp
+.Panel<CounterPanel>("Счётчик app2", order: 10)
+    .AutoRefresh(TimeSpan.FromSeconds(1))   // или .AutoRefresh(1)
+    .Input(p => p.Step, "Шаг")
+    .Input(p => p.Count, "Значение", DashboardInputType.ReadOnly)
+```
+
+Что происходит:
+
+- в дескрипторе появляется `refreshIntervalMs: 1000`;
+- «Управление» запускает таймер и раз в интервал перечитывает панель через
+  `GET /dashboard/panels/{panelId}`;
+- сервер при этом снова вызывает `RenderAsync`, поэтому значения свойств
+  пересчитываются;
+- обновляются read-only поля и поля, которые пользователь ещё не редактировал;
+  незавершённый ввод не затирается;
+- пока действие выполняется (кнопка busy), автообновление этой панели
+  пропускается;
+- таймеры останавливаются при уходе со страницы.
+
+В демо **«Счётчик app2»** обновляется каждую секунду: поле «Значение» растёт
+без нажатия «Обновить», а введённый вручную «Шаг» сохраняется.
+
+Для атрибутной регистрации есть `[DashboardPanel(..., AutoRefreshSeconds = 1)]`.
 
 ### Поисковые панели
 
@@ -963,10 +1003,15 @@ app2 — обычное приложение со своими панелями,
 - **«Отчёт (MD)»** — возвращает `DashboardContent.Markdown`, показывает
   Markdown-viewer под панелью и открывается из уведомления.
 
+Панель счётчика использует `.AutoRefresh(TimeSpan.FromSeconds(1))`:
+«Значение» обновляется без кнопки «Обновить», а введённый «Шаг» не
+перезаписывается.
+
 Также у панели есть статические элементы: `Label`, `Info`, `Note`, `Warn`.
 
-Панель **«Миграции»** (`MigrationPanel`) показывает громкий `Warn`-alert и
-кнопку **«Миграция»**. Кнопка возвращает большой Markdown-отчёт-заглушку:
+Панель **«Миграции»** (`MigrationPanel`) показывает `Label` с информацией о
+последней миграции и текущей версии, громкий `Warn`-alert и кнопку
+**«Миграция»**. Кнопка возвращает большой Markdown-отчёт-заглушку:
 
 - PostgreSQL: таблицы, индексы, процедуры/функции, представления, права;
 - Elasticsearch: индексный шаблон, mapping, анализатор, alias/reindex, ILM;
@@ -989,6 +1034,36 @@ app2 — обычное приложение со своими панелями,
 и ходит в каждое зарегистрированное приложение напрямую. Имена источников
 совпадают с OTel-именами (`OTEL_SERVICE_NAME`), поэтому клик по ресурсу и
 фильтр `/management/resource/{name}` работают без настройки.
+
+### JS-приложение otlp-js-test
+
+Минимальный пример на **чистом Node.js без зависимостей**:
+
+```text
+src/OtlpJsTest/
+  server.js             # http server, counter, OTLP/HTTP, panel
+  Dockerfile            # node:22-alpine
+```
+
+Что делает:
+
+- каждую секунду увеличивает свой `count`;
+- отдаёт `GET /api/state` и `GET /healthz`;
+- регистрируется в dashboard как **`otlp-js-test`** и повторяет регистрацию
+  каждые 10 секунд;
+- отправляет метрику **`js.counter.value`** через OTLP/HTTP JSON на
+  `http://aspire-dashboard:18890/v1/metrics`;
+- отдаёт панель `GET /dashboard/panels` и одиночную панель
+  `GET /dashboard/panels/JsCounterPanel`:
+  - `Label` — **«все будет Js»**;
+  - read-only поле «Значение»;
+  - `refreshIntervalMs: 1000`, поэтому значение обновляется автоматически.
+
+Переменные JS-приложения: `PORT`, `SERVICE_NAME`, `SERVICE_INTERNAL_URL`,
+`SERVICE_PUBLIC_URL`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `DASHBOARD_REGISTRY_URL`.
+
+Панель появляется в «Управлении» как источник **`otlp-js-test`**.
+Публичный адрес — **http://localhost:8083**.
 
 ### Service discovery
 
@@ -1076,13 +1151,18 @@ volumes:
 Приложения отправляют OTLP на:
 
 ```text
-http://aspire-dashboard:18889
+app1/app2      → http://aspire-dashboard:18889        (OTLP/gRPC)
+otlp-js-test   → http://aspire-dashboard:18890/v1/metrics (OTLP/HTTP JSON)
 ```
 
 Метрики app2:
 
 - `app2.counter.value`;
 - `app2.counter.increments`.
+
+Метрика `otlp-js-test`:
+
+- `js.counter.value` — текущее значение JS-счётчика.
 
 Логи:
 
@@ -1100,8 +1180,10 @@ BIND_ADDR=127.0.0.1
 
 DASHBOARD_PORT=18888
 OTLP_PORT=4317
+OTLP_HTTP_PORT=4318
 APP1_PORT=8081
 APP2_PORT=8082
+OTLP_JS_TEST_PORT=8083
 
 DASHBOARD_APP_NAME=РА-Монитор
 DASHBOARD_LOGO_URL=/img/logo-ra.svg
@@ -1120,13 +1202,14 @@ DASHBOARD_SHARE_URL=/files/share
 ASPIRE_DASHBOARD_IMAGE=ra-monitor-dashboard:17.0.0
 ```
 
-Ключевые переменные приложений (`app1`/`app2`):
+Ключевые переменные приложений (`app1`/`app2`/`otlp-js-test`):
 
 | Переменная | Назначение |
 |---|---|
 | `OTEL_SERVICE_NAME` | имя сервиса в OTel и имя источника панелей |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP endpoint: gRPC или HTTP для JS |
 | `Dashboard__RegistryUrl` | registry dashboard (`http://aspire-dashboard:18888/api/registry`) |
-| `Service__Name` | имя регистрации (`app1`/`app2`) |
+| `Service__Name` | имя регистрации (`app1`/`app2`/`otlp-js-test`) |
 | `Service__InternalUrl` | адрес для callback от dashboard |
 | `Service__PublicUrl` | адрес для отображения в UI |
 
@@ -1140,6 +1223,7 @@ ASPIRE_DASHBOARD_IMAGE=ra-monitor-dashboard:17.0.0
 | `Dashboard__Frontend__PublicUrl` | публичный URL для ссылок |
 | `ASPNETCORE_URLS` | listen URL дашборда |
 | `ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL` | OTLP/gRPC endpoint |
+| `ASPIRE_DASHBOARD_OTLP_HTTP_ENDPOINT_URL` | OTLP/HTTP endpoint |
 | `ASPIRE_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS` | unsecured-режим шага 1 |
 | `Dashboard__Files__Title` | заголовок вкладки «Файлы» |
 | `Dashboard__Files__Roots__{id}__Title` | название корня в combo |

@@ -83,6 +83,7 @@ CSS/тему дашборда.
 - отправляет `POST {source}/dashboard/panels/{panel}/actions/{action}` напрямую;
 - на время действия кнопка disabled и показывает спиннер; в демо «Миграция»
   специально ждёт 4 секунды;
+- панели с `refreshIntervalMs` перечитываются по таймеру без кнопки «Обновить»;
 - показывает результат действия под панелью в подходящем viewer
   (text / JSON / Markdown);
 - событие в колокольчике открывает тот же viewer по клику;
@@ -101,6 +102,9 @@ environment:
   Management__Sources__1__Name: app2
   Management__Sources__1__Url: http://app2:8080
   Management__Sources__1__PublicUrl: http://localhost:8082
+  Management__Sources__2__Name: otlp-js-test
+  Management__Sources__2__Url: http://otlp-js-test:8080
+  Management__Sources__2__PublicUrl: http://localhost:8083
   # опционально: Management__TimeoutSeconds: 10
 ```
 
@@ -147,6 +151,27 @@ markdown  -> MarkdownViewer
 `Label` — текст, `Note`/`Info`/`Warn` — alerts с разным оформлением. Они
 приходят в `elements` дескриптора и рендерятся компонентом `PanelElements`
 над полями панели.
+
+## Автообновление
+
+Автообновление — **опция**, по умолчанию выключено:
+
+```csharp
+.Panel<CounterPanel>("Счётчик app2", order: 10)
+    .AutoRefresh(TimeSpan.FromSeconds(1))   // или .AutoRefresh(1)
+```
+
+В дескрипторе появляется `refreshIntervalMs`. Страница «Управление» запускает
+таймер и перечитывает панель через `GET /dashboard/panels/{panelId}`. На
+сервере снова вызывается `RenderAsync`, поэтому значения свойств
+пересчитываются.
+
+Обновляются read-only поля и поля, которые пользователь ещё не редактировал;
+введённые значения не затираются. Пока действие выполняется, тик панели
+пропускается. При уходе со страницы таймеры останавливаются.
+
+В демо **«Счётчик app2»** значение обновляется каждую секунду, а «Шаг»
+остаётся таким, каким его ввёл пользователь.
 
 ## Вкладка «Поиск»
 
@@ -198,6 +223,7 @@ builder.AddDashboard(dashboard => dashboard
 
 ```text
 GET  /dashboard/panels
+GET  /dashboard/panels/{panel}
 POST /dashboard/panels/{panel}/actions/{action}
 ```
 

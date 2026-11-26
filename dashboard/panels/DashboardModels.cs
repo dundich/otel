@@ -38,7 +38,8 @@ public sealed record DashboardPanelDescriptor(
     IReadOnlyList<DashboardFieldDescriptor> Fields,
     IReadOnlyList<DashboardActionDescriptor> Actions,
     IReadOnlyList<DashboardElementDescriptor> Elements,
-    string Kind = DashboardPanelKinds.Panel);
+    string Kind = DashboardPanelKinds.Panel,
+    int? RefreshIntervalMs = null);
 
 /// <summary>
 /// Static element inside a panel body: plain label or an alert with information.

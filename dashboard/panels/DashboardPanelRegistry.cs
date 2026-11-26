@@ -46,6 +46,7 @@ internal sealed class DashboardPanelRegistration
     public int Order { get; }
     public string? Description { get; }
     public DashboardPanelKind Kind { get; }
+    public TimeSpan? RefreshInterval { get; set; }
     public IReadOnlyList<FieldBinding> Fields => _fields;
     public IReadOnlyList<ActionBinding> Actions => _actions;
     public IReadOnlyList<ElementBinding> Elements => _elements;
@@ -92,6 +93,11 @@ internal sealed class DashboardPanelRegistration
             attribute.Id,
             attribute.Description,
             attribute.Kind);
+
+        if (attribute.AutoRefreshSeconds is > 0 and var seconds)
+        {
+            registration.RefreshInterval = TimeSpan.FromSeconds(seconds);
+        }
 
         var fields = panelType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
             .Select(property => (Member: (MemberInfo)property, Attribute: property.GetCustomAttribute<DashboardInputAttribute>()))
@@ -319,6 +325,40 @@ public sealed class DashboardPanelRegistry
         return result;
     }
 
+    /// <summary>
+    /// Re-reads one panel descriptor. Used by the dashboard's optional
+    /// auto-refresh timer; the panel's RenderAsync runs before serialization.
+    /// </summary>
+    public async Task<DashboardPanelDescriptor?> GetPanelAsync(
+        string panelId,
+        CancellationToken cancellationToken = default)
+    {
+        var registration = _panels.FirstOrDefault(x =>
+            string.Equals(x.Id, panelId, StringComparison.OrdinalIgnoreCase));
+
+        if (registration is null)
+        {
+            return null;
+        }
+
+        await registration.Gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var instance = _services.GetRequiredService(registration.PanelType);
+            await ((IDashboardPanel)instance).RenderAsync(cancellationToken).ConfigureAwait(false);
+            return BuildDescriptor(registration, instance);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Dashboard panel {PanelId} failed to auto-render", registration.Id);
+            return null;
+        }
+        finally
+        {
+            registration.Gate.Release();
+        }
+    }
+
     public async Task<DashboardActionResult?> ExecuteAsync(
         string panelId,
         string actionName,
@@ -423,7 +463,10 @@ public sealed class DashboardPanelRegistry
             Fields: fields,
             Actions: actions,
             Elements: elements,
-            Kind: DashboardPanelKinds.ToWireValue(registration.Kind));
+            Kind: DashboardPanelKinds.ToWireValue(registration.Kind),
+            RefreshIntervalMs: registration.RefreshInterval is { } interval
+                ? (int)interval.TotalMilliseconds
+                : null);
     }
 
     private static string GetAppVersion()

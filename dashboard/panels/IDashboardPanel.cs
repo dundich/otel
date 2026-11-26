@@ -11,7 +11,8 @@ public interface IDashboardPanel
 {
     /// <summary>
     /// Recomputes field values before the panel descriptor is returned to the
-    /// dashboard. Invoked on every GET /dashboard/panels. Default: no-op.
+    /// dashboard. Invoked on every GET /dashboard/panels and on the optional
+    /// auto-refresh poll (GET /dashboard/panels/{id}). Default: no-op.
     /// </summary>
     Task RenderAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
