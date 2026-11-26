@@ -118,7 +118,11 @@
                                                 disabled="@state.Busy"
                                                 title="@action.Description"
                                                 @onclick="() => RunAsync(state, action)">
-                                            @action.Label
+                                            @if (state.Busy && string.Equals(state.RunningAction, action.Name, StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                <BusySpinner />
+                                            }
+                                            <span>@action.Label</span>
                                         </button>
                                     }
                                 </div>

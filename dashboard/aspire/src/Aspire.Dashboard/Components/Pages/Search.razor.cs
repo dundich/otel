@@ -222,6 +222,7 @@ public partial class Search : ComponentBase, IDisposable
         UpdateUrl(replace: false);
 
         state.Busy = true;
+        state.RunningAction = action.Name;
 
         var startedAt = DateTimeOffset.Now;
         var stopwatch = Stopwatch.StartNew();
@@ -280,6 +281,7 @@ public partial class Search : ComponentBase, IDisposable
         finally
         {
             state.Busy = false;
+            state.RunningAction = null;
         }
     }
 
@@ -422,6 +424,7 @@ public partial class Search : ComponentBase, IDisposable
         public Dictionary<string, bool> InitialBools { get; } = new(StringComparer.OrdinalIgnoreCase);
         public List<SearchResultItem> Results { get; } = [];
         public bool Busy { get; set; }
+        public string? RunningAction { get; set; }
 
         public ActionDto? FindAction =>
             Panel.Actions.FirstOrDefault(IsFindAction) ?? Panel.Actions.FirstOrDefault();

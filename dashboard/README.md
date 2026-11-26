@@ -81,6 +81,8 @@ CSS/тему дашборда.
 - рисует панели выбранного app;
 - поддерживает text/date/int/bool;
 - отправляет `POST {source}/dashboard/panels/{panel}/actions/{action}` напрямую;
+- на время действия кнопка disabled и показывает спиннер; в демо «Миграция»
+  специально ждёт 4 секунды;
 - показывает результат действия под панелью в подходящем viewer
   (text / JSON / Markdown);
 - событие в колокольчике открывает тот же viewer по клику;
@@ -245,6 +247,7 @@ volumes:
 - вход в папку, «Вверх», «В корень», клавиша Home;
 - download через `/files/download?root=logs&path=...`;
 - preview UTF-8 до 5 МБ в полноэкранном режиме с кнопками back/download;
+- пока файл читается, preview показывает спиннер «Чтение файла…»;
 - подсветка JSON/YAML (highlight.js);
 - защиту от path traversal.
 

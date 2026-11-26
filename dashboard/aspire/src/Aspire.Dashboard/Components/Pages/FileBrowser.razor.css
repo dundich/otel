@@ -221,6 +221,22 @@
     padding: 12px;
 }
 
+.file-preview-loading {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 0;
+    color: var(--colorNeutralForeground3);
+    font-size: 13px;
+}
+
+.file-preview-loading ::deep .busy-spinner {
+    width: 20px;
+    height: 20px;
+}
+
 .file-preview-content ::deep .content-viewer-text,
 .file-preview-content ::deep .content-viewer-markdown {
     max-height: none;

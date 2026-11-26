@@ -9,13 +9,18 @@ namespace App2.Counter;
 /// </summary>
 public sealed class MigrationPanel : IDashboardPanel
 {
-    public Task<DashboardContent> Report() => Task.FromResult(
-        DashboardContent.Markdown(BuildReport()));
+    // Демонстрационная задержка: в UI кнопка «Миграция» показывает спиннер
+    // и остаётся disabled, пока отчёт формируется.
+    public async Task<DashboardContent> Report(CancellationToken cancellationToken = default)
+    {
+        await Task.Delay(TimeSpan.FromSeconds(4), cancellationToken).ConfigureAwait(false);
+        return DashboardContent.Markdown(BuildReport());
+    }
 
     public async Task<object?> ExecuteAsync(string actionName, CancellationToken cancellationToken = default)
         => actionName switch
         {
-            nameof(Report) => await Report().ConfigureAwait(false),
+            nameof(Report) => await Report(cancellationToken).ConfigureAwait(false),
             _ => throw new InvalidOperationException(
                 $"Action '{actionName}' is not handled by {nameof(MigrationPanel)}.")
         };

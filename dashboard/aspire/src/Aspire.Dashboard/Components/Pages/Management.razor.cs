@@ -178,6 +178,7 @@ public partial class Management : ComponentBase
         }
 
         state.Busy = true;
+        state.RunningAction = action.Name;
         state.Status = $"{action.Label}…";
         state.Success = true;
         state.Result = null;
@@ -222,6 +223,7 @@ public partial class Management : ComponentBase
         finally
         {
             state.Busy = false;
+            state.RunningAction = null;
             AddNotification(state, action);
         }
     }
@@ -316,6 +318,7 @@ public partial class Management : ComponentBase
         public Dictionary<string, string> Text { get; } = new(StringComparer.OrdinalIgnoreCase);
         public Dictionary<string, bool> Bools { get; } = new(StringComparer.OrdinalIgnoreCase);
         public bool Busy { get; set; }
+        public string? RunningAction { get; set; }
         public bool Success { get; set; }
         public DashboardContent? Result { get; set; }
         public string? Status { get; set; }

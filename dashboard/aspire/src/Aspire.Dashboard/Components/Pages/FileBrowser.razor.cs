@@ -27,6 +27,9 @@ public partial class FileBrowser : ComponentBase
     private string _appliedMask = "*";
     private List<FileEntry> _entries = [];
     private PreviewState? _preview;
+    private FileEntry? _loadingEntry;
+    private bool _previewLoading;
+    private int _previewVersion;
     private string? _error;
 
     [Parameter]
@@ -49,6 +52,10 @@ public partial class FileBrowser : ComponentBase
 
     private string CurrentPath => IsRoot ? "/" : $"/{_relativePath}";
 
+    private FileEntry? PreviewEntry => _preview?.Entry ?? _loadingEntry;
+
+    private bool ShowPreview => _preview is not null || _previewLoading;
+
     protected override async Task OnParametersSetAsync()
     {
         await ReloadAsync();
@@ -56,7 +63,10 @@ public partial class FileBrowser : ComponentBase
 
     private async Task ReloadAsync()
     {
+        _previewVersion++;
         _preview = null;
+        _previewLoading = false;
+        _loadingEntry = null;
         _error = null;
 
         if (string.IsNullOrEmpty(Slug))
@@ -258,6 +268,8 @@ public partial class FileBrowser : ComponentBase
     private async Task PreviewAsync(FileEntry entry)
     {
         _preview = null;
+        _error = null;
+
         if (_root is null)
         {
             return;
@@ -276,9 +288,23 @@ public partial class FileBrowser : ComponentBase
             return;
         }
 
+        var version = ++_previewVersion;
+        _loadingEntry = entry;
+        _previewLoading = true;
+        StateHasChanged();
+
+        // Give the renderer a chance to paint the spinner before the file
+        // read starts, even for small files that load almost instantly.
+        await Task.Yield();
+
         try
         {
             var bytes = await File.ReadAllBytesAsync(fullPath);
+            if (version != _previewVersion)
+            {
+                return;
+            }
+
             if (bytes.AsSpan().IndexOf((byte)0) >= 0)
             {
                 _error = "Файл содержит двоичные данные.";
@@ -291,15 +317,31 @@ public partial class FileBrowser : ComponentBase
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or DecoderFallbackException)
         {
+            if (version != _previewVersion)
+            {
+                return;
+            }
+
             _error = ex is DecoderFallbackException
                 ? "Файл не является корректным UTF-8."
                 : ex.Message;
+        }
+        finally
+        {
+            if (version == _previewVersion)
+            {
+                _previewLoading = false;
+                _loadingEntry = null;
+            }
         }
     }
 
     private void ClosePreview()
     {
+        _previewVersion++;
         _preview = null;
+        _previewLoading = false;
+        _loadingEntry = null;
     }
 
     private static string GetContentType(FileEntry entry) =>

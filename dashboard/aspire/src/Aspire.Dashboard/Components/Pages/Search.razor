@@ -80,7 +80,11 @@
                                         disabled="@selected.Busy"
                                         title="@find.Description"
                                         @onclick="() => RunActionAsync(selected, find)">
-                                    @find.Label
+                                    @if (selected.Busy && string.Equals(selected.RunningAction, find.Name, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <BusySpinner />
+                                    }
+                                    <span>@find.Label</span>
                                 </button>
                             }
 
@@ -99,7 +103,11 @@
                                         disabled="@selected.Busy"
                                         title="@action.Description"
                                         @onclick="() => RunActionAsync(selected, action)">
-                                    @action.Label
+                                    @if (selected.Busy && string.Equals(selected.RunningAction, action.Name, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <BusySpinner />
+                                    }
+                                    <span>@action.Label</span>
                                 </button>
                             }
                         </div>

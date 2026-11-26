@@ -57,22 +57,44 @@
                     <div class="file-error">@_error</div>
                 }
 
-                @if (_preview is not null)
+                @if (ShowPreview)
                 {
-                    <section class="file-preview" aria-label="Просмотр файла">
+                    <section class="file-preview" aria-label="Просмотр файла" aria-busy="@(_previewLoading ? "true" : null)">
                         <header class="file-preview-toolbar">
                             <button type="button" class="file-button file-icon-button" @onclick="ClosePreview" title="Назад" aria-label="Назад">
                                 <FluentIcon Value="@(new Icons.Regular.Size16.ArrowLeft())" Width="16px" Color="Color.Custom" CustomColor="currentColor" />
                             </button>
-                            <FluentIcon Value="@GetIcon(_preview.Entry)" Width="16px" Color="Color.Custom" CustomColor="currentColor" />
-                            <strong>@_preview.Entry.Name</strong>
-                            <a class="file-button file-icon-button" href="@DownloadUrl(_preview.Entry)" title="Скачать" aria-label="Скачать">
-                                <FluentIcon Value="@(new Icons.Regular.Size16.ArrowDownload())" Width="16px" Color="Color.Custom" CustomColor="currentColor" />
-                            </a>
+                            @if (PreviewEntry is { } previewEntry)
+                            {
+                                <FluentIcon Value="@GetIcon(previewEntry)" Width="16px" Color="Color.Custom" CustomColor="currentColor" />
+                                <strong>@previewEntry.Name</strong>
+                            }
+                            else
+                            {
+                                <strong>Чтение файла…</strong>
+                            }
+
+                            @if (!_previewLoading && _preview is not null)
+                            {
+                                <a class="file-button file-icon-button" href="@DownloadUrl(_preview.Entry)" title="Скачать" aria-label="Скачать">
+                                    <FluentIcon Value="@(new Icons.Regular.Size16.ArrowDownload())" Width="16px" Color="Color.Custom" CustomColor="currentColor" />
+                                </a>
+                            }
                         </header>
-                        <div class="file-preview-content">
-                            <ContentViewer Content="_preview.Content" />
-                        </div>
+
+                        @if (_previewLoading)
+                        {
+                            <div class="file-preview-loading" role="status" aria-live="polite">
+                                <BusySpinner />
+                                <span>Чтение файла…</span>
+                            </div>
+                        }
+                        else if (_preview is not null)
+                        {
+                            <div class="file-preview-content">
+                                <ContentViewer Content="_preview.Content" />
+                            </div>
+                        }
                     </section>
                 }
                 else

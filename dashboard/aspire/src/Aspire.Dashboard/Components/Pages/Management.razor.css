@@ -211,6 +211,9 @@
 }
 
 .management-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
     padding: 7px 14px;
     border: 1px solid var(--colorBrandBackground);
     border-radius: 6px;
