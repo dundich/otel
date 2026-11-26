@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 
 namespace Aspire.Dashboard;
 
@@ -28,6 +29,12 @@ namespace Aspire.Dashboard;
 public sealed class DashboardBuilder
 {
     internal DashboardSettings Settings { get; } = new();
+
+    /// <summary>
+    /// Host-specific registration hooks. Applied while <c>AddDashboard</c> is
+    /// building the host, so extensions can reuse the same DI container.
+    /// </summary>
+    internal List<Action<IHostApplicationBuilder>> HostRegistrations { get; } = [];
 
     /// <summary>
     /// Bootstraps all domains from the host configuration. Values are read from
@@ -146,6 +153,18 @@ public sealed class DashboardBuilder
     {
         ArgumentNullException.ThrowIfNull(configure);
         configure(new DashboardManagementBuilder(Settings.Management));
+        return this;
+    }
+
+    /// <summary>
+    /// Escape hatch for host-specific registrations. The callback runs during
+    /// <c>AddDashboard</c> with the same <see cref="IHostApplicationBuilder"/>
+    /// used by the dashboard, for example to add the panels SDK.
+    /// </summary>
+    public DashboardBuilder ConfigureHost(Action<IHostApplicationBuilder> configure)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+        HostRegistrations.Add(configure);
         return this;
     }
 

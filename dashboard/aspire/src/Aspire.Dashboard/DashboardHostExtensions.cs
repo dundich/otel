@@ -57,6 +57,13 @@ public static class DashboardHostExtensions
             builder.WebHost.UseStaticWebAssets();
         }
 
+        // Reuse the same host builder for host-specific registrations, such as
+        // the existing panel SDK (AddDashboardPanels).
+        foreach (var configureHost in dashboardBuilder.HostRegistrations)
+        {
+            configureHost(builder);
+        }
+
         var dashboard = new DashboardWebApplication(builder, componentOptions);
 
         builder.Services.AddSingleton(componentOptions);

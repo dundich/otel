@@ -93,6 +93,28 @@ environment:
   # опционально: Management__TimeoutSeconds: 10
 ```
 
+## Панели хоста
+
+Хостовое расширение `Panels` переиспользует `RaMonitor.Panels` и
+`AddDashboardPanels` в цепочке `AddDashboard`:
+
+```csharp
+builder.AddDashboard(dashboard => dashboard
+    ...
+    .Panels(panels => panels.ScanAssembly<HostInfoPanel>()));
+```
+
+После этого хост отдаёт:
+
+```text
+GET  /dashboard/panels
+POST /dashboard/panels/{panel}/actions/{action}
+```
+
+В демо-хосте зарегистрирована панель `HostInfoPanel` («Хост»): версия, среда,
+время. Чтобы она была видна на странице «Управление», хост нужно добавить
+источником в registry или `Management:Sources`.
+
 ## Фильтр по приложению
 
 Список приложений строится из `Management:Sources`. При выборе app1 остаются

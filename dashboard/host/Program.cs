@@ -1,4 +1,5 @@
 using Aspire.Dashboard;
+using RaMonitor.Host;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -35,7 +36,8 @@ builder.AddDashboard(dashboard => dashboard
         .Timeout(builder.Configuration.GetValue("Management:TimeoutSeconds", 10)))
     .Security(security => security
         .AllowAnonymous(builder.Configuration.GetValue(
-            "ASPIRE_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS", true))));
+            "ASPIRE_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS", true)))
+    .Panels(panels => panels.ScanAssembly<HostInfoPanel>()));
 
 var app = builder.Build();
 

@@ -20,6 +20,7 @@ dashboard/aspire/src/Aspire.Dashboard/DashboardBuilder.cs
 
 ```csharp
 using Aspire.Dashboard;
+using RaMonitor.Host;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -53,7 +54,8 @@ builder.AddDashboard(dashboard => dashboard
         .Timeout(builder.Configuration.GetValue("Management:TimeoutSeconds", 10)))
     .Security(security => security
         .AllowAnonymous(builder.Configuration.GetValue(
-            "ASPIRE_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS", true))));
+            "ASPIRE_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS", true)))
+    .Panels(panels => panels.ScanAssembly<HostInfoPanel>()));
 
 var app = builder.Build();
 
@@ -254,6 +256,45 @@ antiforgery — после authorization, OTLP endpoints не пересекаю
 |---|---|
 | `AllowAnonymous` | `ASPIRE_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS` |
 
+### Panels
+
+`Panels` — хостовое расширение над существующим SDK `RaMonitor.Panels`.
+Оно вызывает `AddDashboardPanels` на том же `IHostApplicationBuilder`, поэтому
+панели попадают в тот же DI:
+
+```csharp
+builder.AddDashboard(dashboard => dashboard
+    ...
+    .Panels(panels => panels
+        .Panel<HostInfoPanel>("Хост", order: 100)
+            .Input(p => p.Version, "Версия", DashboardInputType.ReadOnly)));
+```
+
+| Метод | Что делает |
+|---|---|
+| `Panels(panels => ...)` | `AddDashboardPanels` на host builder |
+| `ConfigureHost(host => ...)` | произвольная регистрация в DI хоста |
+
+После регистрации:
+
+```text
+GET  /dashboard/panels
+POST /dashboard/panels/{panel}/actions/{action}
+```
+
+Чтобы эти панели отображались на странице «Управление», хост должен быть
+источником в registry или `Management:Sources`.
+
+### ConfigureHost
+
+Общий hook для регистраций, которым нужен тот же `IHostApplicationBuilder`:
+
+```csharp
+.ConfigureHost(host => host.Services.AddSingleton<MyService>())
+```
+
+`Panels` построен на этом hook.
+
 ## DI и lifetime
 
 | Сервис | Lifetime | Кто создаёт |
@@ -264,6 +305,7 @@ antiforgery — после authorization, OTLP endpoints не пересекаю
 | Blazor circuits | Scoped | ASP.NET Core |
 | OTLP/telemetry services | Singleton/Scoped | регистрация dashboard |
 | Панели приложений | Singleton | `AddDashboardPanels` в приложении |
+| Панели хоста | Singleton | `Panels(...)` / `AddDashboardPanels` в хосте |
 
 `AddDashboard()` вызывается до `builder.Build()`. `UseDashboard()` — после.
 Повторный вызов `AddDashboard()` не предусмотрен: это одна точка подключения

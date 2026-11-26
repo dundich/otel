@@ -9,6 +9,9 @@ WORKDIR /src
 # Optional product version: docker compose build with DASHBOARD_VERSION=1.2.3.
 ARG VERSION
 
+# The panels SDK under dashboard/panels uses the repository-wide .NET 10 props
+# and central package versions, so copy them next to the dashboard tree.
+COPY Directory.Build.props Directory.Packages.props ./
 COPY dashboard/ ./
 
 RUN --mount=type=cache,target=/root/.nuget/packages \

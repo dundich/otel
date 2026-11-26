@@ -24,6 +24,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../aspire/src/Aspire.Dashboard/Aspire.Dashboard.csproj" />
+    <ProjectReference Include="../panels/RaMonitor.Panels.csproj" />
 
     <!-- Keep the host's dependency graph aligned with the dashboard's central
          versions. Without these pins the host resolves older transitive versions. -->

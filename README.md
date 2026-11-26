@@ -181,6 +181,7 @@ app.Run();
 | OTLP | `Otlp` | `GrpcEndpoint(string)`, `HttpEndpoint(string)`, `Unsecured(bool)`, `SuppressUnsecuredMessage(bool)` |
 | Управление | `Management` | `Timeout(int)`, `Source(name, url, publicUrl?)` |
 | Безопасность | `Security` | `AllowAnonymous(bool)` |
+| Панели хоста | `Panels` (host extension) | `Panel<T>(...)`, `ScanAssembly<T>()` |
 
 #### Branding
 
@@ -308,6 +309,45 @@ Dashboard:Files:Roots:{id}:Url
 Шаг-1 демо: без логина и API-ключей. В production вызывайте
 `AllowAnonymous(false)` и настраивайте auth/keys через стандартную
 конфигурацию Aspire.
+
+#### Panels (панели хоста)
+
+Хостовое расширение `Panels` переиспользует существующий SDK
+`RaMonitor.Panels` и его `AddDashboardPanels`. Вызов остаётся внутри цепочки
+`AddDashboard`:
+
+```csharp
+builder.AddDashboard(dashboard => dashboard
+    ...
+    .Panels(panels => panels.ScanAssembly<HostInfoPanel>()));
+```
+
+Или явно:
+
+```csharp
+.Panels(panels => panels
+    .Panel<HostInfoPanel>("Хост", order: 100)
+        .Input(p => p.Version, "Версия", DashboardInputType.ReadOnly))
+```
+
+Что происходит:
+
+- вызывается `AddDashboardPanels` на том же `IHostApplicationBuilder`;
+- панели регистрируются в DI как singleton;
+- появляется `GET /dashboard/panels` и
+  `POST /dashboard/panels/{panel}/actions/{action}`;
+- страница «Управление» показывает панели источников из registry /
+  `Management:Sources`, поэтому для панелей хоста добавьте хост источником,
+  если они должны отображаться в UI.
+
+Для своих регистраций есть общий hook:
+
+```csharp
+.ConfigureHost(host => host.Services.AddSingleton<MyService>())
+```
+
+В демо-хосте добавлена панель `HostInfoPanel` («Хост»): версия, среда и
+текущее время.
 
 ### FromConfiguration
 
