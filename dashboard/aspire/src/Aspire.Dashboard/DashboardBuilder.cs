@@ -217,6 +217,33 @@ public sealed class DashboardFilesBuilder
     }
 
     /// <summary>
+    /// Adds a selectable file root and configures it through a child builder:
+    /// <code>
+    /// .Root("logs", root => root
+    ///     .Title("Логи")
+    ///     .Path("/workspace/logs")
+    ///     .Url("/files/logs"))
+    /// </code>
+    /// </summary>
+    public DashboardFilesBuilder Root(string id, Action<DashboardFileRootBuilder> configure)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+        configure(new DashboardFileRootBuilder(_settings, id));
+        return this;
+    }
+
+    /// <summary>
+    /// Adds or configures every root from the Dashboard:Files:Roots configuration
+    /// section through the child builders.
+    /// </summary>
+    public DashboardFilesBuilder Roots(Action<DashboardFilesRootsBuilder> configure)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+        configure(new DashboardFilesRootsBuilder(_settings));
+        return this;
+    }
+
+    /// <summary>
     /// Adds a selectable file root. <paramref name="url"/> is an app-relative
     /// URL under /files, for example "/files/logs". A null path removes the root.
     /// </summary>
@@ -226,22 +253,87 @@ public sealed class DashboardFilesBuilder
         return this;
     }
 
-    /// <summary>Adds every root from the Dashboard:Files:Roots configuration section.</summary>
-    public DashboardFilesBuilder Roots(IConfiguration configuration)
-    {
-        foreach (var root in configuration.GetSection("Dashboard:Files:Roots").GetChildren())
-        {
-            _settings.SetRoot(root.Key, root["Path"], root["Title"], root["Url"]);
-        }
-
-        return this;
-    }
-
     public DashboardFilesBuilder Logs(string? path, string? title = null, string? url = null)
         => Root("logs", path, title ?? "Логи", url);
 
     public DashboardFilesBuilder Share(string? path, string? title = null, string? url = null)
         => Root("share", path, title ?? "Share", url);
+}
+
+public sealed class DashboardFilesRootsBuilder
+{
+    private readonly DashboardFilesSettings _settings;
+
+    internal DashboardFilesRootsBuilder(DashboardFilesSettings settings) => _settings = settings;
+
+    /// <summary>Adds or configures one root through its own builder.</summary>
+    public DashboardFilesRootsBuilder Root(string id, Action<DashboardFileRootBuilder> configure)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+        configure(new DashboardFileRootBuilder(_settings, id));
+        return this;
+    }
+}
+
+public sealed class DashboardFileRootBuilder
+{
+    private readonly DashboardFilesSettings _settings;
+    private readonly string _id;
+    private string? _title;
+    private string? _path;
+    private string? _url;
+
+    internal DashboardFileRootBuilder(DashboardFilesSettings settings, string id)
+    {
+        _settings = settings;
+        _id = id;
+
+        if (settings.GetRoot(id) is { } existing)
+        {
+            _title = existing.Title;
+            _path = existing.Path;
+            _url = existing.Url;
+        }
+    }
+
+    /// <summary>Combo item label of the root.</summary>
+    public DashboardFileRootBuilder Title(string? title)
+    {
+        _title = title;
+        return Apply();
+    }
+
+    /// <summary>Filesystem root shown by the browser.</summary>
+    public DashboardFileRootBuilder Path(string? path)
+    {
+        _path = path;
+        return Apply();
+    }
+
+    /// <summary>App-relative URL under /files, for example "/files/logs".</summary>
+    public DashboardFileRootBuilder Url(string? url)
+    {
+        _url = url;
+        return Apply();
+    }
+
+    /// <summary>Binds this root from Dashboard:Files:Roots:{id}.</summary>
+    public DashboardFileRootBuilder FromConfiguration(IConfiguration configuration, string? sectionPath = null)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        var section = configuration.GetSection(sectionPath ?? $"Dashboard:Files:Roots:{_id}");
+        _title = section["Title"] ?? _title;
+        _path = section["Path"] ?? _path;
+        _url = section["Url"] ?? _url;
+        return Apply();
+    }
+
+    private DashboardFileRootBuilder Apply()
+    {
+        _settings.SetRoot(_id, _path, _title, _url);
+        return this;
+    }
 }
 
 public sealed class DashboardOtlpBuilder
@@ -414,6 +506,9 @@ internal sealed class DashboardFilesSettings
 {
     public string? Title { get; set; }
     public List<DashboardFilesRootSetting> Roots { get; } = [];
+
+    public DashboardFilesRootSetting? GetRoot(string id) =>
+        Roots.FirstOrDefault(root => string.Equals(root.Id, id, StringComparison.OrdinalIgnoreCase));
 
     public void SetRoot(string id, string? path, string? title, string? url)
     {

@@ -123,8 +123,14 @@ builder.AddDashboard(dashboard => dashboard
         .SuppressUnsecuredMessage(true))
     .Files(files => files
         .Title("Файлы")
-        .Root("logs", "/workspace/logs", "Логи", "/files/logs")
-        .Root("share", "/host-home", "Share", "/files/share"))
+        .Root("logs", root => root
+            .Title("Логи")
+            .Path("/workspace/logs")
+            .Url("/files/logs"))
+        .Root("share", root => root
+            .Title("Share")
+            .Path("/host-home")
+            .Url("/files/share")))
     .Management(management => management
         .Timeout(10))
     .Security(security => security
@@ -171,7 +177,7 @@ app.Run();
 |---|---|---|
 | Брендинг | `Branding` | `Title(string)`, `LogoUrl(string)` |
 | Хостинг | `Hosting` | `BasePath(string)`, `PublicUrl(string)`, `EndpointUrls(string)` |
-| Файлы | `Files` | `Title(string)`, `Root(id, path, title?, url?)`, `Roots(configuration)` |
+| Файлы | `Files` | `Title(string)`, `Root(id, root => ...)`, `Roots(roots => ...)` |
 | OTLP | `Otlp` | `GrpcEndpoint(string)`, `HttpEndpoint(string)`, `Unsecured(bool)`, `SuppressUnsecuredMessage(bool)` |
 | Управление | `Management` | `Timeout(int)`, `Source(name, url, publicUrl?)` |
 | Безопасность | `Security` | `AllowAnonymous(bool)` |
@@ -213,21 +219,47 @@ app.Run();
 
 #### Files
 
-Одна вкладка **«Файлы»** с выпадающим списком корней. У каждого корня свои
-`Title`, `Path` и `Url`, поэтому на него можно дать прямую ссылку.
+Одна вкладка **«Файлы»** с выпадающим списком корней. Билдер вложенный:
+`Files.Title` — название вкладки, `Root` — дочерний элемент combo со своими
+`Title`, `Path` и `Url`.
 
 ```csharp
 .Files(files => files
     .Title("Файлы")
-    .Root("logs", "/workspace/logs", "Логи", "/files/logs")
-    .Root("share", "/host-home", "Share", "/files/share"))
+    .Root("logs", root => root
+        .Title("Логи")
+        .Path("/workspace/logs")
+        .Url("/files/logs"))
+    .Root("share", root => root
+        .Title("Share")
+        .Path("/host-home")
+        .Url("/files/share")))
 ```
 
-- `Title` — заголовок вкладки в навигации.
-- `Root(id, path, title?, url?)` — добавляет узел. `id` используется в API
-  скачивания, `url` — адрес страницы (по умолчанию `/files/{id}`).
+- `Title` на `Files` — заголовок вкладки в навигации.
+- `Root(id, root => ...)` — дочерний узел combo.
+- `.Title(...)` у корня — подпись в combo.
+- `.Path(...)` — путь на диске.
+- `.Url(...)` — адрес страницы (по умолчанию `/files/{id}`).
 - `null`-путь удаляет узел.
-- `Roots(configuration)` читает все узлы из `Dashboard:Files:Roots`.
+
+Все корни из конфигурации можно добавить циклом через `Roots`:
+
+```csharp
+.Files(files => files
+    .Title(builder.Configuration["Dashboard:Files:Title"])
+    .Roots(roots =>
+    {
+        foreach (var root in builder.Configuration
+            .GetSection("Dashboard:Files:Roots").GetChildren())
+        {
+            roots.Root(root.Key, fileRoot => fileRoot
+                .Title(root["Title"])
+                .Path(root["Path"])
+                .Url(root["Url"]));
+        }
+    }))
+```
 
 Ключи:
 

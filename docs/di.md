@@ -33,7 +33,17 @@ builder.AddDashboard(dashboard => dashboard
         .EndpointUrls(builder.Configuration["ASPNETCORE_URLS"]))
     .Files(files => files
         .Title(builder.Configuration["Dashboard:Files:Title"])
-        .Roots(builder.Configuration))
+        .Roots(roots =>
+        {
+            foreach (var root in builder.Configuration
+                .GetSection("Dashboard:Files:Roots").GetChildren())
+            {
+                roots.Root(root.Key, fileRoot => fileRoot
+                    .Title(root["Title"])
+                    .Path(root["Path"])
+                    .Url(root["Url"]));
+            }
+        }))
     .Otlp(otlp => otlp
         .GrpcEndpoint(builder.Configuration["ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL"])
         .HttpEndpoint(builder.Configuration["ASPIRE_DASHBOARD_OTLP_HTTP_ENDPOINT_URL"])
@@ -169,23 +179,33 @@ antiforgery — после authorization, OTLP endpoints не пересекаю
 
 ### Files
 
-Одна вкладка **«Файлы»**, внутри — выбираемые корни. У каждого корня свой
-`Title`, путь и URL, поэтому на него можно дать прямую ссылку.
+Одна вкладка **«Файлы»**, внутри — выбираемые корни. Билдер вложенный:
+`Files.Title` задаёт название вкладки, `Root` — дочерний элемент combo.
 
 ```csharp
 .Files(files => files
     .Title("Файлы")
-    .Root("logs", "/workspace/logs", "Логи", "/files/logs")
-    .Root("share", "/host-home", "Share", "/files/share"))
+    .Root("logs", root => root
+        .Title("Логи")
+        .Path("/workspace/logs")
+        .Url("/files/logs"))
+    .Root("share", root => root
+        .Title("Share")
+        .Path("/host-home")
+        .Url("/files/share")))
 ```
 
 | Метод | Ключи конфигурации |
 |---|---|
 | `Title(title)` | `Dashboard:Files:Title` |
-| `Root(id, path, title?, url?)` | `Dashboard:Files:Roots:{id}:Path/Title/Url` |
-| `Roots(configuration)` | все узлы `Dashboard:Files:Roots` |
+| `Root(id, root => ...)` | дочерний узел: `.Title`, `.Path`, `.Url` |
+| `Roots(roots => ...)` | вызвать `roots.Root(...)` для каждого узла |
+| `Root(id, path, title?, url?)` | сокращённая запись без вложенного билдера |
 | `Logs(path, title?, url?)` | сокращение для `Root("logs", ...)` |
 | `Share(path, title?, url?)` | сокращение для `Root("share", ...)` |
+
+У дочернего билдера есть также `FromConfiguration(configuration)` — он читает
+`Dashboard:Files:Roots:{id}`.
 
 `null`-путь удаляет корень. `Url` по умолчанию — `/files/{id}`. В UI корень
 выбирается в combo на тулбаре, URL меняется на `/files/logs` или

@@ -16,7 +16,16 @@ builder.AddDashboard(dashboard => dashboard
         .EndpointUrls(builder.Configuration["ASPNETCORE_URLS"]))
     .Files(files => files
         .Title(builder.Configuration["Dashboard:Files:Title"])
-        .Roots(builder.Configuration))
+        .Roots(roots =>
+        {
+            foreach (var root in builder.Configuration.GetSection("Dashboard:Files:Roots").GetChildren())
+            {
+                roots.Root(root.Key, fileRoot => fileRoot
+                    .Title(root["Title"])
+                    .Path(root["Path"])
+                    .Url(root["Url"]));
+            }
+        }))
     .Otlp(otlp => otlp
         .GrpcEndpoint(builder.Configuration["ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL"])
         .HttpEndpoint(builder.Configuration["ASPIRE_DASHBOARD_OTLP_HTTP_ENDPOINT_URL"])
