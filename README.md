@@ -925,7 +925,9 @@ dotnet build RaMonitor.Host.csproj -c Release -p:PublishAot=false
 ```
 
 Приложения на .NET 10. Для сборки dashboard и хоста нужен .NET 11 SDK, потому
-что исходники Aspire 17 target `net11.0`. Хост берёт настройки из
+что исходники Aspire 17 target `net11.0`. Панельки (`RaMonitor.Panels`)
+мультитаргетят `net10.0;net11.0`: с .NET 10 SDK собирается только `net10.0`,
+с .NET 11 SDK — оба таргета. Хост берёт настройки из
 `dashboard/host/appsettings.json`; переменные окружения переопределяют их.
 
 Всё через Docker:
