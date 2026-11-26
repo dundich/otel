@@ -72,7 +72,7 @@
 - [docs/presentation.md](docs/presentation.md) — вся презентация;
 - [Управление: миграции](docs/presentation/management-migration.png);
 - [Поиск: накладная № 222](docs/presentation/search-invoice.png);
-- [Файлы: журнал app1.log](docs/presentation/files-log.png);
+- [Файлы: список Share](docs/presentation/files-share-list.png);
 - [Центр уведомлений](docs/presentation/notifications.png).
 
 Картинки лежат рядом с документом в `docs/presentation/`, поэтому видны и на

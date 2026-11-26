@@ -1,6 +1,6 @@
 # РА-Монитор — презентация экранов
 
-> **Стек:** .NET 10 · Aspire Dashboard из исходников · Docker Compose  
+> **Стек:** .NET 10 (приложения) · .NET 11 (dashboard) · Aspire Dashboard из исходников · Docker Compose
 > **Скриншоты:** сняты через chrome-devtools, 1600×1000  
 > **Демо:** [http://localhost:18888](http://localhost:18888)
 
@@ -69,22 +69,24 @@ http://localhost:18888/search?filter=app2%2FInvoiceSearchPanel&Number=222
 
 ---
 
-## 5. Экран «Поиск» — импорт
+## 5. Экран «Файлы» — список Share
 
-Фильтр **«Импорт»**: период `DateFrom`/`DateTo`, ответ приходит в JSON и
-подсвечивается тем же viewer-ом, что и файлы `.json`.
+Вкладка **«Файлы»** — один браузер с выбором корня в combo. Корень `share`
+указывает на `/host-home` — домашнюю директорию хоста, примонтированную
+**read-only**. В списке видны папки и файлы, размер, тип, дата и действия
+«скачать»/«просмотр».
 
-![Поиск: импорт](presentation/search-import.png)
+![Файлы: список Share](presentation/files-share-list.png)
 
 ---
 
-## 6. Экран «Файлы» — просмотр лога
+## 6. Экран «Файлы» — просмотр
 
-Вкладка **«Файлы»** — один браузер с выбором корня в combo. В демо корень
-`logs` указывает на `/workspace/logs`. Файл `app1.log` открывается в
-текстовом viewer с возможностью скачать.
+Просмотр файла из Share: `dotnet-install.sh` открывается в текстовом viewer
+прямо из домашней директории хоста. Файл не копируется — браузер читает его
+через `Dashboard:Files:Roots` и отдаёт в UI.
 
-![Файлы: журнал app1.log](presentation/files-log.png)
+![Файлы: просмотр dotnet-install.sh](presentation/files-share-preview.png)
 
 ---
 
