@@ -43,8 +43,10 @@ docker compose up -d --build
 Основные разделы dashboard:
 
 ```text
-Structured logs   Traces   Metrics   Управление   Файлы
+Structured logs   Traces   Metrics   Управление   Поиск   Файлы
 ```
+
+Презентация экранов с картинками: [docs/presentation.md](docs/presentation.md).
 
 Полезные адреса:
 
@@ -55,6 +57,7 @@ Structured logs   Traces   Metrics   Управление   Файлы
 | http://localhost:18888/traces | трейсы |
 | http://localhost:18888/metrics | метрики |
 | http://localhost:18888/management | панели приложений |
+| http://localhost:18888/search | поисковые фильтры |
 | http://localhost:18888/files/logs | файловый браузер логов |
 | http://localhost:18888/files/share | файловый браузер домашней директории |
 | http://localhost:8081 | app1 API |

@@ -114,7 +114,13 @@ public partial class Management : ComponentBase
             }
         }
 
-        return states;
+        // Panels are ordered globally by the SDK Order, not by source name, so
+        // a low-order panel (for example «Миграции») is shown first.
+        return states
+            .OrderBy(state => state.Panel.Order)
+            .ThenBy(state => state.Source, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(state => state.Panel.Title, StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     private static void ApplyPanelValues(PanelState state, PanelDto panel)
