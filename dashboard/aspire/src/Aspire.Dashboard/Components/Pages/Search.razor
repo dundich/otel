@@ -1,0 +1,189 @@
+@page "/search"
+@layout ResourcesLayout
+
+@using Aspire.Dashboard.Components.Controls
+@using Aspire.Dashboard.Components.Layout
+
+<PageTitle>Поиск</PageTitle>
+
+<div class="page-content-container">
+    <AspirePageContentLayout>
+        <PageTitleSection>
+            <h1 class="page-header">Поиск</h1>
+        </PageTitleSection>
+
+        <ToolbarSection>
+            <div class="search-toolbar" role="toolbar" aria-label="Поисковые фильтры">
+                @if (_loading)
+                {
+                    <span class="search-muted">Загрузка фильтров…</span>
+                }
+                else if (_loadError is not null)
+                {
+                    <span class="search-error">Не удалось загрузить фильтры: @_loadError</span>
+                }
+                else if (_filters.Count == 0)
+                {
+                    <span class="search-muted">Поисковые панели не найдены.</span>
+                }
+                else
+                {
+                    <label class="search-filter-select">
+                        <span>Фильтр</span>
+                        <select value="@_selectedKey" @onchange="OnFilterChanged" aria-label="Поисковый фильтр">
+                            @foreach (var filter in _filters)
+                            {
+                                <option value="@filter.Key">@filter.DisplayName</option>
+                            }
+                        </select>
+                    </label>
+
+                    @if (Current is { } selected)
+                    {
+                        <div class="search-query">
+                            @foreach (var field in selected.Panel.Fields)
+                            {
+                                <label class="search-field">
+                                    <span>@field.Label</span>
+                                    @if (field.InputType == "bool")
+                                    {
+                                        <input type="checkbox"
+                                               checked="@selected.Bools.GetValueOrDefault(field.Name)"
+                                               @onchange="e => SetBool(selected, field, e)" />
+                                    }
+                                    else if (field.InputType == "readonly")
+                                    {
+                                        <input type="text"
+                                               value="@selected.Text.GetValueOrDefault(field.Name)"
+                                               readonly
+                                               tabindex="-1" />
+                                    }
+                                    else
+                                    {
+                                        <input type="@GetInputType(field)"
+                                               step="@GetStep(field)"
+                                               value="@selected.Text.GetValueOrDefault(field.Name)"
+                                               placeholder="@field.Placeholder"
+                                               required="@field.Required"
+                                               @oninput="e => SetText(selected, field, e)"
+                                               @onkeydown="e => OnFieldKeyDown(e, selected)" />
+                                    }
+                                </label>
+                            }
+                        </div>
+
+                        <div class="search-buttons">
+                            @if (selected.FindAction is { } find)
+                            {
+                                <button type="button"
+                                        class="search-button search-button-primary"
+                                        disabled="@selected.Busy"
+                                        title="@find.Description"
+                                        @onclick="() => RunActionAsync(selected, find)">
+                                    @find.Label
+                                </button>
+                            }
+
+                            <button type="button"
+                                    class="search-button"
+                                    disabled="@selected.Busy"
+                                    title="Вернуть значения фильтра"
+                                    @onclick="() => ResetFilter(selected)">
+                                Сброс
+                            </button>
+
+                            @foreach (var action in selected.ExtraActions)
+                            {
+                                <button type="button"
+                                        class="search-button"
+                                        disabled="@selected.Busy"
+                                        title="@action.Description"
+                                        @onclick="() => RunActionAsync(selected, action)">
+                                    @action.Label
+                                </button>
+                            }
+                        </div>
+                    }
+                }
+            </div>
+        </ToolbarSection>
+
+        <MainSection>
+            <div class="search-content">
+                @if (Current is { } state)
+                {
+                    <PanelElements Elements="state.Panel.Elements" />
+
+                    <div class="search-results-header">
+                        <span>Результаты: <strong>@state.Results.Count</strong></span>
+                        <button type="button"
+                                class="search-button search-button-small"
+                                disabled="@(state.Results.Count == 0)"
+                                @onclick="() => ClearResults(state)">
+                            Очистить все
+                        </button>
+                    </div>
+
+                    @if (state.Results.Count == 0)
+                    {
+                        <p class="search-muted">
+                            Задайте параметры фильтра и нажмите «@(state.FindAction?.Label ?? "Найти")».
+                            Ответы появятся здесь, новые сверху.
+                        </p>
+                    }
+                    else
+                    {
+                        <div class="search-results">
+                            @foreach (var result in state.Results)
+                            {
+                                <article class="search-result" @key="result">
+                                    <header class="search-result-toolbar">
+                                        <span class="search-result-action">@result.ActionLabel</span>
+                                        <span class="search-result-time" title="@result.StartedAt.ToString("yyyy-MM-dd HH:mm:ss.fff zzz")">
+                                            @result.StartedAt.ToLocalTime().ToString("HH:mm:ss.fff")
+                                        </span>
+                                        <span class="search-result-duration">@result.DurationText</span>
+                                        <span class="search-result-source">@result.Source</span>
+                                        <button type="button"
+                                                class="search-result-close"
+                                                title="Закрыть"
+                                                aria-label="Закрыть ответ"
+                                                @onclick="() => RemoveResult(state, result)">×</button>
+                                    </header>
+
+                                    <div class="search-result-request" title="@result.RequestTooltip">
+                                        @foreach (var parameter in result.Parameters)
+                                        {
+                                            <span class="search-result-param">
+                                                <span class="search-result-param-label">@parameter.Label:</span>
+                                                <span class="search-result-param-value">@parameter.Value</span>
+                                            </span>
+                                        }
+                                    </div>
+
+                                    <div class="search-result-body">
+                                        @if (result.Content is { } content)
+                                        {
+                                            <ContentViewer Content="content" />
+                                        }
+                                        else
+                                        {
+                                            <div class="search-result-error">@result.Error</div>
+                                        }
+                                    </div>
+                                </article>
+                            }
+                        </div>
+                    }
+                }
+                else if (!_loading && _loadError is null && _filters.Count == 0)
+                {
+                    <p class="search-muted">
+                        Нет поисковых панелей. Зарегистрируйте их в приложении через
+                        <code>SearchPanel&lt;T&gt;(...)</code>.
+                    </p>
+                }
+            </div>
+        </MainSection>
+    </AspirePageContentLayout>
+</div>

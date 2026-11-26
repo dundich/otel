@@ -24,8 +24,18 @@ public sealed class PanelDto
     public string Title { get; set; } = string.Empty;
     public string Version { get; set; } = "0.0.0";
     public string? Description { get; set; }
+    public string Kind { get; set; } = "panel";
     public List<FieldDto> Fields { get; set; } = [];
     public List<ActionDto> Actions { get; set; } = [];
+    public List<ElementDto> Elements { get; set; } = [];
+}
+
+/// <summary>Static label or alert inside a panel body.</summary>
+public sealed class ElementDto
+{
+    public string Type { get; set; } = "label";
+    public string Text { get; set; } = string.Empty;
+    public int Order { get; set; }
 }
 
 public sealed class FieldDto

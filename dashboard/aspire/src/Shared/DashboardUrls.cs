@@ -20,6 +20,7 @@ internal static class DashboardUrls
     public const string MetricsBasePath = "metrics";
     public const string ManagementBasePath = "management";
     public const string FilesBasePath = "files";
+    public const string SearchBasePath = "search";
     public const string StructuredLogsBasePath = "structuredlogs";
     public const string TracesBasePath = "traces";
     public const string LoginBasePath = "login";
@@ -308,6 +309,8 @@ internal static class DashboardUrls
     }
 
     public static string FilesUrl() => $"/{FilesBasePath}";
+
+    public static string SearchUrl() => $"/{SearchBasePath}";
 
     public static string ManagementUrl(string? resource = null)
     {

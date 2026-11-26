@@ -28,7 +28,26 @@ public sealed class DashboardPanelBuilder
         string? description = null)
         where T : class, IDashboardPanel
     {
-        var registration = new DashboardPanelRegistration(typeof(T), title, order, id, description);
+        var registration = new DashboardPanelRegistration(
+            typeof(T), title, order, id, description, DashboardPanelKind.Panel);
+        Registrations.Add(registration);
+        return new DashboardPanelOf<T>(this, registration);
+    }
+
+    /// <summary>
+    /// Declares a search panel. Search panels use the same fields and actions as
+    /// regular panels, but are shown on the separate «Поиск» tab with a filter
+    /// toolbar and a list of action results.
+    /// </summary>
+    public DashboardPanelOf<T> SearchPanel<T>(
+        string title,
+        int order = 0,
+        string? id = null,
+        string? description = null)
+        where T : class, IDashboardPanel
+    {
+        var registration = new DashboardPanelRegistration(
+            typeof(T), title, order, id, description, DashboardPanelKind.Search);
         Registrations.Add(registration);
         return new DashboardPanelOf<T>(this, registration);
     }
@@ -126,6 +145,38 @@ public sealed class DashboardPanelOf<T> where T : class, IDashboardPanel
         string? description = null)
         where TNext : class, IDashboardPanel
         => _owner.Panel<TNext>(title, order, id, description);
+
+    /// <summary>Starts the next search panel declaration.</summary>
+    public DashboardPanelOf<TNext> SearchPanel<TNext>(
+        string title,
+        int order = 0,
+        string? id = null,
+        string? description = null)
+        where TNext : class, IDashboardPanel
+        => _owner.SearchPanel<TNext>(title, order, id, description);
+
+    /// <summary>Adds a plain text label to the panel body.</summary>
+    public DashboardPanelOf<T> Label(string text, int sortOrder = 0)
+        => AddElement(DashboardElementTypes.Label, text, sortOrder);
+
+    /// <summary>Adds an informational note (neutral alert) to the panel body.</summary>
+    public DashboardPanelOf<T> Note(string text, int sortOrder = 0)
+        => AddElement(DashboardElementTypes.Note, text, sortOrder);
+
+    /// <summary>Adds a warning alert to the panel body.</summary>
+    public DashboardPanelOf<T> Warn(string text, int sortOrder = 0)
+        => AddElement(DashboardElementTypes.Warn, text, sortOrder);
+
+    /// <summary>Adds an informational alert to the panel body.</summary>
+    public DashboardPanelOf<T> Info(string text, int sortOrder = 0)
+        => AddElement(DashboardElementTypes.Info, text, sortOrder);
+
+    private DashboardPanelOf<T> AddElement(string type, string text, int sortOrder)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(text);
+        _registration.AddElement(new DashboardPanelRegistration.ElementBinding(type, text, sortOrder));
+        return this;
+    }
 
     private static MemberInfo ResolveMember<TValue>(Expression<Func<T, TValue>> expression)
     {

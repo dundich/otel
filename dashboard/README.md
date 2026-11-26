@@ -29,13 +29,15 @@ dashboard/
 
 | Файл | Изменение |
 |---|---|
-| `Components/Layout/ResourcesLayout.razor.cs` | новая `ResourceTab.Management`, вкладка после Metrics, URL/парсинг |
-| `Shared/DashboardUrls.cs` | `ManagementBasePath` и `ManagementUrl()` |
+| `Components/Layout/ResourcesLayout.razor.cs` | вкладки `Management`, `Search`, `Files` после Metrics, URL/парсинг |
+| `Shared/DashboardUrls.cs` | `ManagementBasePath`/`ManagementUrl()`, `SearchBasePath`/`SearchUrl()` |
 | `Components/Pages/Management.razor` | страница внутри `resource-content` |
 | `Components/Pages/Management.razor.cs` | UI страницы: форма, фильтр, действия, уведомления |
 | `Management/*` | домен: `ManagementOptions` (`Management:Sources`), `ManagementModels` (DTO), `ManagementPanelService` (агрегация и действия), регистрация DI |
 | `Components/Pages/Management.razor.css` | стили на переменных Aspire Dashboard |
 | `Components/Pages/FileBrowser.razor(.cs/.css)` | одна вкладка «Файлы» с выбором корня в combo |
+| `Components/Pages/Search.razor(.cs/.css)` | вкладка «Поиск»: фильтры, URL-состояние, список ответов |
+| `Components/Controls/PanelElements.razor(.css)` | Label / Note / Info / Warn в теле панели |
 | `Components/Files/FileBrowserRootService.cs` | корни файлового браузера: title, path, url из конфигурации/DI |
 | `Components/Content/*` | ContentViewer + реестр viewers: text, json, markdown |
 | `Components/Dialogs/NotificationsDialog.*` | список событий по времени и viewer по клику |
@@ -122,6 +124,57 @@ markdown  -> MarkdownViewer
 
 В демо app2 есть действие **«Отчёт (MD)»**: оно возвращает Markdown, который
 открывается под панелью и из уведомления.
+
+## Элементы панели
+
+Панель может содержать не только поля и кнопки, но и статические элементы:
+
+```csharp
+.Panel<CounterPanel>("Счётчик app2")
+    .Label("Живой счётчик приложения")
+    .Info("Значение обновляется каждую секунду.")
+    .Note("Настройки применяются сразу.")
+    .Warn("Сброс обнуляет счётчик.")
+```
+
+`Label` — текст, `Note`/`Info`/`Warn` — alerts с разным оформлением. Они
+приходят в `elements` дескриптора и рендерятся компонентом `PanelElements`
+над полями панели.
+
+## Вкладка «Поиск»
+
+Поисковые панели регистрируются через `SearchPanel<T>(...)`:
+
+```csharp
+builder.AddDashboardPanels(panels => panels
+    .SearchPanel<CallSearchPanel>("Звонки", order: 20)
+        .Input(p => p.Phone, "Телефон")
+        .Action(p => p.Find(), "Найти")
+    .SearchPanel<ImportSearchPanel>("Импорт", order: 21)
+        .Input(p => p.DateFrom, "Дата с", DashboardInputType.Date)
+        .Input(p => p.DateTo, "Дата по", DashboardInputType.Date)
+        .Action(p => p.Find(), "Найти"));
+```
+
+Такие панели имеют `kind: "search"` и не попадают на «Управление».
+
+На вкладке:
+
+- combo фильтров (`источник · панель`);
+- поля выбранного фильтра в одну строку, Enter запускает поиск;
+- «Найти», «Сброс» и остальные действия;
+- список ответов, новый сверху: время, длительность, параметры запроса,
+  viewer; «×» закрывает ответ, «Очистить все» очищает список.
+
+Выбранный фильтр и значения полей пишутся в URL при поиске и смене фильтра
+(не во время ввода):
+
+```text
+/search?filter=app2%2FCallSearchPanel&Phone=999%20100
+```
+
+Ссылка открывает форму с заполненными полями, «Назад» возвращает значения
+из истории.
 
 ## Панели хоста
 

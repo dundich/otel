@@ -18,6 +18,9 @@ public sealed class DashboardPanelAttribute(string title, int order = 0) : Attri
     public string? Id { get; init; }
 
     public string? Description { get; init; }
+
+    /// <summary>Panel (default) or search panel shown on the «Поиск» tab.</summary>
+    public DashboardPanelKind Kind { get; init; } = DashboardPanelKind.Panel;
 }
 
 public enum DashboardInputType

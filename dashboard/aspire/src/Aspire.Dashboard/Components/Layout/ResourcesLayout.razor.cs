@@ -1118,6 +1118,7 @@ public sealed partial class ResourcesLayout : LayoutComponentBase, IAsyncDisposa
             DashboardUrls.MetricsBasePath => ResourceTab.Metrics,
             DashboardUrls.ManagementBasePath => ResourceTab.Management,
             DashboardUrls.FilesBasePath => ResourceTab.Files,
+            DashboardUrls.SearchBasePath => ResourceTab.Search,
             _ => ResourceTab.Overview
         };
 
@@ -2451,7 +2452,7 @@ public sealed partial class ResourcesLayout : LayoutComponentBase, IAsyncDisposa
 
     private bool IsTabAvailable(ResourceTab tab, IReadOnlyList<SelectedResourceItem> selection)
     {
-        if (tab is ResourceTab.Management or ResourceTab.Files)
+        if (tab is ResourceTab.Management or ResourceTab.Files or ResourceTab.Search)
         {
             return true;
         }
@@ -2485,7 +2486,7 @@ public sealed partial class ResourcesLayout : LayoutComponentBase, IAsyncDisposa
 
     private bool IsTabAvailable(ResourceTab tab, SelectedResourceItem item)
     {
-        if (tab is ResourceTab.Management or ResourceTab.Files)
+        if (tab is ResourceTab.Management or ResourceTab.Files or ResourceTab.Search)
         {
             return true;
         }
@@ -2534,6 +2535,7 @@ public sealed partial class ResourcesLayout : LayoutComponentBase, IAsyncDisposa
                     ? DashboardUrls.ManagementUrl(resourceNames[0])
                     : DashboardUrls.ManagementUrl(),
                 ResourceTab.Files => DashboardUrls.FilesUrl(),
+                ResourceTab.Search => DashboardUrls.SearchUrl(),
                 _ => throw new InvalidOperationException($"Unexpected tab: {tab}")
             };
 
@@ -2555,6 +2557,7 @@ public sealed partial class ResourcesLayout : LayoutComponentBase, IAsyncDisposa
             ResourceTab.Metrics => DashboardUrls.MetricsUrl(resourceName),
             ResourceTab.Management => DashboardUrls.ManagementUrl(resourceName),
             ResourceTab.Files => DashboardUrls.FilesUrl(),
+            ResourceTab.Search => DashboardUrls.SearchUrl(),
             _ => throw new InvalidOperationException($"Unexpected tab: {tab}")
         };
     }
@@ -3032,6 +3035,8 @@ public sealed partial class ResourcesLayout : LayoutComponentBase, IAsyncDisposa
             isVisible: true);
         yield return CreateTab(ResourceTab.Management, "Управление", new Icons.Regular.Size24.Settings(),
             isVisible: true);
+        yield return CreateTab(ResourceTab.Search, "Поиск", new Icons.Regular.Size24.Search(),
+            isVisible: true);
         if (FileBrowserRoots.Roots.Count > 0)
         {
             yield return CreateTab(ResourceTab.Files, FileBrowserRoots.Title, new Icons.Regular.Size24.Folder(),
@@ -3212,7 +3217,8 @@ internal enum ResourceTab
     Traces,
     Metrics,
     Management,
-    Files
+    Files,
+    Search
 }
 
 internal enum ResourcePaneGrouping

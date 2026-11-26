@@ -1,0 +1,34 @@
+@using Aspire.Dashboard.Management
+
+@if (Elements.Count > 0)
+{
+    <div class="panel-elements">
+        @foreach (var element in Elements.OrderBy(e => e.Order))
+        {
+            if (string.Equals(element.Type, "label", StringComparison.OrdinalIgnoreCase))
+            {
+                <div class="panel-label">@element.Text</div>
+            }
+            else
+            {
+                <div class="panel-alert panel-alert-@NormalizeType(element.Type)"
+                     role="@(string.Equals(element.Type, "warn", StringComparison.OrdinalIgnoreCase) ? "alert" : "note")">
+                    <span class="panel-alert-icon" aria-hidden="true"></span>
+                    <span class="panel-alert-text">@element.Text</span>
+                </div>
+            }
+        }
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public required IReadOnlyList<ElementDto> Elements { get; set; }
+
+    private static string NormalizeType(string type) => type.ToLowerInvariant() switch
+    {
+        "warn" or "warning" => "warn",
+        "info" or "information" => "info",
+        _ => "note"
+    };
+}

@@ -16,13 +16,15 @@ internal sealed class DashboardPanelRegistration
 {
     private readonly List<FieldBinding> _fields = [];
     private readonly List<ActionBinding> _actions = [];
+    private readonly List<ElementBinding> _elements = [];
 
     public DashboardPanelRegistration(
         Type panelType,
         string title,
         int order,
         string? id,
-        string? description)
+        string? description,
+        DashboardPanelKind kind = DashboardPanelKind.Panel)
     {
         if (!typeof(IDashboardPanel).IsAssignableFrom(panelType))
         {
@@ -35,6 +37,7 @@ internal sealed class DashboardPanelRegistration
         Order = order;
         Id = string.IsNullOrWhiteSpace(id) ? panelType.Name : id;
         Description = description;
+        Kind = kind;
     }
 
     public Type PanelType { get; }
@@ -42,8 +45,10 @@ internal sealed class DashboardPanelRegistration
     public string Title { get; }
     public int Order { get; }
     public string? Description { get; }
+    public DashboardPanelKind Kind { get; }
     public IReadOnlyList<FieldBinding> Fields => _fields;
     public IReadOnlyList<ActionBinding> Actions => _actions;
+    public IReadOnlyList<ElementBinding> Elements => _elements;
     public SemaphoreSlim Gate { get; } = new(1, 1);
 
     public void AddField(FieldBinding field)
@@ -68,6 +73,8 @@ internal sealed class DashboardPanelRegistration
         _actions.Add(action);
     }
 
+    public void AddElement(ElementBinding element) => _elements.Add(element);
+
     /// <summary>
     /// Attribute sugar: builds a registration from [DashboardPanel],
     /// [DashboardInput] and [DashboardAction].
@@ -83,7 +90,8 @@ internal sealed class DashboardPanelRegistration
             attribute.Title,
             attribute.Order,
             attribute.Id,
-            attribute.Description);
+            attribute.Description,
+            attribute.Kind);
 
         var fields = panelType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
             .Select(property => (Member: (MemberInfo)property, Attribute: property.GetCustomAttribute<DashboardInputAttribute>()))
@@ -246,6 +254,11 @@ internal sealed class DashboardPanelRegistration
         int SortOrder,
         bool RequireConfirm,
         string? Description);
+
+    public sealed record ElementBinding(
+        string Type,
+        string Text,
+        int Order);
 }
 
 public sealed class DashboardPanelRegistry
@@ -393,6 +406,14 @@ public sealed class DashboardPanelRegistry
                 Description: action.Description))
             .ToArray();
 
+        var elements = registration.Elements
+            .OrderBy(element => element.Order)
+            .Select(element => new DashboardElementDescriptor(
+                Type: element.Type,
+                Text: element.Text,
+                Order: element.Order))
+            .ToArray();
+
         return new DashboardPanelDescriptor(
             Id: registration.Id,
             Title: registration.Title,
@@ -400,7 +421,9 @@ public sealed class DashboardPanelRegistry
             Description: registration.Description,
             Order: registration.Order,
             Fields: fields,
-            Actions: actions);
+            Actions: actions,
+            Elements: elements,
+            Kind: DashboardPanelKinds.ToWireValue(registration.Kind));
     }
 
     private static string GetAppVersion()

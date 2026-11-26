@@ -71,6 +71,8 @@
                                 <p class="management-muted">@state.Panel.Description</p>
                             }
 
+                            <PanelElements Elements="state.Panel.Elements" />
+
                             <div class="management-fields">
                                 @foreach (var field in state.Panel.Fields)
                                 {

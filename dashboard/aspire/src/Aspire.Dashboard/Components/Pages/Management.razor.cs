@@ -98,6 +98,12 @@ public partial class Management : ComponentBase
         {
             foreach (var panel in source.Panels)
             {
+                if (string.Equals(panel.Kind, "search", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Search panels belong to the «Поиск» tab.
+                    continue;
+                }
+
                 var state = new PanelState(
                     source.Name,
                     panel,

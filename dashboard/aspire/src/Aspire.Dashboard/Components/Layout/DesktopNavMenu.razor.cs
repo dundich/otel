@@ -170,7 +170,8 @@ public partial class DesktopNavMenu : ComponentBase, IDisposable
                 DashboardUrls.TracesBasePath or
                 DashboardUrls.MetricsBasePath or
                 DashboardUrls.ManagementBasePath or
-                DashboardUrls.FilesBasePath => NavSection.Telemetry,
+                DashboardUrls.FilesBasePath or
+                DashboardUrls.SearchBasePath => NavSection.Telemetry,
                 _ => NavSection.None
             };
         }

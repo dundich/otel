@@ -2,6 +2,33 @@ using System.Text.Json;
 
 namespace RaMonitor.Panels;
 
+/// <summary>Where a panel is shown in the dashboard.</summary>
+public enum DashboardPanelKind
+{
+    /// <summary>Regular panel on the «Управление» tab.</summary>
+    Panel = 0,
+
+    /// <summary>Search panel with a filter toolbar on the «Поиск» tab.</summary>
+    Search = 1
+}
+
+public static class DashboardPanelKinds
+{
+    public const string Panel = "panel";
+    public const string Search = "search";
+
+    public static string ToWireValue(DashboardPanelKind kind) =>
+        kind == DashboardPanelKind.Search ? Search : Panel;
+}
+
+public static class DashboardElementTypes
+{
+    public const string Label = "label";
+    public const string Note = "note";
+    public const string Warn = "warn";
+    public const string Info = "info";
+}
+
 public sealed record DashboardPanelDescriptor(
     string Id,
     string Title,
@@ -9,7 +36,18 @@ public sealed record DashboardPanelDescriptor(
     string? Description,
     int Order,
     IReadOnlyList<DashboardFieldDescriptor> Fields,
-    IReadOnlyList<DashboardActionDescriptor> Actions);
+    IReadOnlyList<DashboardActionDescriptor> Actions,
+    IReadOnlyList<DashboardElementDescriptor> Elements,
+    string Kind = DashboardPanelKinds.Panel);
+
+/// <summary>
+/// Static element inside a panel body: plain label or an alert with information.
+/// <see cref="Type"/> is one of label, note, warn, info.
+/// </summary>
+public sealed record DashboardElementDescriptor(
+    string Type,
+    string Text,
+    int Order);
 
 /// <summary>
 /// One input in a panel. InputType is one of: text, date, int, number, bool.
