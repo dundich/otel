@@ -337,16 +337,17 @@ public sealed class DashboardPanelRegistry
                 var data = await ((IDashboardPanel)instance)
                     .ExecuteAsync(action.Name, cancellationToken).ConfigureAwait(false);
 
-                var message = data switch
+                var content = data switch
                 {
-                    null => $"{action.Label}: готово",
-                    string text => text,
-                    _ => JsonSerializer.Serialize(data)
+                    DashboardContent value => value,
+                    null => DashboardContent.Text($"{action.Label}: готово"),
+                    string text => DashboardContent.Text(text),
+                    _ => DashboardContent.Json(JsonSerializer.Serialize(data))
                 };
 
                 return new DashboardActionResult(
                     Success: true,
-                    Message: message,
+                    Content: content,
                     Panel: BuildDescriptor(registration, instance),
                     Data: data);
             }
@@ -356,7 +357,7 @@ public sealed class DashboardPanelRegistry
 
                 return new DashboardActionResult(
                     Success: false,
-                    Message: ex.Message,
+                    Content: DashboardContent.Text(ex.Message),
                     Panel: BuildDescriptor(registration, instance));
             }
         }

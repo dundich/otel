@@ -2,15 +2,16 @@ using System.Globalization;
 using System.IO.Enumeration;
 using System.Text;
 using Aspire.Dashboard.Components.Files;
+using Aspire.Dashboard.Components.Content;
+using Aspire.Dashboard.Model;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
-using Microsoft.JSInterop;
 using Microsoft.FluentUI.AspNetCore.Components;
 using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons;
 
 namespace Aspire.Dashboard.Components.Pages;
 
-public partial class FileBrowser : ComponentBase, IAsyncDisposable
+public partial class FileBrowser : ComponentBase
 {
     private static readonly HashSet<string> s_textExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -27,9 +28,6 @@ public partial class FileBrowser : ComponentBase, IAsyncDisposable
     private List<FileEntry> _entries = [];
     private PreviewState? _preview;
     private string? _error;
-    private ElementReference _previewElement;
-    private PreviewState? _highlightedPreview;
-    private IJSObjectReference? _jsModule;
 
     [Parameter]
     public string? Slug { get; set; }
@@ -42,9 +40,6 @@ public partial class FileBrowser : ComponentBase, IAsyncDisposable
 
     [Inject]
     public required NavigationManager NavigationManager { get; init; }
-
-    [Inject]
-    public required IJSRuntime JS { get; init; }
 
     private string Title => Tabs.Title;
 
@@ -59,24 +54,9 @@ public partial class FileBrowser : ComponentBase, IAsyncDisposable
         await ReloadAsync();
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (_preview is null || _preview == _highlightedPreview || _preview.Language is null)
-        {
-            return;
-        }
-
-        _jsModule ??= await JS.InvokeAsync<IJSObjectReference>(
-            "import", $"/{Assets["Components/Pages/FileBrowser.razor.js"]}");
-
-        await _jsModule.InvokeVoidAsync("highlight", _previewElement, _preview.Language);
-        _highlightedPreview = _preview;
-    }
-
     private async Task ReloadAsync()
     {
         _preview = null;
-        _highlightedPreview = null;
         _error = null;
 
         if (string.IsNullOrEmpty(Slug))
@@ -306,8 +286,7 @@ public partial class FileBrowser : ComponentBase, IAsyncDisposable
             }
 
             var text = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true).GetString(bytes);
-            _preview = new PreviewState(entry, text, GetLanguage(entry));
-            _highlightedPreview = null;
+            _preview = new PreviewState(entry, new DashboardContent(text, GetContentType(entry)));
             _error = null;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or DecoderFallbackException)
@@ -321,29 +300,21 @@ public partial class FileBrowser : ComponentBase, IAsyncDisposable
     private void ClosePreview()
     {
         _preview = null;
-        _highlightedPreview = null;
     }
 
-    private static string? GetLanguage(FileEntry entry) =>
+    private static string GetContentType(FileEntry entry) =>
         System.IO.Path.GetExtension(entry.Name).ToLowerInvariant() switch
         {
-            ".json" => "json",
+            ".md" => DashboardContentTypes.Markdown,
+            ".json" => DashboardContentTypes.Json,
             ".yaml" or ".yml" => "yaml",
-            _ => null
+            _ => DashboardContentTypes.Text
         };
 
     private static bool IsPreviewable(FileEntry entry) =>
         !entry.IsDirectory &&
         entry.Size <= 5 * 1024 * 1024 &&
         s_textExtensions.Contains(System.IO.Path.GetExtension(entry.Name));
-
-    public async ValueTask DisposeAsync()
-    {
-        if (_jsModule is not null)
-        {
-            await _jsModule.DisposeAsync();
-        }
-    }
 
     private static string FormatSize(long bytes)
     {
@@ -384,5 +355,5 @@ public partial class FileBrowser : ComponentBase, IAsyncDisposable
         DateTimeOffset Modified,
         string Type);
 
-    private sealed record PreviewState(FileEntry Entry, string Text, string? Language);
+    private sealed record PreviewState(FileEntry Entry, DashboardContent Content);
 }

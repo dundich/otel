@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using Aspire.Dashboard.Components.Content;
 using Aspire.Dashboard.Management;
 using Aspire.Dashboard.Model;
 using Microsoft.AspNetCore.Components;
@@ -167,6 +168,7 @@ public partial class Management : ComponentBase
         state.Busy = true;
         state.Status = $"{action.Label}…";
         state.Success = true;
+        state.Result = null;
 
         try
         {
@@ -185,7 +187,10 @@ public partial class Management : ComponentBase
             else
             {
                 state.Success = outcome.Result.Success;
-                state.Status = outcome.Result.Message ?? (outcome.Result.Success ? "Готово" : "Ошибка");
+                state.Result = outcome.Result.ToDashboardContent();
+                state.Status = state.Result is { } content
+                    ? Summarize(content)
+                    : outcome.Result.Success ? "Готово" : "Ошибка";
 
                 if (outcome.Result.Panel is not null)
                 {
@@ -199,6 +204,7 @@ public partial class Management : ComponentBase
         catch (Exception ex)
         {
             state.Success = false;
+            state.Result = null;
             state.Status = $"Ошибка: {ex.Message}";
         }
         finally
@@ -249,9 +255,35 @@ public partial class Management : ComponentBase
         {
             Title = $"{state.Source} · {state.Panel.Title} · {action.Label}",
             Body = state.Status ?? (state.Success ? "Готово" : "Ошибка"),
+            Content = state.Result,
             Intent = state.Success ? MessageBarIntent.Success : MessageBarIntent.Error,
             Timestamp = DateTimeOffset.Now
         });
+    }
+
+    private static string Summarize(DashboardContent content)
+    {
+        var type = ContentViewerRegistry.Normalize(content.Type);
+
+        if (type == DashboardContentTypes.Markdown)
+        {
+            var heading = content.Content
+                .Split('\n')
+                .Select(line => line.Trim())
+                .FirstOrDefault(line => line.StartsWith('#'));
+
+            return string.IsNullOrEmpty(heading)
+                ? "Markdown"
+                : heading.TrimStart('#', ' ').Trim();
+        }
+
+        if (type == DashboardContentTypes.Json)
+        {
+            return "JSON";
+        }
+
+        var text = content.Content.ReplaceLineEndings(" ").Trim();
+        return text.Length <= 240 ? text : $"{text[..240]}…";
     }
 
     private sealed class PanelState
@@ -273,6 +305,7 @@ public partial class Management : ComponentBase
         public Dictionary<string, bool> Bools { get; } = new(StringComparer.OrdinalIgnoreCase);
         public bool Busy { get; set; }
         public bool Success { get; set; }
+        public DashboardContent? Result { get; set; }
         public string? Status { get; set; }
     }
 }

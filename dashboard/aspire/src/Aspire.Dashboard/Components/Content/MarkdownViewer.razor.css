@@ -1,0 +1,5 @@
+.content-viewer-markdown {
+    overflow: auto;
+    max-height: 520px;
+    padding: 4px 2px;
+}

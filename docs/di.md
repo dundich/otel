@@ -295,6 +295,28 @@ POST /dashboard/panels/{panel}/actions/{action}
 
 `Panels` построен на этом hook.
 
+### ContentViewers
+
+`ContentViewers` расширяет набор просмотрщиков контента. Реестр singleton,
+поэтому новые типы доступны панелям, уведомлениям и файловому браузеру:
+
+```csharp
+builder.AddDashboard(dashboard => dashboard
+    .ContentViewers(viewers => viewers
+        .Register("html", typeof(HtmlViewer))));
+```
+
+Встроенные типы:
+
+```text
+text / txt / plain / plaintext  -> TextViewer
+json / application/json         -> JsonViewer
+markdown / md / text/markdown   -> MarkdownViewer
+yaml / yml                      -> TextViewer (highlight.js)
+```
+
+Неизвестный тип рендерится как `text`.
+
 ## DI и lifetime
 
 | Сервис | Lifetime | Кто создаёт |
@@ -302,6 +324,7 @@ POST /dashboard/panels/{panel}/actions/{action}
 | `DashboardWebApplication` | Singleton | `AddDashboard()` |
 | `DashboardComponentOptions` | Singleton | `AddDashboard()` |
 | `FileBrowserRootService` | Singleton | `AddDashboard()` |
+| `ContentViewerRegistry` | Singleton | `AddDashboard()` |
 | Blazor circuits | Scoped | ASP.NET Core |
 | OTLP/telemetry services | Singleton/Scoped | регистрация dashboard |
 | Панели приложений | Singleton | `AddDashboardPanels` в приложении |

@@ -1,0 +1,14 @@
+.content-viewer-text {
+    margin: 0;
+    padding: 12px 14px;
+    border-radius: var(--borderRadiusMedium);
+    background: var(--colorNeutralBackground2);
+    color: var(--colorNeutralForeground1);
+    font-family: var(--fontFamilyMonospace);
+    font-size: var(--aspire-font-size-secondary);
+    line-height: 1.5;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    overflow: auto;
+    max-height: 520px;
+}

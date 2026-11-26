@@ -248,6 +248,14 @@
     color: var(--colorPaletteRedForeground1);
 }
 
+.management-result {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: var(--strokeWidthThin) solid var(--colorNeutralStroke3);
+    max-height: 480px;
+    overflow: auto;
+}
+
 @media (max-width: 760px) {
     .management-content {
         padding: 12px 14px 36px;

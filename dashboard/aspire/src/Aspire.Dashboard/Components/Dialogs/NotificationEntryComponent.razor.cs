@@ -3,6 +3,7 @@
 
 using Aspire.Dashboard.Model;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.FluentUI.AspNetCore.Components;
 using Icons = Microsoft.FluentUI.AspNetCore.Components.Icons;
 
@@ -16,8 +17,13 @@ public partial class NotificationEntryComponent : ComponentBase
     [Parameter]
     public EventCallback OnDismiss { get; set; }
 
+    [Parameter]
+    public EventCallback OnOpen { get; set; }
+
     [Inject]
     public required IServiceProvider Services { get; init; }
+
+    private bool HasContent => Entry.Content is not null;
 
     private string IntentClass => Entry.Intent switch
     {
@@ -46,6 +52,22 @@ public partial class NotificationEntryComponent : ComponentBase
     private async Task HandleDismiss()
     {
         await OnDismiss.InvokeAsync();
+    }
+
+    private async Task HandleOpen()
+    {
+        if (HasContent)
+        {
+            await OnOpen.InvokeAsync();
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key is "Enter" or " ")
+        {
+            await HandleOpen();
+        }
     }
 
     private async Task HandlePrimaryAction()

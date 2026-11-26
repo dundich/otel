@@ -130,6 +130,13 @@
                             {
                                 <div class="management-status @(state.Success ? "ok" : "error")">@state.Status</div>
                             }
+
+                            @if (state.Result is { } result)
+                            {
+                                <div class="management-result">
+                                    <ContentViewer Content="result" />
+                                </div>
+                            }
                         </div>
                     </details>
                 }

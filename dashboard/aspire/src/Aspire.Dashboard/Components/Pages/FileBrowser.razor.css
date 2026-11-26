@@ -214,17 +214,16 @@
     white-space: nowrap;
 }
 
-.file-preview-text {
+.file-preview-content {
     flex: 1 1 auto;
     min-height: 0;
-    margin: 0;
-    padding: 12px;
     overflow: auto;
-    font-family: var(--fontFamilyMonospace);
-    font-size: 12px;
-    line-height: 1.45;
-    white-space: pre-wrap;
-    word-break: break-word;
+    padding: 12px;
+}
+
+.file-preview-content ::deep .content-viewer-text,
+.file-preview-content ::deep .content-viewer-markdown {
+    max-height: none;
 }
 
 @media (max-width: 760px) {

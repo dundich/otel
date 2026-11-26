@@ -51,6 +51,26 @@ public sealed class CounterPanel(CounterService counter, ILogger<CounterPanel> l
         return Task.FromResult($"Счётчик сброшен: значение={counter.Count}");
     }
 
+    // Возвращает Markdown: дашборд откроет его в Markdown-viewer под панелью,
+    // а в центре уведомлений появится событие, открывающее тот же viewer.
+    public async Task<DashboardContent> Report()
+    {
+        await RenderAsync();
+        var markdown = $"""
+            ## Счётчик app2
+
+            | Параметр | Значение |
+            |---|---|
+            | Шаг | **{counter.Step}** |
+            | Активно | **{(counter.Enabled ? "да" : "нет")}** |
+            | Текущее значение | **{counter.Count}** |
+
+            Отчёт сформирован {DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss}.
+            """;
+
+        return DashboardContent.Markdown(markdown);
+    }
+
     // ВЫЗЫВАЕТСЯ ПО КЛАВЕ действия: клик → SignalR circuit →
     // POST {source}/dashboard/panels/{panel}/actions/{actionName} → сюда.
     public async Task<object?> ExecuteAsync(string actionName, CancellationToken cancellationToken = default)
@@ -58,6 +78,7 @@ public sealed class CounterPanel(CounterService counter, ILogger<CounterPanel> l
         {
             nameof(Apply) => await Apply().ConfigureAwait(false),
             nameof(Reset) => await Reset().ConfigureAwait(false),
+            nameof(Report) => await Report().ConfigureAwait(false),
             _ => throw new InvalidOperationException(
                 $"Action '{actionName}' is not handled by {nameof(CounterPanel)}.")
         };

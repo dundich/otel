@@ -37,6 +37,8 @@ dashboard/
 | `Components/Pages/Management.razor.css` | стили на переменных Aspire Dashboard |
 | `Components/Pages/FileBrowser.razor(.cs/.css)` | одна вкладка «Файлы» с выбором корня в combo |
 | `Components/Files/FileBrowserRootService.cs` | корни файлового браузера: title, path, url из конфигурации/DI |
+| `Components/Content/*` | ContentViewer + реестр viewers: text, json, markdown |
+| `Components/Dialogs/NotificationsDialog.*` | список событий по времени и viewer по клику |
 | `Components/Controls/AspireLogo.razor` | логотип заменён на `/img/logo-purple.png` |
 | `wwwroot/img/logo-purple.png` | логотип из `cloud-sa.vsrobotics.ru` |
 
@@ -77,6 +79,9 @@ CSS/тему дашборда.
 - рисует панели выбранного app;
 - поддерживает text/date/int/bool;
 - отправляет `POST {source}/dashboard/panels/{panel}/actions/{action}` напрямую;
+- показывает результат действия под панелью в подходящем viewer
+  (text / JSON / Markdown);
+- событие в колокольчике открывает тот же viewer по клику;
 - показывает результат в колокольчике Aspire Dashboard (Notification Center).
 
 Так как запрос идёт с сервера дашборда, страница работает и через gateway
@@ -94,6 +99,29 @@ environment:
   Management__Sources__1__PublicUrl: http://localhost:8082
   # опционально: Management__TimeoutSeconds: 10
 ```
+
+## Просмотр контента
+
+Результат действия панели — `DashboardContent { content, type }`. Тип по
+умолчанию `text`; поддерживаются `text`, `json`, `markdown`.
+
+`ContentViewer` выбирает компонент по типу через `ContentViewerRegistry`:
+
+```text
+text      -> TextViewer
+json      -> JsonViewer
+markdown  -> MarkdownViewer
+```
+
+Тот же viewer используется под панелью «Управление», в центре уведомлений и в
+файловом браузере. Новый тип добавляется одной регистрацией:
+
+```csharp
+.ContentViewers(viewers => viewers.Register("html", typeof(HtmlViewer)))
+```
+
+В демо app2 есть действие **«Отчёт (MD)»**: оно возвращает Markdown, который
+открывается под панелью и из уведомления.
 
 ## Панели хоста
 

@@ -70,7 +70,9 @@
                                 <FluentIcon Value="@(new Icons.Regular.Size16.ArrowDownload())" Width="16px" Color="Color.Custom" CustomColor="currentColor" />
                             </a>
                         </header>
-                        <pre class="file-preview-text" @ref="_previewElement">@_preview.Text</pre>
+                        <div class="file-preview-content">
+                            <ContentViewer Content="_preview.Content" />
+                        </div>
                     </section>
                 }
                 else

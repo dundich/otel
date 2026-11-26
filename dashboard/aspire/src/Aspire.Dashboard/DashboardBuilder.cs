@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
+using Aspire.Dashboard.Components.Content;
 
 namespace Aspire.Dashboard;
 
@@ -35,6 +36,12 @@ public sealed class DashboardBuilder
     /// building the host, so extensions can reuse the same DI container.
     /// </summary>
     internal List<Action<IHostApplicationBuilder>> HostRegistrations { get; } = [];
+
+    /// <summary>
+    /// Extra content viewers registered by the host. Default text, JSON and
+    /// Markdown viewers are always available.
+    /// </summary>
+    internal List<Action<ContentViewerRegistry>> ContentViewerRegistrations { get; } = [];
 
     /// <summary>
     /// Bootstraps all domains from the host configuration. Values are read from
@@ -165,6 +172,18 @@ public sealed class DashboardBuilder
     {
         ArgumentNullException.ThrowIfNull(configure);
         HostRegistrations.Add(configure);
+        return this;
+    }
+
+    /// <summary>
+    /// Adds or replaces content viewers. The registry maps a content type, such
+    /// as "markdown" or "json", to a Blazor component. Register new viewers here
+    /// as the set of supported content types grows.
+    /// </summary>
+    public DashboardBuilder ContentViewers(Action<ContentViewerRegistry> configure)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+        ContentViewerRegistrations.Add(configure);
         return this;
     }
 

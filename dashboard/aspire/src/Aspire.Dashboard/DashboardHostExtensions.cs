@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Aspire.Dashboard.Components.Content;
 
 namespace Aspire.Dashboard;
 
@@ -63,6 +64,15 @@ public static class DashboardHostExtensions
         {
             configureHost(builder);
         }
+
+        // The registry is created before the dashboard services so the host's
+        // viewer registrations win over the default TryAddSingleton.
+        var contentViewers = new ContentViewerRegistry();
+        foreach (var configureViewers in dashboardBuilder.ContentViewerRegistrations)
+        {
+            configureViewers(contentViewers);
+        }
+        builder.Services.AddSingleton(contentViewers);
 
         var dashboard = new DashboardWebApplication(builder, componentOptions);
 

@@ -1,0 +1,23 @@
+@using Aspire.Dashboard.Model
+
+<DynamicComponent Type="@_viewerType" Parameters="@_parameters" />
+
+@code {
+    [Parameter, EditorRequired]
+    public required DashboardContent Content { get; set; }
+
+    [Inject]
+    public required ContentViewerRegistry Registry { get; init; }
+
+    private Type _viewerType = typeof(TextViewer);
+    private Dictionary<string, object?> _parameters = [];
+
+    protected override void OnParametersSet()
+    {
+        _viewerType = Registry.Resolve(Content.Type);
+        _parameters = new Dictionary<string, object?>
+        {
+            [nameof(TextViewer.Content)] = Content
+        };
+    }
+}

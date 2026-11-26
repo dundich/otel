@@ -627,7 +627,8 @@ public sealed class MyPanel(ILogger<MyPanel> logger) : IDashboardPanel
         return Task.CompletedTask;
     }
 
-    public Task<string> Apply() => Task.FromResult($"Принято: {Name}, {Count}");
+    public Task<DashboardContent> Apply() => Task.FromResult(
+        DashboardContent.Markdown($"**Принято:** {Name}, {Count}"));
 
     // по нажатию кнопки: значения формы уже записаны в свойства выше
     public async Task<object?> ExecuteAsync(string actionName, CancellationToken ct = default)
@@ -692,7 +693,10 @@ builder.AddDashboardPanels(panels => panels
 - кнопки действий (включая «Применить»);
 - версия приложения в заголовке панели: `Счётчик app2 v10.0.2`;
 - `Public` адрес приложения;
-- результат действия уходит в **колокольчик** Aspire Dashboard (`INotificationService`).
+- результат действия показывается под панелью в соответствующем viewer
+  (текст / JSON / Markdown);
+- краткое событие уходит в **колокольчик** Aspire Dashboard
+  (`INotificationService`), клик по событию открывает viewer.
 
 Скриншот: `docs/management.png`.
 
@@ -711,6 +715,87 @@ POST /dashboard/panels/{panelId}/actions/{actionName}
 
 SDK записывает значения в свойства (скомпилированные сеттеры), вызывает
 `IDashboardPanel.ExecuteAsync` и возвращает полный снимок панели.
+
+### Результат действия
+
+Вместо строки действие может вернуть `DashboardContent`:
+
+```csharp
+public Task<DashboardContent> Report() =>
+    Task.FromResult(DashboardContent.Markdown("""
+        ## Отчёт
+
+        | Параметр | Значение |
+        |---|---|
+        | Шаг | **1** |
+        """));
+
+// короткие формы:
+DashboardContent.Text("готово");
+DashboardContent.Json(json);
+DashboardContent.Markdown(markdown);
+```
+
+Ответ API:
+
+```json
+{
+  "success": true,
+  "content": {
+    "content": "## Отчёт\n...",
+    "type": "markdown"
+  },
+  "panel": { "...": "..." }
+}
+```
+
+`type` по умолчанию — `text`. Поддерживаются `text`, `json`, `markdown`
+(алиасы: `md`, `text/markdown`, `application/json`). Строка, возвращённая
+методом действия, по-прежнему работает и трактуется как `text`; произвольный
+объект сериализуется в JSON.
+
+### Viewers
+
+Просмотр контента вынесен в `ContentViewer` + `ContentViewerRegistry`:
+
+```text
+Components/Content/
+  ContentViewer.razor          # выбирает viewer по type
+  ContentViewerRegistry.cs     # type -> component
+  TextViewer.razor             # text + highlight.js для json/yaml
+  JsonViewer.razor             # JSON
+  MarkdownViewer.razor         # MarkdownRenderer (Markdig)
+```
+
+Один и тот же viewer используется:
+
+- под панелью «Управление» после действия;
+- в центре уведомлений при клике на событие;
+- в файловом браузере для `.md`, `.json`, `.yaml` и текстовых файлов.
+
+Новые типы добавляются без изменения UI:
+
+```csharp
+builder.AddDashboard(...)
+    .ContentViewers(viewers => viewers
+        .Register("html", typeof(HtmlViewer)));
+```
+
+Неизвестный `type` открывается как `text`.
+
+### Уведомления
+
+После действия создаётся краткое событие в колокольчике:
+
+```text
+app2 · Счётчик app2 · Отчёт (MD)
+Счётчик app2
+Нажмите, чтобы открыть
+Just now
+```
+
+События упорядочены по времени. Клик по событию открывает viewer по `type`
+(`text`, `json`, `markdown`), кнопка «Назад» возвращает к списку.
 
 ### Панели app1
 
@@ -735,7 +820,9 @@ app2 — обычное приложение со своими панелями,
 
 - `RenderAsync` — при появлении панели читает `Step`/`Enabled` из сервиса;
 - **«Применить»** — `SetStep`/`SetEnabled`;
-- **«Сбросить»** — `counter.Reset()`, с `RequireConfirm` (confirm в UI).
+- **«Сбросить»** — `counter.Reset()`, с `RequireConfirm` (confirm в UI);
+- **«Отчёт (MD)»** — возвращает `DashboardContent.Markdown`, показывает
+  Markdown-viewer под панелью и открывается из уведомления.
 
 Агрегацию панелей делает **сам дашборд** (домен
 `dashboard/aspire/src/Aspire.Dashboard/Management/`): он читает registry
@@ -816,7 +903,8 @@ volumes:
 - вход в папку, `Вверх`, `В корень`, клавиша **Home**;
 - скачивание: `/files/download?root=logs&path=app1.log`;
 - просмотр UTF-8 до 5 МБ;
-- подсветка JSON и YAML через highlight.js;
+- `.md` открывается в Markdown-viewer, `.json`/`.yaml` — с подсветкой,
+  остальные текстовые файлы — в текстовом viewer;
 - preview на всю область с кнопками back/download;
 - защита от `../` path traversal.
 

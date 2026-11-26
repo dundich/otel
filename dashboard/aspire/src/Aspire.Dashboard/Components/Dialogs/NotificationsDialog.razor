@@ -3,29 +3,50 @@
 @inject IStringLocalizer<Dialogs> Loc
 
 <FluentDialogBody Class="navigation-dialog-body">
-    <div class="notifications-container">
-        @if (_notifications.Count == 0)
-        {
-            <div class="notification-center-empty">
-                <FluentIcon Value="@(new Icons.Regular.Size24.Alert())" Color="Color.Default" />
-                <p>@Loc[nameof(Dialogs.NotificationCenterEmpty)]</p>
-            </div>
-        }
-        else
-        {
-            <div class="notifications-dismiss">
+    @if (_viewerContent is { } viewerContent)
+    {
+        <div class="notification-viewer">
+            <div class="notification-viewer-header">
                 <FluentButton Appearance="ButtonAppearance.Transparent"
-                              Class="aspire-link-button notifications-dismiss-all"
-                              OnClick="@DismissAll">
-                    @Loc[nameof(Dialogs.NotificationCenterDismissAll)]
+                              Class="aspire-link-button"
+                              OnClick="@CloseViewer">
+                    ← Назад
                 </FluentButton>
+                <span class="notification-viewer-title">@_viewerTitle</span>
             </div>
-            <div class="notifications-scroll">
-                @foreach (var notification in _notifications)
-                {
-                    <NotificationEntryComponent Entry="@notification.Entry" OnDismiss="@(() => Dismiss(notification.Id))" />
-                }
+            <div class="notification-viewer-body">
+                <ContentViewer Content="viewerContent" />
             </div>
-        }
-    </div>
+        </div>
+    }
+    else
+    {
+        <div class="notifications-container">
+            @if (_notifications.Count == 0)
+            {
+                <div class="notification-center-empty">
+                    <FluentIcon Value="@(new Icons.Regular.Size24.Alert())" Color="Color.Default" />
+                    <p>@Loc[nameof(Dialogs.NotificationCenterEmpty)]</p>
+                </div>
+            }
+            else
+            {
+                <div class="notifications-dismiss">
+                    <FluentButton Appearance="ButtonAppearance.Transparent"
+                                  Class="aspire-link-button notifications-dismiss-all"
+                                  OnClick="@DismissAll">
+                        @Loc[nameof(Dialogs.NotificationCenterDismissAll)]
+                    </FluentButton>
+                </div>
+                <div class="notifications-scroll">
+                    @foreach (var notification in _notifications)
+                    {
+                        <NotificationEntryComponent Entry="@notification.Entry"
+                                                    OnDismiss="@(() => Dismiss(notification.Id))"
+                                                    OnOpen="@(() => OpenViewer(notification.Entry))" />
+                    }
+                </div>
+            }
+        </div>
+    }
 </FluentDialogBody>

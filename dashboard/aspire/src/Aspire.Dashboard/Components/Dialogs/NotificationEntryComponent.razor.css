@@ -26,6 +26,19 @@
     fill: var(--success);
 }
 
+.notification-entry.has-content {
+    cursor: pointer;
+}
+
+.notification-entry.has-content:hover {
+    background: var(--colorNeutralBackground1Hover);
+}
+
+.notification-entry.has-content:focus-visible {
+    outline: var(--strokeWidthThick) solid var(--colorStrokeFocus2);
+    outline-offset: -1px;
+}
+
 .notification-entry-icon {
     grid-column: 1;
     grid-row: 1;
@@ -74,6 +87,11 @@
     text-align: right;
     padding: 4px 4px 8px 0px;
     color: var(--colorNeutralForeground3);
+}
+
+.notification-entry-open-hint {
+    color: var(--colorBrandForeground1);
+    font-size: var(--aspire-font-size-secondary);
 }
 
 ::deep .notification-entry-dismiss {

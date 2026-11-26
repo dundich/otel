@@ -5,7 +5,11 @@
 @inject TimeProvider TimeProvider
 @inject IStringLocalizer<Dialogs> Loc
 
-<div class="notification-entry @IntentClass">
+<div class="notification-entry @IntentClass @(HasContent ? "has-content" : null)"
+     role="@(HasContent ? "button" : null)"
+     tabindex="@(HasContent ? 0 : (int?)null)"
+     @onclick="HandleOpen"
+     @onkeydown="HandleKeyDown">
     @* Header *@
     <div class="notification-entry-icon">
         <FluentIcon Value="@Icon" Color="@IconColor" />
@@ -13,7 +17,7 @@
     <div class="notification-entry-message">
         @Entry.Title
     </div>
-    <div class="notification-entry-close">
+    <div class="notification-entry-close" @onclick:stopPropagation="true">
         <FluentButton Appearance="ButtonAppearance.Transparent"
                       Class="aspire-icon-button aspire-link-button notification-entry-dismiss"
                       aria-label="@Loc[nameof(Dialogs.NotificationEntryDismiss)]"
@@ -30,11 +34,17 @@
         }
         @if (Entry.PrimaryAction is { } primaryAction)
         {
-            <FluentButton Appearance="ButtonAppearance.Transparent"
-                          OnClick="@HandlePrimaryAction"
-                          Class="aspire-compact-button aspire-neutral-button notification-entry-action">
-                @primaryAction.Text
-            </FluentButton>
+            <div @onclick:stopPropagation="true">
+                <FluentButton Appearance="ButtonAppearance.Transparent"
+                              OnClick="@HandlePrimaryAction"
+                              Class="aspire-compact-button aspire-neutral-button notification-entry-action">
+                    @primaryAction.Text
+                </FluentButton>
+            </div>
+        }
+        @if (HasContent)
+        {
+            <span class="notification-entry-open-hint">Нажмите, чтобы открыть</span>
         }
     </div>
 

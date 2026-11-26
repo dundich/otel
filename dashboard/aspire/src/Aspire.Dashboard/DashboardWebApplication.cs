@@ -12,6 +12,7 @@ using Aspire.Dashboard.Authentication.Connection;
 using Aspire.Dashboard.Authentication.OpenIdConnect;
 using Aspire.Dashboard.Authentication.OtlpApiKey;
 using Aspire.Dashboard.Components;
+using Aspire.Dashboard.Components.Content;
 using Aspire.Dashboard.Components.Files;
 using Aspire.Dashboard.Components.Layout;
 using Aspire.Shared;
@@ -386,6 +387,7 @@ public sealed class DashboardWebApplication : IAsyncDisposable
 
         builder.Services.TryAddSingleton<Aspire.Dashboard.Model.INotificationService, Aspire.Dashboard.Model.NotificationService>();
         builder.Services.TryAddSingleton<FileBrowserRootService>();
+        builder.Services.TryAddSingleton<ContentViewerRegistry>();
         builder.Services.TryAddSingleton(TimeProvider.System);
         builder.Services.TryAddScoped<DashboardCommandExecutor>();
 

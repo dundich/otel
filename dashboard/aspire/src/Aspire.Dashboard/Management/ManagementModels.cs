@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Aspire.Dashboard.Model;
 
 namespace Aspire.Dashboard.Management;
 
@@ -49,8 +50,29 @@ public sealed class ActionDto
 public sealed class ActionResultDto
 {
     public bool Success { get; set; }
+    public ContentDto? Content { get; set; }
+
+    /// <summary>Legacy text response from older panel SDK versions.</summary>
     public string? Message { get; set; }
+
     public PanelDto? Panel { get; set; }
+
+    public DashboardContent? ToDashboardContent()
+    {
+        if (Content is not null)
+        {
+            return new DashboardContent(Content.Content, Content.Type);
+        }
+
+        return Message is null ? null : new DashboardContent(Message);
+    }
+}
+
+/// <summary>Content payload returned by a panel action.</summary>
+public sealed class ContentDto
+{
+    public string Content { get; set; } = string.Empty;
+    public string Type { get; set; } = "text";
 }
 
 /// <summary>

@@ -24,7 +24,9 @@ builder.AddDashboardPanels(panels => panels
         .Input(p => p.Count, "Значение", DashboardInputType.ReadOnly, sortOrder: 3)
         .Action(p => p.Apply(), "Применить", sortOrder: 1)
         .Action(p => p.Reset(), "Сбросить", sortOrder: 2, requireConfirm: true,
-            description: "Обнуляет значение счётчика app2"));
+            description: "Обнуляет значение счётчика app2")
+        .Action(p => p.Report(), "Отчёт (MD)", sortOrder: 3,
+            description: "Возвращает Markdown-отчёт о состоянии счётчика"));
 
 builder.AddDashboardRegistration();
 

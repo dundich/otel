@@ -1,0 +1,8 @@
+@using Aspire.Dashboard.Model
+@using Aspire.Dashboard.Model.Markdown
+
+<div class="content-viewer-markdown">
+    <MarkdownRenderer Markdown="@Content.Content"
+                      MarkdownProcessor="@_processor"
+                      SuppressParagraphOnNewLines="false" />
+</div>

@@ -10,6 +10,8 @@ namespace Aspire.Dashboard.Components.Dialogs;
 public partial class NotificationsDialog : IDisposable
 {
     private IReadOnlyList<NotificationMessage> _notifications = [];
+    private DashboardContent? _viewerContent;
+    private string? _viewerTitle;
 
     [Inject]
     public required Aspire.Dashboard.Model.INotificationService NotificationService { get; init; }
@@ -41,6 +43,21 @@ public partial class NotificationsDialog : IDisposable
     private void Dismiss(string id)
     {
         NotificationService.RemoveNotification(id);
+    }
+
+    private void OpenViewer(NotificationEntry entry)
+    {
+        if (entry.Content is { } content)
+        {
+            _viewerContent = content;
+            _viewerTitle = entry.Title;
+        }
+    }
+
+    private void CloseViewer()
+    {
+        _viewerContent = null;
+        _viewerTitle = null;
     }
 
     public void Dispose()

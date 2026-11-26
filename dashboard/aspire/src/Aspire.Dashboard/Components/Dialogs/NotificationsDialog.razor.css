@@ -35,3 +35,31 @@
 .notifications-scroll ::deep > :last-child {
     border-bottom: var(--strokeWidthThin) solid var(--colorNeutralStroke3);
 }
+
+.notification-viewer {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    gap: var(--aspire-space-2);
+}
+
+.notification-viewer-header {
+    display: flex;
+    align-items: center;
+    gap: var(--aspire-space-2);
+    flex-wrap: wrap;
+}
+
+.notification-viewer-title {
+    font-weight: var(--aspire-font-weight-semibold);
+    color: var(--colorNeutralForeground1);
+    font-size: var(--aspire-font-size-secondary);
+    overflow-wrap: anywhere;
+}
+
+.notification-viewer-body {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+}
