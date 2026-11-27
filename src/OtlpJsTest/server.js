@@ -1,4 +1,5 @@
 const http = require('http');
+const { randomBytes } = require('crypto');
 
 const port = Number(process.env.PORT || 8080);
 const name = process.env.SERVICE_NAME || 'otlp-js-test';
@@ -7,7 +8,10 @@ const registry = process.env.DASHBOARD_REGISTRY_URL || 'http://aspire-dashboard:
 const otlp = process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://aspire-dashboard:18890';
 
 let count = 0;
-setInterval(() => count++, 1000);
+
+const resource = () => ({
+  attributes: [{ key: 'service.name', value: { stringValue: name } }]
+});
 
 const panel = () => ({
   id: 'JsCounterPanel',
@@ -71,9 +75,7 @@ const exportMetric = async () => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         resourceMetrics: [{
-          resource: {
-            attributes: [{ key: 'service.name', value: { stringValue: name } }]
-          },
+          resource: resource(),
           scopeMetrics: [{
             scope: { name: 'otlp-js-test', version },
             metrics: [{
@@ -96,7 +98,76 @@ const exportMetric = async () => {
   }
 };
 
+const exportTrace = async () => {
+  const now = BigInt(Date.now()) * 1000000n;
+
+  try {
+    await fetch(`${otlp}/v1/traces`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        resourceSpans: [{
+          resource: resource(),
+          scopeSpans: [{
+            scope: { name: 'otlp-js-test', version },
+            spans: [{
+              traceId: randomBytes(16).toString('hex'),
+              spanId: randomBytes(8).toString('hex'),
+              name: '🚀 js.counter.tick',
+              kind: 1,
+              startTimeUnixNano: String(now),
+              endTimeUnixNano: String(now + 1000000n),
+              attributes: [{
+                key: 'counter.value',
+                value: { intValue: String(count) }
+              }],
+              status: { code: 1 }
+            }]
+          }]
+        }]
+      })
+    });
+  } catch {
+    // best effort: the next tick sends another span
+  }
+};
+
+const exportLog = async () => {
+  try {
+    await fetch(`${otlp}/v1/logs`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        resourceLogs: [{
+          resource: resource(),
+          scopeLogs: [{
+            scope: { name: 'otlp-js-test', version },
+            logRecords: [{
+              timeUnixNano: String(BigInt(Date.now()) * 1000000n),
+              severityNumber: 9,
+              severityText: 'INFO',
+              body: { stringValue: `🚀 JS counter tick value=${count}` },
+              attributes: [{
+                key: 'counter.value',
+                value: { intValue: String(count) }
+              }]
+            }]
+          }]
+        }]
+      })
+    });
+  } catch {
+    // best effort: the next tick sends another log record
+  }
+};
+
 register();
 exportMetric();
+exportTrace();
 setInterval(register, 10000);
 setInterval(exportMetric, 2000);
+setInterval(() => {
+  count++;
+  exportTrace();
+  exportLog();
+}, 1000);
