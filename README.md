@@ -1168,7 +1168,8 @@ otlp-js-test   → http://aspire-dashboard:18890/v1/metrics (OTLP/HTTP JSON)
 
 - stdout контейнера;
 - OTLP → **Structured logs** в dashboard;
-- уровни `Information/Warning/Error/Debug/Trace` отображаются SVG-иконками.
+- уровни `Information/Warning/Error/Debug/Trace` отображаются SVG-иконками;
+- app2 пишет Info-лог с эмодзи: `🔢 COUNTER TICK value=… step=…`.
 
 ## Конфигурация
 

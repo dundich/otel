@@ -49,7 +49,7 @@ public sealed class CounterService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("Counter started: +{Step} every second", Step);
+        _logger.LogInformation("🚀 Counter started: +{Step} every second", Step);
 
         using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
         while (await timer.WaitForNextTickAsync(stoppingToken))
@@ -65,7 +65,7 @@ public sealed class CounterService : BackgroundService
             // Keep container logs useful without flooding them every second.
             if (value % 10 == 0)
             {
-                _logger.LogInformation("COUNTER TICK value={Count} step={Step}", value, Step);
+                _logger.LogInformation("🔢 COUNTER TICK value={Count} step={Step}", value, Step);
             }
         }
     }
