@@ -169,5 +169,9 @@ setInterval(exportMetric, 2000);
 setInterval(() => {
   count++;
   exportTrace();
-  exportLog();
+
+  // Info-лог с ракетой — раз в 10 секунд, чтобы не засорять Structured logs.
+  if (count % 10 === 0) {
+    exportLog();
+  }
 }, 1000);
